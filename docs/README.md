@@ -51,6 +51,10 @@
 - [../config/README.md](../config/README.md) — Config central dinâmica
 - [../config/app.config.yaml](../config/app.config.yaml)
 
+## API
+
+- [api/openapi.yaml](api/openapi.yaml) — OpenAPI stub (expansão Fase 4)
+
 ## Planejamento visual
 
 Canvas interativo: `canvases/erp-field-services-plan.canvas.tsx` (Cursor IDE)
