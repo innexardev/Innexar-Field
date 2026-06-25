@@ -1,0 +1,11 @@
+# Default owners — review obrigatório
+* @fieldforge/core-team
+
+/config/ @fieldforge/core-team
+/docs/adr/ @fieldforge/core-team
+/docs/security/ @fieldforge/security-team
+/packages/core/ @fieldforge/core-team
+/packages/plugins/ @fieldforge/plugins-team
+/apps/api/ @fieldforge/backend-team
+/apps/web/ @fieldforge/frontend-team
+/apps/marketing/ @fieldforge/frontend-team

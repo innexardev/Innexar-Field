@@ -1,0 +1,21 @@
+# Sobrescritas para produção — debug DESLIGADO por padrão
+environment: production
+
+debug:
+  enabled: false
+  log_level: warn
+  show_dev_panel: false
+  features:
+    api_trace: false
+    mock_stripe: false
+    mock_avalara: false
+    skip_email_send: false
+    skip_sms_send: false
+    verbose_sql: false
+    expose_config_endpoint: false
+    expose_routes_map: false
+    seed_demo_data: false
+    bypass_auth: false
+
+features:
+  marketplace_plugins: false

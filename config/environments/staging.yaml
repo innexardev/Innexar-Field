@@ -1,0 +1,14 @@
+# Staging — espelho de produção com debug limitado
+environment: staging
+
+debug:
+  enabled: true
+  log_level: info
+  show_dev_panel: false
+  features:
+    api_trace: true
+    mock_stripe: true
+    skip_email_send: true
+    expose_config_endpoint: false
+    bypass_auth: false
+    seed_demo_data: false

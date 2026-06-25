@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+dist/
+build/
+.out/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Go
+bin/
+vendor/
+*.exe
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Secrets — never commit
+*.pem
+*.key
+credentials.json
+
+# Canvas local state
+*.canvas.data.json

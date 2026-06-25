@@ -1,0 +1,24 @@
+{
+  "name": "fieldforge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Premium multitenant ERP for field services — US market",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "validate:config": "node scripts/validate-config.mjs",
+    "validate:docs": "node scripts/validate-docs.mjs",
+    "validate:markdown": "node scripts/validate-markdown.mjs",
+    "validate": "npm run validate:config && npm run validate:docs && npm run validate:markdown",
+    "typecheck": "tsc -p packages/config/tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "yaml": "^2.7.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

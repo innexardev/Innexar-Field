@@ -1,0 +1,286 @@
+# =============================================================================
+# FieldForge — Configuração Central Dinâmica
+# =============================================================================
+# Fonte única de verdade para brand, preços, features e debug.
+# Altere aqui sem redeploy de código — apps/web e apps/api leem este arquivo.
+#
+# Sobrescritas por ambiente: config/environments/{APP_ENV}.yaml
+# Variáveis de ambiente com prefixo FF_ também sobrescrevem (ex: FF_DEBUG_ENABLED=true)
+# =============================================================================
+
+version: "1.0.0"
+environment: development  # development | staging | production
+
+# -----------------------------------------------------------------------------
+# Brand — nome e identidade podem mudar a qualquer momento
+# -----------------------------------------------------------------------------
+brand:
+  # Nome de trabalho — troque quando decidir o nome final
+  name: FieldForge
+  legal_name: FieldForge Inc.
+  tagline: Field operations, built for growth
+  description: >
+    Premium ERP for house cleaning, construction, and field services
+    in the United States. One platform. Every job. Real margins.
+
+  # Domínios (sem https://)
+  domains:
+    marketing: fieldforge.com
+    app: app.fieldforge.com
+    api: api.fieldforge.com
+    docs: docs.fieldforge.com
+
+  # Identidade visual — premium, profissional, fácil acesso
+  colors:
+    # Primária: autoridade e confiança (slate profundo)
+    primary: "#0F172A"
+    primary_foreground: "#F8FAFC"
+    # Accent: ação e links (azul confiável)
+    accent: "#2563EB"
+    accent_foreground: "#FFFFFF"
+    # Accent suave: hover, badges (sky)
+    accent_muted: "#0EA5E9"
+    # Superfícies
+    background: "#FFFFFF"
+    background_subtle: "#F8FAFC"
+    surface: "#FFFFFF"
+    surface_elevated: "#F1F5F9"
+    border: "#E2E8F0"
+    # Texto
+    text_primary: "#0F172A"
+    text_secondary: "#475569"
+    text_muted: "#94A3B8"
+    # Feedback
+    success: "#059669"
+    success_subtle: "#ECFDF5"
+    warning: "#D97706"
+    warning_subtle: "#FFFBEB"
+    error: "#DC2626"
+    error_subtle: "#FEF2F2"
+    info: "#2563EB"
+    info_subtle: "#EFF6FF"
+
+  typography:
+    font_sans: "Inter, system-ui, -apple-system, sans-serif"
+    font_mono: "JetBrains Mono, ui-monospace, monospace"
+    # Escala premium — legível, espaçosa
+    scale: compact  # compact | comfortable | spacious
+
+  logo:
+    # Caminhos relativos a apps/web/public ou CDN
+    light: /brand/logo-light.svg
+    dark: /brand/logo-dark.svg
+    icon: /brand/icon.svg
+    favicon: /brand/favicon.ico
+
+  # Nomes alternativos em avaliação (referência interna)
+  name_candidates:
+    - FieldForge
+    - ServiceStack US
+    - CleanBuild Pro
+    - BuildClean OS
+
+# -----------------------------------------------------------------------------
+# Pricing — planos SaaS (valores em USD/mês, cobrança mensal)
+# -----------------------------------------------------------------------------
+pricing:
+  currency: USD
+  billing_interval: month
+  trial_days: 14
+
+  plans:
+    starter:
+      id: starter
+      name: Starter
+      price_monthly: 25
+      price_yearly: 250          # ~2 meses grátis
+      stripe_price_id: ""        # preencher após criar no Stripe
+      description: Perfect for solo operators and small crews getting started
+      badge: null
+      limits:
+        users: 3
+        verticals: 1
+        jobs_per_month: 200
+        storage_gb: 5
+      modules:
+        core: true
+        crm: true
+        estimating: true
+        scheduling: true
+        invoicing: true
+        client_portal: false
+      features:
+        - Up to 3 team members
+        - 1 industry vertical
+        - Quotes & invoicing
+        - Mobile PWA
+        - Email support
+
+    business:
+      id: business
+      name: Business
+      price_monthly: 89
+      price_yearly: 890
+      stripe_price_id: ""
+      description: Growing teams that need dispatch, portal, and job costing
+      badge: Most Popular
+      limits:
+        users: 10
+        verticals: 2
+        jobs_per_month: 2000
+        storage_gb: 25
+      modules:
+        core: true
+        crm: true
+        estimating: true
+        scheduling: true
+        dispatch: true
+        job_costing: true
+        expenses: true
+        invoicing: true
+        client_portal: true
+        reporting: true
+      features:
+        - Up to 10 team members
+        - 2 industry verticals
+        - Client self-service portal
+        - Job costing & expenses
+        - Priority email support
+
+    pro:
+      id: pro
+      name: Pro
+      price_monthly: 149
+      price_yearly: 1490
+      stripe_price_id: ""
+      description: Full platform for established contractors across all trades
+      badge: null
+      limits:
+        users: 25
+        verticals: 3
+        jobs_per_month: 10000
+        storage_gb: 100
+      modules:
+        core: true
+        crm: true
+        estimating: true
+        scheduling: true
+        dispatch: true
+        job_costing: true
+        expenses: true
+        invoicing: true
+        client_portal: true
+        cleaning: true
+        construction: true
+        field_services: true
+        purchase_orders: true
+        reporting: true
+        communications: true
+      features:
+        - Up to 25 team members
+        - All 3 verticals included
+        - Advanced reporting
+        - QuickBooks sync
+        - Phone & chat support
+
+    enterprise:
+      id: enterprise
+      name: Enterprise
+      price_monthly: null        # custom pricing
+      price_yearly: null
+      price_from: 299
+      stripe_price_id: ""
+      description: White-label, dedicated infrastructure, and custom SLAs
+      badge: Custom
+      limits:
+        users: unlimited
+        verticals: unlimited
+        jobs_per_month: unlimited
+        storage_gb: unlimited
+      modules:
+        all: true
+      features:
+        - Unlimited users
+        - White-label & custom domain
+        - Dedicated database tier
+        - SSO / SAML
+        - 99.9% SLA
+        - Dedicated account manager
+
+  addons:
+    extra_user:
+      name: Additional user
+      price_monthly: 12
+    extra_vertical:
+      name: Additional vertical module
+      price_monthly: 29
+    payroll_module:
+      name: Payroll & 1099
+      price_monthly: 39
+    accounting_module:
+      name: Full accounting (GL)
+      price_monthly: 49
+
+# -----------------------------------------------------------------------------
+# Debug — master switch + features granulares (desenvolvimento)
+# -----------------------------------------------------------------------------
+debug:
+  # MASTER: false em production — nunca true em prod sem override consciente
+  enabled: true
+
+  # Nível global de log: trace | debug | info | warn | error
+  log_level: debug
+
+  # Painel visual no app (canto inferior) — só com enabled=true
+  show_dev_panel: true
+
+  # Features de debug individuais — ativar/desativar sem redeploy
+  features:
+    api_trace: true              # log request/response no console
+    api_timing: true             # headers X-Response-Time
+    mock_stripe: true            # pagamentos simulados, sem cobrança real
+    mock_avalara: true           # sales tax fixo 8.25%
+    skip_email_send: true        # emails logados, não enviados
+    skip_sms_send: true
+    verbose_sql: false           # queries SQL no log (cuidado: dados sensíveis)
+    expose_config_endpoint: true # GET /api/v1/debug/config (só dev)
+    expose_routes_map: true      # lista rotas registradas no boot
+    tenant_isolation_check: true # alerta se query sem tenant_id
+    fake_gps: false              # coordenadas fixas NYC para testes campo
+    seed_demo_data: true         # popular tenant demo ao criar conta
+    bypass_auth: false           # PERIGOSO — nunca true em staging/prod
+    slow_mode_ms: 0              # simular latência (0 = desligado)
+
+  # Tenants que sempre têm debug ativo (lista de slugs)
+  debug_tenants: []
+
+# -----------------------------------------------------------------------------
+# Feature flags — rollout gradual sem deploy
+# -----------------------------------------------------------------------------
+features:
+  onboarding_wizard: true
+  client_portal: true
+  marketplace_plugins: false
+  ai_estimate_suggestions: false
+  background_gps: false
+
+# -----------------------------------------------------------------------------
+# Acessibilidade e UX premium
+# -----------------------------------------------------------------------------
+ux:
+  reduce_motion: false           # respeitar prefers-reduced-motion do OS
+  default_locale: en-US
+  supported_locales:
+    - en-US
+    - es-US
+  date_format: MM/DD/YYYY
+  time_format: 12h             # 12h | 24h
+  first_day_of_week: 0           # 0=Sunday (US)
+
+# -----------------------------------------------------------------------------
+# Contato e suporte (landing + app)
+# -----------------------------------------------------------------------------
+contact:
+  support_email: support@fieldforge.com
+  sales_email: sales@fieldforge.com
+  phone: "+1 (555) 000-0000"
