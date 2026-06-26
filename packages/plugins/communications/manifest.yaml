@@ -1,0 +1,16 @@
+id: communications
+name: Communications
+version: 1.0.0
+dependencies:
+  - crm
+industry_packs:
+  - cleaning
+  - construction
+  - field-services
+permissions:
+  - communications.read
+  - communications.write
+nav:
+  - label: Email templates
+    path: /settings/templates
+    icon: mail

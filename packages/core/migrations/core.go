@@ -256,4 +256,26 @@ CREATE POLICY users_tenant_isolation ON users
 	);
 `,
 	},
+	{
+		Version: 19,
+		Name:    "notifications",
+		UpSQL: `
+CREATE TABLE IF NOT EXISTS notifications (
+	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+	user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	type TEXT NOT NULL DEFAULT 'general',
+	title TEXT NOT NULL,
+	body TEXT NOT NULL DEFAULT '',
+	read_at TIMESTAMPTZ,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications (tenant_id, user_id, created_at DESC);
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS notifications_tenant ON notifications;
+CREATE POLICY notifications_tenant ON notifications
+	USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
+`,
+	},
 }

@@ -31,7 +31,11 @@ func (s *stubClient) ListInvoices(_ context.Context, _ string) ([]Invoice, error
 	return []Invoice{}, nil
 }
 
-func (s *stubClient) VerifyWebhook(_ []byte, _ string) (*WebhookEvent, error) {
+func (s *stubClient) CreateInvoicePayment(_ context.Context, _ InvoicePaymentParams) (*InvoicePaymentResult, error) {
+	return &InvoicePaymentResult{InvoiceID: "inv_test"}, nil
+}
+
+func (s *stubClient) VerifyWebhook(_ context.Context, _ []byte, _ string) (*WebhookEvent, error) {
 	return &WebhookEvent{Type: "test"}, nil
 }
 

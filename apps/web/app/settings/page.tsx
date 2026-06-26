@@ -40,6 +40,12 @@ const SETTINGS_SECTIONS = [
         icon: IconUsers,
       },
       {
+        href: "/settings/templates",
+        title: "Email templates",
+        description: "Transactional email templates with merge variables.",
+        icon: IconFileText,
+      },
+      {
         href: "/settings/billing",
         title: "Plan configuration",
         description: "Stripe price IDs and SaaS plan mapping.",

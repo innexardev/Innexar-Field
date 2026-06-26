@@ -8,9 +8,12 @@ import { BrandLogo, Button } from "@fieldforge/ui";
 import { usePortalPage } from "@/lib/use-portal-page";
 
 const PORTAL_NAV = [
+  { slug: "bookings", path: "/portal/bookings" },
   { slug: "invoices", path: "/portal/invoices" },
   { slug: "payments", path: "/portal/payments" },
   { slug: "documents", path: "/portal/documents" },
+  { slug: "messages", path: "/portal/messages" },
+  { slug: "support", path: "/portal/support" },
   { slug: "profile", path: "/portal/profile" },
 ] as const;
 

@@ -16,7 +16,7 @@ function formatCurrency(cents: number) {
 }
 
 function BarChart({ data, label }: { data: Record<string, number>; label: string }) {
-  const entries = Object.entries(data).filter(([, v]) => v > 0);
+  const entries = Object.entries(data ?? {}).filter(([, v]) => v > 0);
   const max = Math.max(...entries.map(([, v]) => v), 1);
 
   if (entries.length === 0) {
@@ -66,7 +66,7 @@ function TenantTable({ tenants, emptyMessage }: { tenants: PlatformTenant[]; emp
         { key: "status", label: "Status" },
         { key: "created", label: "Created" },
       ]}
-      rows={tenants.map((t) => ({
+      rows={(tenants ?? []).map((t) => ({
         id: t.id,
         cells: {
           name: (
@@ -212,7 +212,7 @@ export default function DashboardPage() {
                 <CardTitle>Tenants by plan</CardTitle>
               </CardHeader>
               <CardContent>
-                <BarChart data={metrics.tenants_by_plan} label="plan" />
+                <BarChart data={metrics.tenants_by_plan ?? {}} label="plan" />
               </CardContent>
             </Card>
             <Card>
@@ -220,7 +220,7 @@ export default function DashboardPage() {
                 <CardTitle>Subscriptions by status</CardTitle>
               </CardHeader>
               <CardContent>
-                <BarChart data={metrics.subscription_by_status} label="status" />
+                <BarChart data={metrics.subscription_by_status ?? {}} label="status" />
               </CardContent>
             </Card>
           </div>
@@ -234,7 +234,7 @@ export default function DashboardPage() {
                 Past due, unpaid, or suspended workspaces.
               </p>
               <TenantTable
-                tenants={metrics.tenants_needing_attention}
+                tenants={metrics.tenants_needing_attention ?? []}
                 emptyMessage="No tenants need attention right now."
               />
             </section>
@@ -246,7 +246,7 @@ export default function DashboardPage() {
               <p className="mb-4 text-sm text-[var(--brand-text-secondary)]">
                 Latest signups on the platform.
               </p>
-              <TenantTable tenants={metrics.recent_tenants} emptyMessage="No tenants yet." />
+              <TenantTable tenants={metrics.recent_tenants ?? []} emptyMessage="No tenants yet." />
             </section>
           </div>
         </>

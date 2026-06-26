@@ -4,6 +4,7 @@ import (
 	"github.com/fieldforge/fieldforge/packages/core/response"
 	"time"
 
+	"github.com/fieldforge/fieldforge/packages/core/config"
 	"github.com/fieldforge/fieldforge/packages/core/events"
 	"github.com/fieldforge/fieldforge/packages/core/middleware"
 	"github.com/fieldforge/fieldforge/packages/core/plugin"
@@ -14,8 +15,9 @@ import (
 )
 
 type Plugin struct {
-	pool *pgxpool.Pool
-	bus  *events.Bus
+	pool   *pgxpool.Pool
+	bus    *events.Bus
+	appCfg *config.AppConfig
 }
 
 func New(pool *pgxpool.Pool, bus *events.Bus) *Plugin {
@@ -38,8 +40,10 @@ func (p *Plugin) Manifest() plugin.Manifest {
 }
 
 func (p *Plugin) RegisterRoutes(router fiber.Router, deps plugin.Deps) {
+	p.registerConfig(deps)
 	router.Get("/invoices", p.list)
 	router.Post("/invoices", p.create)
+	router.Get("/invoices/:id/pdf", p.invoicePDF)
 	router.Get("/invoices/:id", p.get)
 	router.Post("/invoices/:id/send", p.send)
 	router.Post("/invoices/:id/pay", middleware.RequireRole("admin", "accountant"), p.pay)

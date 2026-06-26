@@ -483,6 +483,8 @@ func getMetrics(svc *Service) fiber.Handler {
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "failed to load metrics")
 		}
+		m.RecentTenants = response.NilToEmpty(m.RecentTenants)
+		m.TenantsNeedingAttention = response.NilToEmpty(m.TenantsNeedingAttention)
 		return c.JSON(m)
 	}
 }

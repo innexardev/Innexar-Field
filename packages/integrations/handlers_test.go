@@ -59,7 +59,7 @@ func testApp(t *testing.T) *fiber.App {
 		c.Locals("tenant_id", "00000000-0000-4000-8000-000000000001")
 		return c.Next()
 	})
-	integrations.RegisterRoutes(protected, nil, cfg)
+	integrations.RegisterRoutes(protected, nil, cfg, nil)
 	return app
 }
 

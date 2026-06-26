@@ -51,8 +51,15 @@ func (p *Plugin) RegisterRoutes(router fiber.Router, deps plugin.Deps) {
 	router.Get("/jobs/:id", p.getJob)
 	router.Patch("/jobs/:id", p.updateJob)
 	router.Post("/jobs/:id/complete", p.completeJob)
+	router.Get("/signatures", p.listSignatures)
+	router.Post("/signatures", p.createSignature)
+	router.Get("/vehicle-checks", p.listVehicleChecks)
+	router.Post("/vehicle-checks", p.createVehicleCheck)
 	router.Get("/crews", p.listCrews)
 	router.Post("/crews", p.createCrew)
+	router.Get("/crews/:id/members", p.listCrewMembers)
+	router.Post("/crews/:id/members", p.addCrewMember)
+	router.Delete("/crews/:id/members/:employeeId", p.removeCrewMember)
 	router.Get("/crews/:id", p.getCrew)
 	router.Patch("/crews/:id", p.updateCrew)
 	router.Delete("/crews/:id", p.deleteCrew)
@@ -68,6 +75,8 @@ func (p *Plugin) Migrations() []plugin.Migration {
 		{Version: 121, Name: "scheduling_crews", UpSQL: crewsSQL},
 		{Version: 122, Name: "scheduling_recurring_jobs", UpSQL: recurringJobsSQL},
 		{Version: 123, Name: "jobs_assigned_to", UpSQL: jobsAssignedToSQL},
+		{Version: 124, Name: "crew_members", UpSQL: crewMembersSQL},
+		{Version: 125, Name: "mobile_field_signatures_vehicle", UpSQL: mobileFieldSQL},
 	}
 }
 

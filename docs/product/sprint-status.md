@@ -1,11 +1,11 @@
 # Innexar Field Sprint — Status
 
-> Sprint date: 2026-06-26 · Agent 10/10 (canvas + docs sync)  
+> Sprint date: 2026-06-26 · Gap review: 2026-06-26 (wave 1+2 complete)  
 > Related: [canvas-gaps.md](./canvas-gaps.md) · [ERP plan canvas](../canvases/erp-field-services-plan.canvas.tsx)
 
 ## Summary
 
-**7 of 8 feature agents delivered.** ~1,590 lines changed across API, SDK, and web. One agent (portal pages) shipped backend + auth plumbing only; customer-facing routes remain stubs.
+**Maturity ~68–72%** toward canvas MVP. Innexar Field **waves 1+2** closed daily ops, sales/CRM polish, and **portal v1** end-to-end. Shipped: **communications v1**, **notifications module**, **Stripe production path** (env + platform settings), **real photo upload** (cleaning QC + construction daily logs), **server PDF** (invoice/estimate), **property picker** in estimate builder, and **`/settings/templates`**.
 
 | Agent focus | Status | Delivered |
 |-------------|--------|-----------|
@@ -14,39 +14,75 @@
 | Google Maps (`maps.ts`) | ✅ Complete | `apps/web/lib/maps.ts` + `NavigateButton`; deep links on `/m/jobs/[id]`, `/work-orders/[id]`, `/schedule/map`, `/routes` |
 | Property beds/baths/sqft | ✅ Complete | CRM migration (105); property CRUD fields; full create/edit UI on `/customers/[id]/properties`; SDK `Property` type updated |
 | Estimate calculate tiers | ✅ Complete | `pricing.go`; `estimates.property_id`; `POST /estimates/:id/calculate` applies room-based `pricing_tiers` from linked property; integration tests |
-| Invoice preview | ✅ Complete | `/invoices/[id]/preview` branded print layout; links + `?print=1` auto-print from invoice detail |
-| Portal pages | ⚠️ Partial | New `packages/plugins/portal/` (magic-link auth, customer JWT, `GET /portal/me`, `/portal/invoices`); `PortalAuthProvider` in layout; **all `/portal/*` pages still `PortalStubPage`** |
+| Property picker (estimate builder) | ✅ Complete | `EstimatePropertyPicker` in estimate wizard; sets `property_id` before calculate |
+| Invoice preview + server PDF | ✅ Complete | `/invoices/[id]/preview` branded print layout; server PDF render in invoicing/estimating plugins; download helper |
 | Dispatch assign | ✅ Complete | Technician assign form on dispatch board; assignment UI on `/work-orders/[id]`; status auto-updates to `assigned` |
+| Portal v1 | ✅ Complete | Login (magic-link), invoices, **Stripe pay**, documents, profile, **bookings**, **messages**, **support** — API + UI wired (`packages/plugins/portal/`, SDK) |
+| Communications v1 | ✅ Complete | `packages/plugins/communications/` — templates + transactional email; `/settings/templates` |
+| Notifications | ✅ Complete | `packages/core/notifications/` — list/mark-read replaces demo endpoint |
+| Stripe production | ✅ Complete | `stripe_config.go` — env + platform_settings resolver; mock only when debug + no secret |
+| Photo upload | ✅ Complete | `photo-upload.tsx`, `daily-log-photo-upload.tsx`; storage multipart; cleaning/construction plugins |
+| Admin SaaS | ✅ Complete | `apps/admin` — platform console: dashboard+MRR, tenants, users, plans, billing-settings, integrations, modules, audit; API `/platform/*` |
+| Billing post-signup | ✅ Complete | Signup → `/onboarding/billing` → `createCheckout`; `subscription-guard`; `/billing/dunning`; webhooks in `packages/core/billing/` |
+| Dashboard KPIs | ✅ Complete | `/dashboard` loads KPIs via `listReportKpis()`; role dashboards (owner/dispatcher/accountant) |
+| Platform migrations | ✅ Complete | Migrations 202–205 in `packages/core/platform/migrations.go` (billing settings, user admin, settings, seed plans) |
 
-## P0 after sprint
+## Wave 1+2 delivery log (2026-06-26)
 
-Only **customer portal web UI** remains P0 among the original wave-1/2 blockers:
+### Wave 1 — Daily ops & revenue ✅
 
-1. Wire `/portal/login` → magic-link flow using `PortalAuthProvider`
-2. Replace stub pages: payments (invoice list/pay), documents, profile
-3. Server invoice PDF + email attachment (print preview done — now P1)
+- Work order assignment UI (dispatch board + `/work-orders/[id]`)
+- `jobs.assigned_to` / `/m/jobs?mine=true`
+- Google Maps deep links on job cards, routes, schedule map
+- Dispatch board: assign technician from board
 
-## Recommended next work (from canvas)
+### Wave 2 — Sales, CRM, portal & platform ✅
 
-### Wave 3 — Client portal + finance depth
+- Property beds/baths/sqft + price-book tier calculate
+- Property picker in estimate builder
+- Portal **bookings** (customer jobs list), **messages** + **support** (portal_support_requests migration 134)
+- Communications plugin + email templates UI
+- Notifications module (tenant-scoped list/update)
+- Stripe production key resolution (SaaS + Connect path)
+- Real photo upload (cleaning QC, construction daily logs)
+- Server PDF for invoices/estimates
 
-1. **Portal login page** — email + tenant slug form → `requestPortalMagicLink` / `verifyToken`
-2. **Portal payments** — `portalMe` + `listPortalInvoices`; Stripe pay CTA
-3. **Portal documents** — list estimates/invoices customer can access
-4. **Server PDF** — render invoice/estimate HTML to PDF for email attachments
+## P0 after wave 1+2
 
-### Wave 4 — Platform
+**No remaining P0 ops blockers.** Top priorities shifted to **integrations production** and **field mobile depth**:
 
-5. Stripe Connect + QuickBooks production keys and webhooks
-6. Crew membership FKs (link crews to `employees`)
-7. Communications module (email/SMS templates)
-8. SDLC Figma design system (`sdlc3`)
+1. QuickBooks OAuth production + basic AR sync
+2. Crew ↔ employee FKs (scheduling/payroll alignment)
+3. Capacitor camera/signature/push (native shell polish)
+4. SDLC Figma design system (`sdlc3`)
+5. Marketing contact API + analytics GTM
 
-### Quick wins
+## Recommended next work
 
-- Estimate builder: property picker to set `property_id` before calculate
-- Job create/edit: assign technician (`assigned_to`) from desktop `/jobs`
-- Portal hub: link preview cards to real `/portal/*` routes once wired
+### Sprint A — Integrations production
+
+1. **QuickBooks OAuth** — production sync basic AR
+2. **Stripe Connect** — tenant onboarding UX + webhook hardening in staging
+3. **E2E tests** — portal pay + billing + support request flows
+
+### Sprint B — Field & crews
+
+4. **Crew ↔ employee FKs** — link crews to `employees`, not just `member_count`
+5. **Capacitor** — camera + native signature; push notifications
+6. **Fleet / live map** — beyond deep links
+
+### Sprint C — Platform polish
+
+7. **Admin polish** — live metrics, audit depth
+8. **Communications v2** — SMS/Twilio when needed
+9. **Expenses OCR** — receipt capture
+
+### Backlog
+
+- SDLC Figma design system (`sdlc3`)
+- Marketplace onboarding (`/marketplace`)
+- Marketing analytics GTM
+- E-signature on proposals
 
 ## Validation
 

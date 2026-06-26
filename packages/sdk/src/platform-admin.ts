@@ -414,7 +414,13 @@ export class PlatformAdminClient {
   }
 
   getMetrics() {
-    return this.request<PlatformMetrics>("GET", "/platform/metrics");
+    return this.request<PlatformMetrics>("GET", "/platform/metrics").then((metrics) => ({
+      ...metrics,
+      tenants_by_plan: metrics.tenants_by_plan ?? {},
+      subscription_by_status: metrics.subscription_by_status ?? {},
+      recent_tenants: metrics.recent_tenants ?? [],
+      tenants_needing_attention: metrics.tenants_needing_attention ?? [],
+    }));
   }
 
   getConfig() {

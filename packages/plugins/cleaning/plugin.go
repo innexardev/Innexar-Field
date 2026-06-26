@@ -6,13 +6,17 @@ import (
 	"time"
 
 	"github.com/fieldforge/fieldforge/packages/core/plugin"
+	"github.com/fieldforge/fieldforge/packages/core/storage"
 	"github.com/fieldforge/fieldforge/packages/core/tenant"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type Plugin struct{ pool *pgxpool.Pool }
+type Plugin struct {
+	pool    *pgxpool.Pool
+	storage *storage.Service
+}
 
 func New(pool *pgxpool.Pool) *Plugin { return &Plugin{pool: pool} }
 
@@ -35,6 +39,8 @@ func (p *Plugin) Manifest() plugin.Manifest {
 }
 
 func (p *Plugin) RegisterRoutes(router fiber.Router, deps plugin.Deps) {
+	p.storage = deps.Storage
+
 	router.Get("/jobs", p.listTodayCleans)
 	router.Get("/jobs/:id", p.getCleanJob)
 	router.Patch("/jobs/:id/checklist", p.updateCleanChecklist)

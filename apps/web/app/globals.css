@@ -907,6 +907,39 @@ body {
   .mobile-queue-item__remove {
     @apply text-xs text-[var(--brand-error)] underline;
   }
+
+  .mobile-form {
+    @apply space-y-3;
+  }
+
+  .mobile-form__label {
+    @apply block text-sm font-medium text-[var(--brand-text-primary)];
+  }
+
+  .mobile-form__checkbox {
+    @apply flex items-center gap-2 text-sm text-[var(--brand-text-primary)];
+  }
+
+  .mobile-select {
+    @apply w-full rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface)] px-3 py-2 text-sm text-[var(--brand-text-primary)] outline-none transition focus:border-[var(--brand-accent)] focus:ring-2;
+    --tw-ring-color: color-mix(in srgb, var(--brand-accent) 18%, transparent);
+  }
+
+  .signature-pad {
+    @apply space-y-2;
+  }
+
+  .signature-pad__canvas {
+    @apply h-40 w-full touch-none rounded-xl border border-[var(--brand-border)] bg-white;
+  }
+
+  .signature-pad__actions {
+    @apply flex justify-end;
+  }
+
+  .signature-pad__preview {
+    @apply max-h-40 w-full rounded-lg border border-[var(--brand-border)] object-contain;
+  }
 }
 
 @media print {

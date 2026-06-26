@@ -4,13 +4,13 @@ import { useRef } from "react";
 import type { QcPhoto } from "@fieldforge/sdk";
 import { Badge } from "@fieldforge/ui";
 
-type PhotoUploadStubProps = {
+type PhotoUploadProps = {
   photos: QcPhoto[];
   uploading: boolean;
   onUpload: (file: File, kind: "before" | "after") => Promise<void>;
 };
 
-export function PhotoUploadStub({ photos, uploading, onUpload }: PhotoUploadStubProps) {
+export function PhotoUpload({ photos, uploading, onUpload }: PhotoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const kindRef = useRef<"before" | "after">("after");
 
@@ -31,7 +31,7 @@ export function PhotoUploadStub({ photos, uploading, onUpload }: PhotoUploadStub
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/png,image/jpeg,image/webp"
         capture="environment"
         className="sr-only"
         onChange={(e) => void handleFileChange(e)}
@@ -56,12 +56,14 @@ export function PhotoUploadStub({ photos, uploading, onUpload }: PhotoUploadStub
         </button>
       </div>
 
+      <p className="text-xs text-[var(--brand-text-muted)]">PNG, JPEG, or WebP · max 10 MB</p>
+
       {photos.length === 0 ? (
         <div className="mobile-photo-placeholder" role="img" aria-label="Photo upload placeholder">
           <span className="mobile-photo-placeholder__icon">📷</span>
           <p className="mobile-photo-placeholder__text">Add before &amp; after photos</p>
           <p className="mobile-photo-placeholder__hint">
-            Stub upload — images stored as data URLs for QC review
+            Document quality for review — photos are stored securely per job
           </p>
         </div>
       ) : (

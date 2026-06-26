@@ -58,6 +58,40 @@ func TestHandleWebhook_UpdatesPlanOnCheckoutCompleted(t *testing.T) {
 	assert.Equal(t, "business", planID)
 }
 
+func TestHandleWebhook_SetsPastDueOnInvoicePaymentFailed(t *testing.T) {
+	ctx := context.Background()
+	pool, cleanup := startBillingTestDB(t, ctx)
+	defer cleanup()
+
+	tenantID := uuid.New().String()
+	customerID := "cus_test_past_due"
+	seedBillingTenant(t, ctx, pool, tenantID, "starter", "owner@billing.test")
+	_, err := pool.Exec(ctx, `
+		UPDATE tenants SET stripe_customer_id = $2, subscription_status = 'active' WHERE id = $1
+	`, tenantID, customerID)
+	require.NoError(t, err)
+
+	cfg := mockStripeConfig()
+	svc := NewService(pool.Pool, cfg, &MockClient{appURL: "http://localhost:3000"})
+
+	payload := []byte(`{
+		"id": "evt_fail",
+		"type": "invoice.payment_failed",
+		"data": {
+			"object": {
+				"customer": "` + customerID + `"
+			}
+		}
+	}`)
+	err = svc.HandleWebhook(ctx, payload, "mock")
+	require.NoError(t, err)
+
+	var status string
+	err = pool.QueryRow(ctx, `SELECT subscription_status FROM tenants WHERE id = $1`, tenantID).Scan(&status)
+	require.NoError(t, err)
+	assert.Equal(t, "past_due", status)
+}
+
 func mockStripeConfig() *config.AppConfig {
 	return &config.AppConfig{
 		Debug: config.DebugConfig{

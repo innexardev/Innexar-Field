@@ -873,8 +873,10 @@ type Metrics struct {
 
 func (s *Service) Metrics(ctx context.Context) (*Metrics, error) {
 	m := &Metrics{
-		TenantsByPlan:        map[string]int{},
-		SubscriptionByStatus: map[string]int{},
+		TenantsByPlan:           map[string]int{},
+		SubscriptionByStatus:    map[string]int{},
+		RecentTenants:           []TenantSummary{},
+		TenantsNeedingAttention: []TenantSummary{},
 	}
 
 	err := s.pool.QueryRow(ctx, `SELECT COUNT(*) FROM tenants`).Scan(&m.TotalTenants)
@@ -995,7 +997,7 @@ func (s *Service) listTenantsWhere(ctx context.Context, where, order string, lim
 	}
 	defer rows.Close()
 
-	var list []TenantSummary
+	list := make([]TenantSummary, 0)
 	for rows.Next() {
 		var t TenantSummary
 		if err := rows.Scan(&t.ID, &t.Slug, &t.Name, &t.IndustryPack, &t.PlanID, &t.SubscriptionStatus, &t.SuspendedAt, &t.CreatedAt); err != nil {

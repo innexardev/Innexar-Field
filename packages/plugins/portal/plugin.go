@@ -2,6 +2,7 @@ package portal
 
 import (
 	"github.com/fieldforge/fieldforge/packages/core/auth"
+	"github.com/fieldforge/fieldforge/packages/core/billing"
 	"github.com/fieldforge/fieldforge/packages/core/config"
 	"github.com/fieldforge/fieldforge/packages/core/events"
 	"github.com/fieldforge/fieldforge/packages/core/plugin"
@@ -14,10 +15,11 @@ type Plugin struct {
 	authSvc *auth.Service
 	cfg     *config.AppConfig
 	bus     *events.Bus
+	stripe  billing.Client
 }
 
-func New(pool *pgxpool.Pool, authSvc *auth.Service, cfg *config.AppConfig, bus *events.Bus) *Plugin {
-	return &Plugin{pool: pool, authSvc: authSvc, cfg: cfg, bus: bus}
+func New(pool *pgxpool.Pool, authSvc *auth.Service, cfg *config.AppConfig, bus *events.Bus, stripe billing.Client) *Plugin {
+	return &Plugin{pool: pool, authSvc: authSvc, cfg: cfg, bus: bus, stripe: stripe}
 }
 
 func (p *Plugin) Manifest() plugin.Manifest {
@@ -48,14 +50,39 @@ func (p *Plugin) RegisterCustomerRoutes(router fiber.Router) {
 	router.Post("/invoices/:id/payment-intent", p.createPaymentIntent)
 	router.Post("/invoices/:id/confirm-payment", p.confirmPayment)
 	router.Get("/documents", p.listDocuments)
+	router.Get("/bookings", p.listBookings)
+	router.Get("/messages", p.listMessages)
+	router.Post("/support", p.createSupportRequest)
 }
 
 func (p *Plugin) Migrations() []plugin.Migration {
 	return []plugin.Migration{
+		{Version: 134, Name: "portal_support_requests", UpSQL: supportRequestsSQL},
 		{Version: 133, Name: "portal_magic_links", UpSQL: magicLinksSQL},
 		{Version: 132, Name: "invoices_customer_rls", UpSQL: invoicesCustomerRLSSQL},
 	}
 }
+
+const supportRequestsSQL = `
+CREATE TABLE IF NOT EXISTS portal_support_requests (
+	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	tenant_id UUID NOT NULL,
+	customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+	subject TEXT NOT NULL,
+	message TEXT NOT NULL,
+	status TEXT NOT NULL DEFAULT 'open',
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	CONSTRAINT portal_support_requests_status_check CHECK (status IN ('open', 'in_progress', 'resolved', 'closed'))
+);
+CREATE INDEX IF NOT EXISTS idx_portal_support_requests_tenant ON portal_support_requests (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_portal_support_requests_customer ON portal_support_requests (tenant_id, customer_id);
+ALTER TABLE portal_support_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE portal_support_requests FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS portal_support_requests_tenant ON portal_support_requests;
+CREATE POLICY portal_support_requests_tenant ON portal_support_requests
+	USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
+`
 
 const magicLinksSQL = `
 CREATE TABLE IF NOT EXISTS portal_magic_links (

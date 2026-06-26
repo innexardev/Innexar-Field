@@ -59,12 +59,12 @@ func (s *Service) CreateCheckout(ctx context.Context, req CheckoutRequest) (*Che
 	if plan.CustomPricing {
 		return nil, fmt.Errorf("plan %q requires sales contact", planID)
 	}
-	if plan.StripePriceID == "" && !s.cfg.MockStripe() {
+	if plan.StripePriceID == "" && !UseMockStripe(ctx, s.cfg, s.stripeResolver()) {
 		return nil, fmt.Errorf("stripe_price_id not configured for plan %q", planID)
 	}
 
 	priceID := plan.StripePriceID
-	if s.cfg.MockStripe() && priceID == "" {
+	if UseMockStripe(ctx, s.cfg, s.stripeResolver()) && priceID == "" {
 		priceID = "price_mock_" + planID
 	}
 
@@ -109,7 +109,7 @@ func (s *Service) CreateCheckout(ctx context.Context, req CheckoutRequest) (*Che
 }
 
 func (s *Service) HandleWebhook(ctx context.Context, payload []byte, sigHeader string) error {
-	event, err := s.stripe.VerifyWebhook(payload, sigHeader)
+	event, err := s.stripe.VerifyWebhook(ctx, payload, sigHeader)
 	if err != nil {
 		return err
 	}
@@ -119,6 +119,8 @@ func (s *Service) HandleWebhook(ctx context.Context, payload []byte, sigHeader s
 		return s.onCheckoutCompleted(ctx, event)
 	case "invoice.payment_failed":
 		return s.onInvoicePaymentFailed(ctx, event)
+	case "payment_intent.succeeded":
+		return s.onPaymentIntentSucceeded(ctx, event)
 	case "customer.subscription.updated":
 		return s.onSubscriptionUpdated(ctx, event)
 	case "customer.subscription.deleted":
@@ -216,7 +218,7 @@ func (s *Service) ListInvoices(ctx context.Context) ([]Invoice, error) {
 
 // MockCompleteCheckout simulates checkout.session.completed in mock Stripe mode.
 func (s *Service) MockCompleteCheckout(ctx context.Context, planID string) error {
-	if !s.cfg.MockStripe() {
+	if !UseMockStripe(ctx, s.cfg, s.stripeResolver()) {
 		return fmt.Errorf("mock checkout only available when mock_stripe is enabled")
 	}
 	tenantID, ok := tenant.ID(ctx)
@@ -257,9 +259,20 @@ func (s *Service) onCheckoutCompleted(ctx context.Context, event *WebhookEvent) 
 
 	tenantID := metaString(obj, "tenant_id")
 	planID := metaString(obj, "plan_id")
+	invoiceID := metaString(obj, "invoice_id")
+	source := metaString(obj, "source")
 	if tenantID == "" {
 		tenantID, _ = obj["client_reference_id"].(string)
 	}
+
+	if invoiceID != "" || source == "client_portal" {
+		if invoiceID == "" {
+			invoiceID, _ = obj["client_reference_id"].(string)
+		}
+		customerID := metaString(obj, "customer_id")
+		return s.markPortalInvoicePaid(ctx, tenantID, invoiceID, customerID)
+	}
+
 	if tenantID == "" {
 		return fmt.Errorf("checkout.session.completed: tenant_id missing")
 	}
@@ -267,21 +280,52 @@ func (s *Service) onCheckoutCompleted(ctx context.Context, event *WebhookEvent) 
 	customerID, _ := obj["customer"].(string)
 	subscriptionID, _ := obj["subscription"].(string)
 
-	status := "active"
-	if s.cfg.MockStripe() {
-		status = "active"
-	}
-
 	_, err := s.pool.Exec(ctx, `
 		UPDATE tenants SET
 			plan_id = COALESCE(NULLIF($2, ''), plan_id),
 			stripe_customer_id = COALESCE(NULLIF($3, ''), stripe_customer_id),
 			stripe_subscription_id = COALESCE(NULLIF($4, ''), stripe_subscription_id),
-			subscription_status = $5,
+			subscription_status = 'active',
 			updated_at = NOW()
 		WHERE id = $1
-	`, tenantID, planID, customerID, subscriptionID, status)
+	`, tenantID, planID, customerID, subscriptionID)
 	return err
+}
+
+func (s *Service) onPaymentIntentSucceeded(ctx context.Context, event *WebhookEvent) error {
+	obj, ok := event.Data["object"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("payment_intent.succeeded: missing object")
+	}
+	source := metaString(obj, "source")
+	invoiceID := metaString(obj, "invoice_id")
+	if source != "client_portal" || invoiceID == "" {
+		return nil
+	}
+	tenantID := metaString(obj, "tenant_id")
+	customerID := metaString(obj, "customer_id")
+	return s.markPortalInvoicePaid(ctx, tenantID, invoiceID, customerID)
+}
+
+func (s *Service) markPortalInvoicePaid(ctx context.Context, tenantID, invoiceID, customerID string) error {
+	if tenantID == "" || invoiceID == "" {
+		return fmt.Errorf("portal invoice payment: tenant_id and invoice_id required")
+	}
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE invoices SET status = 'paid', paid_at = NOW(), updated_at = NOW()
+		WHERE id = $1 AND tenant_id = $2 AND status = 'sent'
+	`, invoiceID, tenantID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return nil
+	}
+	return nil
+}
+
+func (s *Service) stripeResolver() SecretResolver {
+	return ResolverFromClient(s.stripe)
 }
 
 func (s *Service) onSubscriptionUpdated(ctx context.Context, event *WebhookEvent) error {

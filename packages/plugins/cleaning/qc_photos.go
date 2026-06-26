@@ -2,7 +2,7 @@ package cleaning
 
 import (
 	"github.com/fieldforge/fieldforge/packages/core/response"
-	"strings"
+	"github.com/fieldforge/fieldforge/packages/core/storage"
 	"time"
 
 	"github.com/fieldforge/fieldforge/packages/core/tenant"
@@ -79,51 +79,53 @@ func (p *Plugin) listJobPhotos(c *fiber.Ctx) error {
 }
 
 func (p *Plugin) uploadJobPhoto(c *fiber.Ctx) error {
+	if p.storage == nil {
+		return fiber.NewError(fiber.StatusServiceUnavailable, "file storage not configured")
+	}
+
 	tid, _ := tenant.ID(c.UserContext())
 	jobID := c.Params("id")
 
-	var body struct {
-		Kind    string `json:"kind"`
-		Caption string `json:"caption"`
-		DataURL string `json:"data_url"`
+	data, err := storage.ReadFormFile(c, "photo", storage.MaxPhotoBytes)
+	if err != nil {
+		if code, msg, ok := storage.MapUploadError(err); ok {
+			return fiber.NewError(code, msg)
+		}
+		return fiber.NewError(400, err.Error())
 	}
-	if err := c.BodyParser(&body); err != nil {
-		return fiber.NewError(400, "invalid body")
-	}
-	if body.Kind == "" {
-		body.Kind = "after"
-	}
-	if body.Kind != "before" && body.Kind != "after" {
+
+	kind := c.FormValue("kind", "after")
+	caption := c.FormValue("caption")
+	if kind != "before" && kind != "after" {
 		return fiber.NewError(400, "kind must be before or after")
-	}
-	if body.DataURL == "" {
-		return fiber.NewError(400, "data_url required")
-	}
-	if !strings.HasPrefix(body.DataURL, "data:image/") {
-		return fiber.NewError(400, "data_url must be an image data URL")
-	}
-	if len(body.DataURL) > 512000 {
-		return fiber.NewError(400, "photo too large for stub upload")
 	}
 
 	if err := p.assertJobExists(c, tid, jobID); err != nil {
 		return err
 	}
 
+	upload, err := p.storage.UploadPhoto(c.UserContext(), tid, "cleaning/qc", jobID, data)
+	if err != nil {
+		if code, msg, ok := storage.MapUploadError(err); ok {
+			return fiber.NewError(code, msg)
+		}
+		return fiber.NewError(fiber.StatusInternalServerError, "failed to upload photo")
+	}
+
 	id := uuid.New().String()
 	var createdAt time.Time
-	err := p.pool.QueryRow(c.UserContext(), `
+	err = p.pool.QueryRow(c.UserContext(), `
 		INSERT INTO clean_qc_photos (id, tenant_id, job_id, kind, caption, url)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING created_at
-	`, id, tid, jobID, body.Kind, body.Caption, body.DataURL).Scan(&createdAt)
+	`, id, tid, jobID, kind, caption, upload.URL).Scan(&createdAt)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to save photo")
 	}
 
 	return c.Status(201).JSON(QcPhoto{
-		ID: id, JobID: jobID, Kind: body.Kind, Caption: body.Caption,
-		URL: body.DataURL, CreatedAt: createdAt,
+		ID: id, JobID: jobID, Kind: kind, Caption: caption,
+		URL: upload.URL, CreatedAt: createdAt,
 	})
 }
 

@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/fieldforge/fieldforge/packages/core/auth"
 	"github.com/fieldforge/fieldforge/packages/core/billing"
@@ -20,6 +19,7 @@ import (
 	"github.com/fieldforge/fieldforge/packages/core/observability"
 	"github.com/fieldforge/fieldforge/apps/api/internal/public"
 	"github.com/fieldforge/fieldforge/apps/api/internal/reports"
+	"github.com/fieldforge/fieldforge/packages/core/notifications"
 	"github.com/fieldforge/fieldforge/packages/core/onboarding"
 	"github.com/fieldforge/fieldforge/packages/core/platform"
 	"github.com/fieldforge/fieldforge/packages/core/platformsettings"
@@ -28,6 +28,7 @@ import (
 	"github.com/fieldforge/fieldforge/packages/integrations"
 	"github.com/fieldforge/fieldforge/packages/core/tenantplugins"
 	"github.com/fieldforge/fieldforge/packages/plugins/estimating"
+	"github.com/fieldforge/fieldforge/packages/plugins/communications"
 	"github.com/fieldforge/fieldforge/packages/plugins/portal"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -153,7 +154,14 @@ func New(cfg Config) (*Server, error) {
 		return nil, fmt.Errorf("platform settings store: %w", err)
 	}
 
-	billingSvc := billing.NewService(cfg.Pool.Pool, appCfg, billing.NewClient(appCfg, settingsStore))
+	if comm, ok := cfg.Registry.Get("communications"); ok {
+		if cp, ok := comm.(*communications.Plugin); ok {
+			cp.SetMailDeps(settingsStore, appCfg)
+		}
+	}
+
+	stripeClient := billing.NewClient(appCfg, settingsStore)
+	billingSvc := billing.NewService(cfg.Pool.Pool, appCfg, stripeClient)
 	api.Post("/billing/webhook", billing.WebhookHandler(billingSvc))
 
 	platformSvc := platform.NewService(cfg.Pool.Pool, authSvc, appCfg, settingsStore)
@@ -165,7 +173,7 @@ func New(cfg Config) (*Server, error) {
 		}
 	}
 
-	portalPlugin := portal.New(cfg.Pool.Pool, authSvc, appCfg, cfg.EventBus)
+	portalPlugin := portal.New(cfg.Pool.Pool, authSvc, appCfg, cfg.EventBus, stripeClient)
 	portalPlugin.RegisterPublicRoutes(api.Group("/public"), publicRL)
 
 	portalProtected := api.Group("/portal",
@@ -249,14 +257,9 @@ func New(cfg Config) (*Server, error) {
 		}
 		return c.JSON(fiber.Map{"data": cards})
 	})
-	protected.Get("/notifications", func(c *fiber.Ctx) error {
-		now := time.Now().UTC().Format(time.RFC3339)
-		return c.JSON(fiber.Map{"data": []fiber.Map{
-			{"id": "n1", "title": "Invoice paid", "body": "INV-demo01 — $125.00 received via card.", "category": "billing", "read": false, "created_at": now},
-			{"id": "n2", "title": "Job completed", "body": "Alpha Team marked Oak St remodel complete.", "category": "operations", "read": false, "created_at": now},
-			{"id": "n3", "title": "Estimate accepted", "body": "Downtown office clean quote was accepted.", "category": "sales", "read": true, "created_at": now},
-		}})
-	})
+	notificationsSvc := notifications.NewService(cfg.Pool.Pool)
+	notifications.RegisterRoutes(protected, notificationsSvc)
+
 	reports.RegisterRoutes(protected, cfg.Pool.Pool)
 
 	billing.RegisterRoutes(protected, billingSvc)
@@ -271,10 +274,10 @@ func New(cfg Config) (*Server, error) {
 	}
 	storage.RegisterRoutes(protected, uploadSvc)
 
-	integrations.RegisterRoutes(protected, cfg.Pool.Pool, appCfg)
+	integrations.RegisterRoutes(protected, cfg.Pool.Pool, appCfg, settingsStore)
 
 	// Plugin routes (authenticated)
-	pluginDeps := plugin.Deps{Config: appCfg}
+	pluginDeps := plugin.Deps{Config: appCfg, Storage: uploadSvc}
 	cfg.Registry.RegisterRoutes(protected, pluginDeps)
 
 	return &Server{app: app, port: cfg.Port, cfg: appCfg, loader: loader}, nil

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { Customer } from "@fieldforge/sdk";
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from "@fieldforge/ui";
+import { EstimatePropertyPicker } from "@/components/estimating/estimate-property-picker";
 import { useAppPage } from "@/lib/use-app-page";
 import {
   estimateWizardStepPath,
@@ -20,16 +21,23 @@ export default function EstimateNewDetailsPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [title, setTitle] = useState("");
   const [customerId, setCustomerId] = useState("");
+  const [propertyId, setPropertyId] = useState("");
 
   useEffect(() => {
     const draft = loadEstimateWizardDraft();
     setTitle(draft.title);
     setCustomerId(draft.customerId);
+    setPropertyId(draft.propertyId);
   }, []);
 
   useEffect(() => {
     if (token) client.listCustomers().then((r) => setCustomers(r.data ?? [])).catch(console.error);
   }, [token, client]);
+
+  function onCustomerChange(nextCustomerId: string) {
+    setCustomerId(nextCustomerId);
+    setPropertyId("");
+  }
 
   function onContinue() {
     if (!title.trim()) return;
@@ -37,6 +45,7 @@ export default function EstimateNewDetailsPage() {
       ...loadEstimateWizardDraft(),
       title: title.trim(),
       customerId,
+      propertyId,
     });
     router.push(estimateWizardStepPath("lines"));
   }
@@ -68,7 +77,7 @@ export default function EstimateNewDetailsPage() {
             id="est-customer"
             className="form-select w-full"
             value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
+            onChange={(e) => onCustomerChange(e.target.value)}
           >
             <option value="">{t("noCustomerSelected")}</option>
             {customers.map((c) => (
@@ -78,6 +87,19 @@ export default function EstimateNewDetailsPage() {
             ))}
           </select>
           <p className="form-hint">{t("customerHint")}</p>
+        </div>
+        <div className="form-field">
+          <label className="form-label" htmlFor="est-property">
+            {t("propertyOptional")}
+          </label>
+          <EstimatePropertyPicker
+            client={client}
+            token={token}
+            customerId={customerId}
+            propertyId={propertyId}
+            onPropertyIdChange={setPropertyId}
+          />
+          <p className="form-hint">{t("propertyHint")}</p>
         </div>
         <div className="flex justify-end pt-2">
           <Button onClick={onContinue} disabled={!title.trim()}>

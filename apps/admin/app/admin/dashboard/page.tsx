@@ -2,24 +2,44 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Badge, Button } from "@fieldforge/ui";
+import { useTranslations } from "next-intl";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  IconBuilding,
+  IconChart,
+  IconCreditCard,
+  IconUsers,
+} from "@fieldforge/ui";
 import { formatErrorForUser, type PlatformMetrics, type PlatformTenant } from "@fieldforge/sdk";
-import { Card, CardContent, CardHeader, CardTitle } from "@fieldforge/ui";
 import { DataTable } from "@/components/data-table";
 import { ErrorBanner } from "@/components/error-banner";
 import { PageHeader } from "@/components/page-header";
+import { StatCard } from "@/components/stat-card";
 import { useAdminPage } from "@/lib/use-admin-page";
 
 function formatCurrency(cents: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }
 
-function BarChart({ data, label }: { data: Record<string, number>; label: string }) {
-  const entries = Object.entries(data).filter(([, v]) => v > 0);
+function BarChart({
+  data,
+  label,
+  emptyLabel,
+}: {
+  data: Record<string, number>;
+  label: string;
+  emptyLabel: string;
+}) {
+  const entries = Object.entries(data ?? {}).filter(([, v]) => v > 0);
   const max = Math.max(...entries.map(([, v]) => v), 1);
 
   if (entries.length === 0) {
-    return <p className="text-sm text-[var(--brand-text-secondary)]">No {label.toLowerCase()} data yet.</p>;
+    return <p className="text-sm text-[var(--brand-text-secondary)]">{emptyLabel}</p>;
   }
 
   return (
@@ -42,46 +62,61 @@ function BarChart({ data, label }: { data: Record<string, number>; label: string
   );
 }
 
-function tenantStatusBadge(tenant: PlatformTenant) {
-  if (tenant.suspended_at) {
-    return <Badge tone="default">Suspended</Badge>;
+function TenantTable({
+  tenants,
+  emptyTitle,
+  emptyDescription,
+  t,
+  tc,
+}: {
+  tenants: PlatformTenant[];
+  emptyTitle: string;
+  emptyDescription: string;
+  t: ReturnType<typeof useTranslations<"admin.pages.dashboard">>;
+  tc: ReturnType<typeof useTranslations<"admin.common">>;
+}) {
+  function tenantStatusBadge(tenant: PlatformTenant) {
+    if (tenant.suspended_at) {
+      return <Badge tone="default">{tc("suspended")}</Badge>;
+    }
+    if (tenant.subscription_status === "past_due" || tenant.subscription_status === "unpaid") {
+      return <Badge tone="warning">{tenant.subscription_status}</Badge>;
+    }
+    if (tenant.subscription_status === "canceled") {
+      return <Badge tone="default">{tc("churned")}</Badge>;
+    }
+    return <Badge tone="success">{tenant.subscription_status || "active"}</Badge>;
   }
-  if (tenant.subscription_status === "past_due" || tenant.subscription_status === "unpaid") {
-    return <Badge tone="warning">{tenant.subscription_status}</Badge>;
-  }
-  if (tenant.subscription_status === "canceled") {
-    return <Badge tone="default">Churned</Badge>;
-  }
-  return <Badge tone="success">{tenant.subscription_status || "active"}</Badge>;
-}
 
-function TenantTable({ tenants, emptyMessage }: { tenants: PlatformTenant[]; emptyMessage: string }) {
   return (
     <DataTable
-      emptyMessage={emptyMessage}
+      emptyTitle={emptyTitle}
+      emptyDescription={emptyDescription}
+      emptyIcon={IconBuilding}
+      actionsLabel={tc("actions")}
       columns={[
         { key: "name", label: "Tenant" },
         { key: "plan", label: "Plan" },
         { key: "status", label: "Status" },
         { key: "created", label: "Created" },
       ]}
-      rows={tenants.map((t) => ({
-        id: t.id,
+      rows={(tenants ?? []).map((row) => ({
+        id: row.id,
         cells: {
           name: (
             <div>
-              <p className="font-medium">{t.name}</p>
-              <p className="text-xs text-[var(--brand-text-muted)]">{t.slug}</p>
+              <p className="font-medium">{row.name}</p>
+              <p className="text-xs text-[var(--brand-text-muted)]">{row.slug}</p>
             </div>
           ),
-          plan: <code className="text-xs">{t.plan_id}</code>,
-          status: tenantStatusBadge(t),
-          created: new Date(t.created_at).toLocaleDateString(),
+          plan: <code className="text-xs">{row.plan_id}</code>,
+          status: tenantStatusBadge(row),
+          created: new Date(row.created_at).toLocaleDateString(),
         },
         actions: (
-          <Link href={`/admin/tenants/${t.id}`}>
+          <Link href={`/admin/tenants/${row.id}`}>
             <Button size="sm" variant="secondary">
-              View
+              {tc("view")}
             </Button>
           </Link>
         ),
@@ -92,6 +127,8 @@ function TenantTable({ tenants, emptyMessage }: { tenants: PlatformTenant[]; emp
 
 export default function DashboardPage() {
   const { client } = useAdminPage();
+  const t = useTranslations("admin.pages.dashboard");
+  const tc = useTranslations("admin.common");
   const [metrics, setMetrics] = useState<PlatformMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -115,137 +152,125 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader
-        title="Dashboard"
-        subtitle="Platform-wide SaaS metrics, billing health, and tenant activity."
-      />
+      <PageHeader title={t("title")} subtitle={t("subtitle")} />
       <ErrorBanner message={error} className="mb-4" />
 
       {loading ? (
-        <p className="text-sm text-[var(--brand-text-secondary)]">Loading metrics…</p>
+        <p className="text-sm text-[var(--brand-text-secondary)]">{t("loadingMetrics")}</p>
       ) : metrics ? (
         <>
           <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="stat-card">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--brand-text-muted)]">
-                Total tenants
-              </p>
-              <p className="mt-2 text-3xl font-bold text-[var(--brand-text-primary)]">
-                {metrics.total_tenants}
-              </p>
-              <p className="mt-1 text-xs text-[var(--brand-text-secondary)]">
-                {metrics.suspended_tenants} suspended
-              </p>
-            </div>
-            <div className="stat-card">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--brand-text-muted)]">
-                Active subscriptions
-              </p>
-              <p className="mt-2 text-3xl font-bold text-[var(--brand-text-primary)]">
-                {metrics.active_subscriptions}
-              </p>
-              <p className="mt-1 text-xs text-[var(--brand-text-secondary)]">
-                {metrics.trialing} trialing · {metrics.past_due} past due
-              </p>
-            </div>
-            <div className="stat-card">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--brand-text-muted)]">
-                MRR (estimate)
-              </p>
-              <p className="mt-2 text-3xl font-bold text-[var(--brand-text-primary)]">
-                {formatCurrency(metrics.mrr_estimate_cents)}
-              </p>
-              <p className="mt-1 text-xs text-[var(--brand-text-secondary)]">
-                Plan prices × active subscriptions
-              </p>
-            </div>
-            <div className="stat-card">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--brand-text-muted)]">
-                Total users
-              </p>
-              <p className="mt-2 text-3xl font-bold text-[var(--brand-text-primary)]">
-                {metrics.total_users}
-              </p>
-              <p className="mt-1 text-xs text-[var(--brand-text-secondary)]">
-                Across all workspaces
-              </p>
-            </div>
+            <StatCard
+              label={t("totalTenants")}
+              value={metrics.total_tenants}
+              hint={t("suspendedCount", { count: metrics.suspended_tenants })}
+              icon={IconBuilding}
+              tone="accent"
+            />
+            <StatCard
+              label={t("activeSubscriptions")}
+              value={metrics.active_subscriptions}
+              hint={t("trialingPastDue", {
+                trialing: metrics.trialing,
+                pastDue: metrics.past_due,
+              })}
+              icon={IconCreditCard}
+              tone="success"
+            />
+            <StatCard
+              label={t("mrrEstimate")}
+              value={formatCurrency(metrics.mrr_estimate_cents)}
+              hint={t("mrrHint")}
+              icon={IconChart}
+              tone="info"
+            />
+            <StatCard
+              label={t("totalUsers")}
+              value={metrics.total_users}
+              hint={t("usersHint")}
+              icon={IconUsers}
+              tone="default"
+            />
           </div>
 
           <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="stat-card">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--brand-text-muted)]">
-                Trialing
-              </p>
-              <p className="mt-2 text-2xl font-bold text-[var(--brand-text-primary)]">{metrics.trialing}</p>
-            </div>
-            <div className="stat-card">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--brand-text-muted)]">
-                Past due
-              </p>
-              <p className="mt-2 text-2xl font-bold text-[var(--brand-text-primary)]">{metrics.past_due}</p>
-            </div>
-            <div className="stat-card">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--brand-text-muted)]">
-                Churned
-              </p>
-              <p className="mt-2 text-2xl font-bold text-[var(--brand-text-primary)]">{metrics.churned}</p>
-            </div>
-            <div className="stat-card">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--brand-text-muted)]">
-                New signups
-              </p>
-              <p className="mt-2 text-2xl font-bold text-[var(--brand-text-primary)]">
-                {metrics.signups_last_7_days}
-                <span className="ml-2 text-base font-normal text-[var(--brand-text-secondary)]">
-                  / {metrics.signups_last_30_days} (30d)
-                </span>
-              </p>
-              <p className="mt-1 text-xs text-[var(--brand-text-secondary)]">Last 7 days</p>
-            </div>
+            <StatCard label={t("trialing")} value={metrics.trialing} tone="info" />
+            <StatCard label={t("pastDue")} value={metrics.past_due} tone="warning" />
+            <StatCard label={t("churned")} value={metrics.churned} tone="default" />
+            <StatCard
+              label={t("newSignups")}
+              value={
+                <>
+                  {metrics.signups_last_7_days}
+                  <span className="ml-2 text-base font-normal text-[var(--brand-text-secondary)]">
+                    {t("signupsPeriod", {
+                      seven: metrics.signups_last_7_days,
+                      thirty: metrics.signups_last_30_days,
+                    })}
+                  </span>
+                </>
+              }
+              hint={t("last7Days")}
+              tone="success"
+            />
           </div>
 
           <div className="mb-6 grid gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Tenants by plan</CardTitle>
+                <CardTitle>{t("tenantsByPlan")}</CardTitle>
               </CardHeader>
               <CardContent>
-                <BarChart data={metrics.tenants_by_plan} label="plan" />
+                <BarChart
+                  data={metrics.tenants_by_plan ?? {}}
+                  label="plan"
+                  emptyLabel={t("noChartData", { label: "plan" })}
+                />
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Subscriptions by status</CardTitle>
+                <CardTitle>{t("subscriptionsByStatus")}</CardTitle>
               </CardHeader>
               <CardContent>
-                <BarChart data={metrics.subscription_by_status} label="status" />
+                <BarChart
+                  data={metrics.subscription_by_status ?? {}}
+                  label="status"
+                  emptyLabel={t("noChartData", { label: "status" })}
+                />
               </CardContent>
             </Card>
           </div>
 
           <div className="space-y-8">
             <section>
-              <h2 className="mb-3 text-base font-semibold text-[var(--brand-text-primary)]">
-                Tenants needing attention
+              <h2 className="mb-1 text-base font-semibold text-[var(--brand-text-primary)]">
+                {t("tenantsNeedingAttention")}
               </h2>
               <p className="mb-4 text-sm text-[var(--brand-text-secondary)]">
-                Past due, unpaid, or suspended workspaces.
+                {t("tenantsNeedingAttentionHint")}
               </p>
               <TenantTable
-                tenants={metrics.tenants_needing_attention}
-                emptyMessage="No tenants need attention right now."
+                tenants={metrics.tenants_needing_attention ?? []}
+                emptyTitle={t("emptyAttention")}
+                emptyDescription={t("emptyAttentionDesc")}
+                t={t}
+                tc={tc}
               />
             </section>
 
             <section>
-              <h2 className="mb-3 text-base font-semibold text-[var(--brand-text-primary)]">
-                Recent tenants
+              <h2 className="mb-1 text-base font-semibold text-[var(--brand-text-primary)]">
+                {t("recentTenants")}
               </h2>
-              <p className="mb-4 text-sm text-[var(--brand-text-secondary)]">
-                Latest signups on the platform.
-              </p>
-              <TenantTable tenants={metrics.recent_tenants} emptyMessage="No tenants yet." />
+              <p className="mb-4 text-sm text-[var(--brand-text-secondary)]">{t("recentTenantsHint")}</p>
+              <TenantTable
+                tenants={metrics.recent_tenants ?? []}
+                emptyTitle={t("emptyTenants")}
+                emptyDescription={t("emptyTenantsDesc")}
+                t={t}
+                tc={tc}
+              />
             </section>
           </div>
         </>

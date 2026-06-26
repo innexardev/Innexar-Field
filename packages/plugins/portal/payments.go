@@ -2,12 +2,13 @@ package portal
 
 import (
 	"fmt"
+	"os"
 	"time"
 
+	"github.com/fieldforge/fieldforge/packages/core/billing"
 	"github.com/fieldforge/fieldforge/packages/core/response"
 	"github.com/fieldforge/fieldforge/packages/core/tenant"
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 )
 
 type PortalPayment struct {
@@ -24,6 +25,7 @@ type PortalPayment struct {
 type PaymentIntentResult struct {
 	PaymentIntentID string `json:"payment_intent_id"`
 	ClientSecret    string `json:"client_secret"`
+	CheckoutURL     string `json:"checkout_url,omitempty"`
 	AmountCents     int64  `json:"amount_cents"`
 	InvoiceID       string `json:"invoice_id"`
 	Mock            bool   `json:"mock,omitempty"`
@@ -78,12 +80,12 @@ func (p *Plugin) createPaymentIntent(c *fiber.Ctx) error {
 	invoiceID := c.Params("id")
 
 	var total int64
-	var status string
+	var status, invoiceNumber string
 	err := p.pool.QueryRow(c.UserContext(), `
-		SELECT total_cents, status
+		SELECT total_cents, status, invoice_number
 		FROM invoices
 		WHERE id = $1 AND tenant_id = $2 AND customer_id = $3::uuid
-	`, invoiceID, tid, cid).Scan(&total, &status)
+	`, invoiceID, tid, cid).Scan(&total, &status, &invoiceNumber)
 	if err != nil {
 		return fiber.NewError(404, "invoice not found")
 	}
@@ -91,16 +93,46 @@ func (p *Plugin) createPaymentIntent(c *fiber.Ctx) error {
 		return fiber.NewError(400, "invoice is not payable")
 	}
 
-	intentID := "pi_mock_" + uuid.New().String()[:12]
-	mock := p.cfg != nil && p.cfg.MockStripe()
-	result := PaymentIntentResult{
-		PaymentIntentID: intentID,
-		ClientSecret:    fmt.Sprintf("%s_secret_%s", intentID, uuid.New().String()[:8]),
-		AmountCents:     total,
-		InvoiceID:       invoiceID,
-		Mock:            mock,
+	mock := billing.UseMockStripe(c.UserContext(), p.cfg, p.stripeResolver())
+	if mock || p.stripe == nil {
+		intentID := "pi_mock_" + invoiceID[:8]
+		return c.JSON(PaymentIntentResult{
+			PaymentIntentID: intentID,
+			ClientSecret:    fmt.Sprintf("%s_secret_mock", intentID),
+			CheckoutURL:     portalAppURL() + "/portal/payments?mock_pay=" + invoiceID,
+			AmountCents:     total,
+			InvoiceID:       invoiceID,
+			Mock:            true,
+		})
 	}
-	return c.JSON(result)
+
+	var customerEmail string
+	_ = p.pool.QueryRow(c.UserContext(), `
+		SELECT email FROM customers WHERE id = $1 AND tenant_id = $2
+	`, cid, tid).Scan(&customerEmail)
+
+	baseURL := portalAppURL()
+	result, err := p.stripe.CreateInvoicePayment(c.UserContext(), billing.InvoicePaymentParams{
+		TenantID:      tid,
+		CustomerID:    cid,
+		InvoiceID:     invoiceID,
+		InvoiceNumber: invoiceNumber,
+		AmountCents:   total,
+		SuccessURL:    baseURL + "/portal/payments?paid=" + invoiceID,
+		CancelURL:     baseURL + "/portal/payments",
+		CustomerEmail: customerEmail,
+	})
+	if err != nil {
+		return fiber.NewError(400, err.Error())
+	}
+
+	return c.JSON(PaymentIntentResult{
+		PaymentIntentID: result.PaymentIntentID,
+		ClientSecret:    result.ClientSecret,
+		CheckoutURL:     result.CheckoutURL,
+		AmountCents:     result.AmountCents,
+		InvoiceID:       result.InvoiceID,
+	})
 }
 
 func (p *Plugin) confirmPayment(c *fiber.Ctx) error {
@@ -108,8 +140,8 @@ func (p *Plugin) confirmPayment(c *fiber.Ctx) error {
 	cid, _ := tenant.CustomerID(c.UserContext())
 	invoiceID := c.Params("id")
 
-	if p.cfg == nil || !p.cfg.MockStripe() {
-		return fiber.NewError(501, "live Stripe payment confirmation not wired yet; use webhook")
+	if !billing.UseMockStripe(c.UserContext(), p.cfg, p.stripeResolver()) {
+		return fiber.NewError(400, "live payments are confirmed via Stripe Checkout or webhook")
 	}
 
 	tag, err := p.pool.Exec(c.UserContext(), `
@@ -129,4 +161,15 @@ func (p *Plugin) confirmPayment(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"status": "paid", "invoice_id": invoiceID})
+}
+
+func portalAppURL() string {
+	if u := os.Getenv("WEB_APP_URL"); u != "" {
+		return u
+	}
+	return "http://localhost:3000"
+}
+
+func (p *Plugin) stripeResolver() billing.SecretResolver {
+	return billing.ResolverFromClient(p.stripe)
 }

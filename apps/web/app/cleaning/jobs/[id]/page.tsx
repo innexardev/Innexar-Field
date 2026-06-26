@@ -6,22 +6,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import type { ChecklistItem, CleanJobDetail, QcPhoto } from "@fieldforge/sdk";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@fieldforge/ui";
-import { PhotoUploadStub } from "@/components/cleaning/photo-upload-stub";
+import { PhotoUpload } from "@/components/cleaning/photo-upload";
 import { ModulePage } from "@/components/module-page";
 import { useAppPage } from "@/lib/use-app-page";
 
 function formatJobTime(iso?: string) {
   if (!iso) return "Unscheduled";
   return new Date(iso).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
-}
-
-function readFileAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
 }
 
 export default function CleaningJobDetailPage() {
@@ -75,11 +66,9 @@ export default function CleaningJobDetailPage() {
     if (!job) return;
     setUploading(true);
     try {
-      const dataUrl = await readFileAsDataURL(file);
-      const photo = await client.uploadCleanJobPhoto(job.id, {
+      const photo = await client.uploadCleanJobPhoto(job.id, file, {
         kind,
         caption: file.name,
-        data_url: dataUrl,
       });
       setPhotos((prev) => [...prev, photo]);
     } catch (err) {
@@ -166,7 +155,7 @@ export default function CleaningJobDetailPage() {
           </p>
         </CardHeader>
         <CardContent>
-          <PhotoUploadStub photos={photos} uploading={uploading} onUpload={uploadPhoto} />
+          <PhotoUpload photos={photos} uploading={uploading} onUpload={uploadPhoto} />
         </CardContent>
       </Card>
 

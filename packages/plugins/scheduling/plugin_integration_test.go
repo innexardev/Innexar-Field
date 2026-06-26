@@ -278,6 +278,144 @@ func TestScheduling_CrewsCRUD_TenantIsolation(t *testing.T) {
 	_ = delRes.Body.Close()
 }
 
+func TestScheduling_CrewMembersCRUD_TenantIsolation(t *testing.T) {
+	ctx := context.Background()
+
+	pg, err := tcpostgres.RunContainer(ctx,
+		testcontainers.WithImage("postgres:16-alpine"),
+		tcpostgres.WithDatabase("fieldforge"),
+		tcpostgres.WithUsername("fieldforge"),
+		tcpostgres.WithPassword("fieldforge"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").WithOccurrence(2),
+		),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = pg.Terminate(ctx) })
+
+	connStr, err := pg.ConnectionString(ctx, "sslmode=disable")
+	require.NoError(t, err)
+
+	pool, err := db.Connect(ctx, connStr)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+
+	require.NoError(t, runCrewMembersMigrations(ctx, pool))
+
+	tenantA := uuid.New().String()
+	tenantB := uuid.New().String()
+	employeeA := uuid.New().String()
+	employeeB := uuid.New().String()
+	seedTenant(t, ctx, pool, tenantA, "crew-member-a")
+	seedTenant(t, ctx, pool, tenantB, "crew-member-b")
+
+	tenantCtxA := tenant.WithID(ctx, tenantA)
+	_, err = pool.Exec(tenantCtxA, `
+		INSERT INTO employees (id, tenant_id, first_name, last_name, email, status)
+		VALUES ($1, $2, 'Alex', 'Tech', 'alex@example.com', 'active')
+	`, employeeA, tenantA)
+	require.NoError(t, err)
+	tenantCtxB := tenant.WithID(ctx, tenantB)
+	_, err = pool.Exec(tenantCtxB, `
+		INSERT INTO employees (id, tenant_id, first_name, last_name, email, status)
+		VALUES ($1, $2, 'Bob', 'Other', 'bob@example.com', 'active')
+	`, employeeB, tenantB)
+	require.NoError(t, err)
+
+	authSvc := auth.NewService("integration-test-secret-32-chars!!", 24)
+	tokenA, err := authSvc.IssueToken(uuid.New().String(), tenantA, "a@example.com", "owner")
+	require.NoError(t, err)
+	tokenB, err := authSvc.IssueToken(uuid.New().String(), tenantB, "b@example.com", "owner")
+	require.NoError(t, err)
+
+	app := newSchedulingApp(pool, authSvc)
+
+	createRes := postJSON(t, app, "/scheduling/crews", tokenA, map[string]any{
+		"name": "Alpha Team",
+	})
+	require.Equal(t, http.StatusCreated, createRes.StatusCode)
+	defer createRes.Body.Close()
+
+	var created map[string]any
+	require.NoError(t, json.NewDecoder(createRes.Body).Decode(&created))
+	crewID, _ := created["id"].(string)
+	require.NotEmpty(t, crewID)
+
+	addRes := postJSON(t, app, "/scheduling/crews/"+crewID+"/members", tokenA, map[string]string{
+		"employee_id": employeeA,
+	})
+	require.Equal(t, http.StatusCreated, addRes.StatusCode)
+	defer addRes.Body.Close()
+
+	listRes := getJSON(t, app, "/scheduling/crews/"+crewID+"/members", tokenA)
+	require.Equal(t, http.StatusOK, listRes.StatusCode)
+	defer listRes.Body.Close()
+	var listBody struct {
+		Data []map[string]any `json:"data"`
+	}
+	require.NoError(t, json.NewDecoder(listRes.Body).Decode(&listBody))
+	require.Len(t, listBody.Data, 1)
+	assert.Equal(t, employeeA, listBody.Data[0]["employee_id"])
+
+	crossListRes := getJSON(t, app, "/scheduling/crews/"+crewID+"/members", tokenB)
+	assert.Equal(t, http.StatusNotFound, crossListRes.StatusCode)
+	_ = crossListRes.Body.Close()
+
+	dupRes := postJSON(t, app, "/scheduling/crews/"+crewID+"/members", tokenA, map[string]string{
+		"employee_id": employeeA,
+	})
+	assert.Equal(t, http.StatusConflict, dupRes.StatusCode)
+	_ = dupRes.Body.Close()
+
+	getCrewRes := getJSON(t, app, "/scheduling/crews/"+crewID, tokenA)
+	require.Equal(t, http.StatusOK, getCrewRes.StatusCode)
+	defer getCrewRes.Body.Close()
+	var crewBody map[string]any
+	require.NoError(t, json.NewDecoder(getCrewRes.Body).Decode(&crewBody))
+	assert.EqualValues(t, 1, crewBody["member_count"])
+
+	delRes := deleteReq(t, app, "/scheduling/crews/"+crewID+"/members/"+employeeA, tokenA)
+	assert.Equal(t, http.StatusNoContent, delRes.StatusCode)
+	_ = delRes.Body.Close()
+
+	crossDelRes := deleteReq(t, app, "/scheduling/crews/"+crewID+"/members/"+employeeB, tokenB)
+	assert.Equal(t, http.StatusNotFound, crossDelRes.StatusCode)
+	_ = crossDelRes.Body.Close()
+}
+
+func runCrewMembersMigrations(ctx context.Context, pool *db.Pool) error {
+	var all []struct {
+		Version int
+		Name    string
+		UpSQL   string
+	}
+	for _, m := range coremigrate.Core {
+		all = append(all, struct {
+			Version int
+			Name    string
+			UpSQL   string
+		}{m.Version, m.Name, m.UpSQL})
+	}
+	bus := events.NewBus(pool.Pool)
+	schedPlugin := scheduling.New(pool.Pool, bus)
+	for _, m := range schedPlugin.Migrations() {
+		all = append(all, struct {
+			Version int
+			Name    string
+			UpSQL   string
+		}{m.Version, m.Name, m.UpSQL})
+	}
+	payrollPlugin := payroll.New(pool.Pool)
+	for _, m := range payrollPlugin.Migrations() {
+		all = append(all, struct {
+			Version int
+			Name    string
+			UpSQL   string
+		}{m.Version, m.Name, m.UpSQL})
+	}
+	return pool.RunMigrations(ctx, all)
+}
+
 func TestScheduling_QuoteAccepted_CreatesDraftJob(t *testing.T) {
 	ctx := context.Background()
 

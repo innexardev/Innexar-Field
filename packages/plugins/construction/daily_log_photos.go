@@ -2,7 +2,7 @@ package construction
 
 import (
 	"github.com/fieldforge/fieldforge/packages/core/response"
-	"strings"
+	"github.com/fieldforge/fieldforge/packages/core/storage"
 	"time"
 
 	"github.com/fieldforge/fieldforge/packages/core/tenant"
@@ -71,45 +71,50 @@ func (p *Plugin) listDailyLogPhotos(c *fiber.Ctx) error {
 }
 
 func (p *Plugin) uploadDailyLogPhoto(c *fiber.Ctx) error {
+	if p.storage == nil {
+		return fiber.NewError(fiber.StatusServiceUnavailable, "file storage not configured")
+	}
+
 	tid, _ := tenant.ID(c.UserContext())
 	projectID := c.Params("id")
 	logID := c.Params("logId")
 
-	var body struct {
-		Caption string `json:"caption"`
-		DataURL string `json:"data_url"`
+	data, err := storage.ReadFormFile(c, "photo", storage.MaxPhotoBytes)
+	if err != nil {
+		if code, msg, ok := storage.MapUploadError(err); ok {
+			return fiber.NewError(code, msg)
+		}
+		return fiber.NewError(400, err.Error())
 	}
-	if err := c.BodyParser(&body); err != nil {
-		return fiber.NewError(400, "invalid body")
-	}
-	if body.DataURL == "" {
-		return fiber.NewError(400, "data_url required")
-	}
-	if !strings.HasPrefix(body.DataURL, "data:image/") {
-		return fiber.NewError(400, "data_url must be an image data URL")
-	}
-	if len(body.DataURL) > 512000 {
-		return fiber.NewError(400, "photo too large for stub upload")
-	}
+
+	caption := c.FormValue("caption")
 
 	if err := p.assertDailyLogExists(c, tid, projectID, logID); err != nil {
 		return err
 	}
 
+	upload, err := p.storage.UploadPhoto(c.UserContext(), tid, "construction/daily-logs", logID, data)
+	if err != nil {
+		if code, msg, ok := storage.MapUploadError(err); ok {
+			return fiber.NewError(code, msg)
+		}
+		return fiber.NewError(fiber.StatusInternalServerError, "failed to upload photo")
+	}
+
 	id := uuid.New().String()
 	var createdAt time.Time
-	err := p.pool.QueryRow(c.UserContext(), `
+	err = p.pool.QueryRow(c.UserContext(), `
 		INSERT INTO project_daily_log_photos (id, tenant_id, daily_log_id, caption, url)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING created_at
-	`, id, tid, logID, body.Caption, body.DataURL).Scan(&createdAt)
+	`, id, tid, logID, caption, upload.URL).Scan(&createdAt)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to save daily log photo")
 	}
 
 	return c.Status(201).JSON(DailyLogPhoto{
-		ID: id, DailyLogID: logID, Caption: body.Caption,
-		URL: body.DataURL, CreatedAt: createdAt,
+		ID: id, DailyLogID: logID, Caption: caption,
+		URL: upload.URL, CreatedAt: createdAt,
 	})
 }
 

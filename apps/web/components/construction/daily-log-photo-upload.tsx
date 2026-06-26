@@ -3,13 +3,13 @@
 import { useRef } from "react";
 import type { DailyLogPhoto } from "@fieldforge/sdk";
 
-type DailyLogPhotoStubProps = {
+type DailyLogPhotoUploadProps = {
   photos: DailyLogPhoto[];
   uploading: boolean;
   onUpload: (file: File) => Promise<void>;
 };
 
-export function DailyLogPhotoStub({ photos, uploading, onUpload }: DailyLogPhotoStubProps) {
+export function DailyLogPhotoUpload({ photos, uploading, onUpload }: DailyLogPhotoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -24,7 +24,7 @@ export function DailyLogPhotoStub({ photos, uploading, onUpload }: DailyLogPhoto
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/png,image/jpeg,image/webp"
         capture="environment"
         className="sr-only"
         onChange={(e) => void handleFileChange(e)}
@@ -38,6 +38,8 @@ export function DailyLogPhotoStub({ photos, uploading, onUpload }: DailyLogPhoto
       >
         {uploading ? "Uploading…" : "Attach site photo"}
       </button>
+
+      <p className="text-xs text-[var(--brand-text-muted)]">PNG, JPEG, or WebP · max 10 MB</p>
 
       {photos.length > 0 && (
         <div className="grid gap-2 sm:grid-cols-2">

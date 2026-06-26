@@ -23,6 +23,9 @@ import {
   type PortalMagicLinkResponse,
   type PortalPayment,
   type PortalPaymentIntent,
+  type PortalBooking,
+  type PortalMessageThread,
+  type PortalSupportRequest,
 } from "./portal";
 
 export {
@@ -35,6 +38,9 @@ export {
   type PortalMagicLinkResponse,
   type PortalPayment,
   type PortalPaymentIntent,
+  type PortalBooking,
+  type PortalMessageThread,
+  type PortalSupportRequest,
 };
 
 export {
@@ -371,6 +377,15 @@ export interface Notification {
   created_at: string;
 }
 
+export interface CrewMember {
+  crew_id: string;
+  employee_id: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  created_at?: string;
+}
+
 export interface Crew {
   id: string;
   name: string;
@@ -450,6 +465,23 @@ export interface ContractTemplate {
   name_key: string;
   category: string;
   body: string;
+}
+
+export interface EmailTemplate {
+  id: string;
+  slug: string;
+  subject: string;
+  body_html: string;
+  active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface EmailTestSendResult {
+  mode: "log" | "smtp";
+  message: string;
+  to: string;
+  subject: string;
 }
 
 export type ReportDataSource = "live" | "stub";
@@ -547,6 +579,27 @@ export interface Expense {
   category: string;
   status: string;
   expense_date: string;
+}
+
+export interface CustomerSignature {
+  id: string;
+  job_id?: string;
+  signer_name: string;
+  image_data?: string;
+  source: string;
+  captured_at: string;
+}
+
+export interface VehicleCheck {
+  id: string;
+  vehicle_label: string;
+  odometer_miles: number;
+  fuel_level: string;
+  tires_ok: boolean;
+  lights_ok: boolean;
+  damage_notes?: string;
+  job_id?: string;
+  checked_at: string;
 }
 
 export interface JobCostLine {
@@ -1004,6 +1057,24 @@ export class FieldForgeClient {
     return normalizeListPayload(payload);
   }
 
+  private async downloadBlob(method: string, path: string): Promise<Blob> {
+    const headers: Record<string, string> = {};
+    if (this.token) headers.Authorization = `Bearer ${this.token}`;
+
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}${path}`, { method, headers });
+    } catch (err) {
+      throw parseFetchError(err);
+    }
+
+    if (!res.ok) {
+      const raw = await res.json().catch(() => null);
+      throw parseApiError(res, raw);
+    }
+    return res.blob();
+  }
+
   getPublicConfig() {
     return this.request<Record<string, unknown>>("GET", "/config/public");
   }
@@ -1193,6 +1264,10 @@ export class FieldForgeClient {
     return this.request<EstimateDetail>("GET", `/estimating/estimates/${id}`);
   }
 
+  downloadEstimatePdf(id: string) {
+    return this.downloadBlob("GET", `/estimating/estimates/${id}/pdf`);
+  }
+
   createEstimate(data: {
     title: string;
     customer_id?: string;
@@ -1284,6 +1359,18 @@ export class FieldForgeClient {
 
   updatePortalProfile(data: Partial<Pick<PortalCustomer, "name" | "email" | "phone">>) {
     return this.request<PortalCustomer>("PATCH", "/portal/me", data);
+  }
+
+  listPortalBookings() {
+    return this.request<{ data: PortalBooking[] }>("GET", "/portal/bookings");
+  }
+
+  listPortalMessages() {
+    return this.request<{ data: PortalMessageThread[] }>("GET", "/portal/messages");
+  }
+
+  createPortalSupportRequest(data: { subject: string; message: string }) {
+    return this.request<PortalSupportRequest>("POST", "/portal/support", data);
   }
 
   listMarketplacePlugins() {
@@ -1379,6 +1466,10 @@ export class FieldForgeClient {
     return this.request<Invoice>("GET", `/invoicing/invoices/${id}`);
   }
 
+  downloadInvoicePdf(id: string) {
+    return this.downloadBlob("GET", `/invoicing/invoices/${id}/pdf`);
+  }
+
   createInvoice(data: { customer_id?: string; job_id?: string; total_cents: number }) {
     return this.request<Invoice>("POST", "/invoicing/invoices", data);
   }
@@ -1397,6 +1488,10 @@ export class FieldForgeClient {
 
   listNotifications() {
     return this.request<{ data: Notification[] }>("GET", "/notifications");
+  }
+
+  markNotificationRead(id: string) {
+    return this.request<Notification>("PATCH", `/notifications/${id}`, {});
   }
 
   listCrews() {
@@ -1426,6 +1521,18 @@ export class FieldForgeClient {
 
   deleteCrew(id: string) {
     return this.request<void>("DELETE", `/scheduling/crews/${id}`);
+  }
+
+  listCrewMembers(crewId: string) {
+    return this.request<{ data: CrewMember[] }>("GET", `/scheduling/crews/${crewId}/members`);
+  }
+
+  addCrewMember(crewId: string, data: { employee_id: string }) {
+    return this.request<CrewMember>("POST", `/scheduling/crews/${crewId}/members`, data);
+  }
+
+  removeCrewMember(crewId: string, employeeId: string) {
+    return this.request<void>("DELETE", `/scheduling/crews/${crewId}/members/${employeeId}`);
   }
 
   listRoutes(date?: string) {
@@ -1482,6 +1589,41 @@ export class FieldForgeClient {
 
   listContractTemplates() {
     return this.request<{ data: ContractTemplate[] }>("GET", "/crm/contracts/templates");
+  }
+
+  listEmailTemplates() {
+    return this.request<{ data: EmailTemplate[] }>("GET", "/communications/templates");
+  }
+
+  getEmailTemplate(id: string) {
+    return this.request<EmailTemplate>("GET", `/communications/templates/${id}`);
+  }
+
+  createEmailTemplate(data: {
+    slug: string;
+    subject: string;
+    body_html: string;
+    active?: boolean;
+  }) {
+    return this.request<EmailTemplate>("POST", "/communications/templates", data);
+  }
+
+  updateEmailTemplate(
+    id: string,
+    data: Partial<Pick<EmailTemplate, "slug" | "subject" | "body_html" | "active">>,
+  ) {
+    return this.request<EmailTemplate>("PATCH", `/communications/templates/${id}`, data);
+  }
+
+  deleteEmailTemplate(id: string) {
+    return this.request<void>("DELETE", `/communications/templates/${id}`);
+  }
+
+  sendEmailTemplateTest(
+    id: string,
+    data: { to: string; variables?: Record<string, string> },
+  ) {
+    return this.request<EmailTestSendResult>("POST", `/communications/templates/${id}/test-send`, data);
   }
 
   createContract(data: {
@@ -1643,6 +1785,35 @@ export class FieldForgeClient {
     });
   }
 
+  listSignatures() {
+    return this.request<{ data: CustomerSignature[] }>("GET", "/scheduling/signatures");
+  }
+
+  createSignature(data: {
+    signer_name: string;
+    image_data: string;
+    job_id?: string;
+    source?: "pad" | "camera";
+  }) {
+    return this.request<CustomerSignature>("POST", "/scheduling/signatures", data);
+  }
+
+  listVehicleChecks() {
+    return this.request<{ data: VehicleCheck[] }>("GET", "/scheduling/vehicle-checks");
+  }
+
+  createVehicleCheck(data: {
+    vehicle_label: string;
+    odometer_miles: number;
+    fuel_level?: string;
+    tires_ok?: boolean;
+    lights_ok?: boolean;
+    damage_notes?: string;
+    job_id?: string;
+  }) {
+    return this.request<VehicleCheck>("POST", "/scheduling/vehicle-checks", data);
+  }
+
   listPayrollRuns() {
     return this.request<{ data: PayrollRun[] }>("GET", "/payroll/runs");
   }
@@ -1726,12 +1897,16 @@ export class FieldForgeClient {
   uploadDailyLogPhoto(
     projectId: string,
     logId: string,
-    data: { caption?: string; data_url: string },
+    file: File,
+    options?: { caption?: string },
   ) {
-    return this.request<DailyLogPhoto>(
+    const form = new FormData();
+    form.append("photo", file);
+    if (options?.caption) form.append("caption", options.caption);
+    return this.uploadRequest<DailyLogPhoto>(
       "POST",
       `/construction/projects/${projectId}/daily-logs/${logId}/photos`,
-      data,
+      form,
     );
   }
 
@@ -1903,9 +2078,14 @@ export class FieldForgeClient {
 
   uploadCleanJobPhoto(
     jobId: string,
-    data: { kind?: "before" | "after"; caption?: string; data_url: string },
+    file: File,
+    options?: { kind?: "before" | "after"; caption?: string },
   ) {
-    return this.request<QcPhoto>("POST", `/cleaning/jobs/${jobId}/photos`, data);
+    const form = new FormData();
+    form.append("photo", file);
+    if (options?.kind) form.append("kind", options.kind);
+    if (options?.caption) form.append("caption", options.caption);
+    return this.uploadRequest<QcPhoto>("POST", `/cleaning/jobs/${jobId}/photos`, form);
   }
 
   listQcReviews() {

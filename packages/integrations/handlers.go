@@ -1,6 +1,7 @@
 package integrations
 
 import (
+	"github.com/fieldforge/fieldforge/packages/core/billing"
 	"github.com/fieldforge/fieldforge/packages/core/response"
 	"github.com/fieldforge/fieldforge/packages/core/config"
 	"github.com/gofiber/fiber/v2"
@@ -8,11 +9,11 @@ import (
 )
 
 // RegisterRoutes mounts authenticated integration endpoints under /integrations.
-func RegisterRoutes(protected fiber.Router, pool *pgxpool.Pool, cfg *config.AppConfig) {
-	base := NewService(pool, cfg)
+func RegisterRoutes(protected fiber.Router, pool *pgxpool.Pool, cfg *config.AppConfig, resolver billing.SecretResolver) {
+	base := NewService(pool, cfg, resolver)
 	qb := newQuickBooks(cfg, base)
 	av := newAvalara(cfg)
-	sc := newStripeConnect(cfg, base)
+	sc := newStripeConnect(cfg, base, resolver)
 
 	g := protected.Group("/integrations")
 

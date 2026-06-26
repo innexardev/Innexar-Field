@@ -207,7 +207,7 @@ func newIntegrationsApp(pool *db.Pool, authSvc *auth.Service) *fiber.App {
 	app := fiber.New()
 	api := app.Group("/api/v1")
 	protected := api.Group("", ffmiddleware.Auth(authSvc), ffmiddleware.TenantHeader())
-	integrations.RegisterRoutes(protected, pool.Pool, integrationTestConfig())
+	integrations.RegisterRoutes(protected, pool.Pool, integrationTestConfig(), nil)
 	return app
 }
 

@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import type { Customer } from "@fieldforge/sdk";
+import type { Customer, Property } from "@fieldforge/sdk";
 import { Button, Card, CardContent, CardHeader, CardTitle } from "@fieldforge/ui";
 import { EstimateLineEditor } from "@/components/estimating/estimate-line-editor";
 import { useAppPage } from "@/lib/use-app-page";
+import { formatPropertyOptionLabel } from "@/lib/crm/property-format";
 import {
   clearEstimateWizardDraft,
   estimateWizardStepPath,
@@ -20,6 +21,7 @@ export default function EstimateNewReviewPage() {
   const t = useTranslations("modules.estimates");
   const tc = useTranslations("modules.common");
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [propertyLabel, setPropertyLabel] = useState("—");
   const [draft, setDraft] = useState(loadEstimateWizardDraft());
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
@@ -37,6 +39,22 @@ export default function EstimateNewReviewPage() {
     if (token) client.listCustomers().then((r) => setCustomers(r.data ?? [])).catch(console.error);
   }, [token, client]);
 
+  useEffect(() => {
+    if (!token || !draft.customerId || !draft.propertyId) {
+      setPropertyLabel("—");
+      return;
+    }
+    client
+      .listCustomerProperties(draft.customerId)
+      .then((r) => {
+        const property = (r.data ?? []).find((p: Property) => p.id === draft.propertyId);
+        setPropertyLabel(
+          property ? formatPropertyOptionLabel(property, (key, values) => t(key, values)) : "—",
+        );
+      })
+      .catch(console.error);
+  }, [token, client, draft.customerId, draft.propertyId, t]);
+
   const customerName = customers.find((c) => c.id === draft.customerId)?.name;
 
   async function onCreate(sendAfter: boolean) {
@@ -46,6 +64,7 @@ export default function EstimateNewReviewPage() {
       const est = await client.createEstimate({
         title: draft.title,
         customer_id: draft.customerId || undefined,
+        property_id: draft.propertyId || undefined,
         lines: draft.lines,
       });
       clearEstimateWizardDraft();
@@ -75,6 +94,10 @@ export default function EstimateNewReviewPage() {
           <div>
             <dt className="text-[var(--brand-text-muted)]">{tc("customer")}</dt>
             <dd className="font-medium">{customerName ?? "—"}</dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="text-[var(--brand-text-muted)]">{t("propertyOptional")}</dt>
+            <dd className="font-medium">{propertyLabel}</dd>
           </div>
         </dl>
 

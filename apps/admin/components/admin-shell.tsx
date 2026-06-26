@@ -5,21 +5,32 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { LanguageSwitcher } from "@fieldforge/i18n";
-import { Button, BrandLogo } from "@fieldforge/ui";
+import {
+  Button,
+  BrandLogo,
+  IconBuilding,
+  IconCreditCard,
+  IconFileText,
+  IconLayoutDashboard,
+  IconReceipt,
+  IconShield,
+  IconSparkles,
+  IconUsers,
+  IconWrench,
+} from "@fieldforge/ui";
 import { BRAND_NAME, DEFAULT_LOGO_WORDMARK } from "@/lib/defaults";
-import { useAdminAuth } from "@/lib/auth-context";
 import { useAdminPage } from "@/lib/use-admin-page";
 
 export const ADMIN_NAV = [
-  { href: "/admin/dashboard", key: "dashboard" },
-  { href: "/admin/tenants", key: "tenants" },
-  { href: "/admin/users", key: "users" },
-  { href: "/admin/plans", key: "plans" },
-  { href: "/admin/billing", key: "billing" },
-  { href: "/admin/integrations", key: "integrations" },
-  { href: "/admin/modules", key: "modules" },
-  { href: "/admin/announcements", key: "announcements" },
-  { href: "/admin/audit", key: "auditLog" },
+  { href: "/admin/dashboard", key: "dashboard", icon: IconLayoutDashboard },
+  { href: "/admin/tenants", key: "tenants", icon: IconBuilding },
+  { href: "/admin/users", key: "users", icon: IconUsers },
+  { href: "/admin/plans", key: "plans", icon: IconCreditCard },
+  { href: "/admin/billing", key: "billing", icon: IconReceipt },
+  { href: "/admin/integrations", key: "integrations", icon: IconWrench },
+  { href: "/admin/modules", key: "modules", icon: IconSparkles },
+  { href: "/admin/announcements", key: "announcements", icon: IconFileText },
+  { href: "/admin/audit", key: "auditLog", icon: IconShield },
 ] as const;
 
 function useDarkMode() {
@@ -63,49 +74,49 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden w-56 shrink-0 border-r border-[var(--brand-border)] bg-[var(--brand-surface)] lg:block">
-        <div className="px-4 py-6">
-          <BrandLogo src={DEFAULT_LOGO_WORDMARK} alt={BRAND_NAME} height={28} variant="onPrimary" />
-          <p className="mt-2 text-xs text-[var(--brand-text-muted)]">{t("platformAdmin")}</p>
-          <p className="mt-2 truncate text-sm text-[var(--brand-text-secondary)]">{admin.email}</p>
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-[var(--brand-border)] bg-[var(--brand-surface)] lg:flex">
+        <div className="border-b border-[var(--brand-border)] px-4 py-5">
+          <BrandLogo src={DEFAULT_LOGO_WORDMARK} alt={BRAND_NAME} height={26} />
+          <p className="mt-2.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--brand-text-muted)]">
+            {t("platformAdmin")}
+          </p>
+          <p className="mt-1.5 truncate text-xs text-[var(--brand-text-secondary)]">{admin.email}</p>
         </div>
-        <nav className="space-y-1 px-2 pb-4">
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
           {ADMIN_NAV.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const Icon = item.icon;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
-                  active
-                    ? "bg-[var(--brand-surface-elevated)] font-medium text-[var(--brand-text-primary)]"
-                    : "text-[var(--brand-text-secondary)] hover:bg-[var(--brand-surface-elevated)] hover:text-[var(--brand-text-primary)]"
-                }`}
+                className={`sidebar-nav-link ${active ? "sidebar-nav-link-active" : "sidebar-nav-link-inactive"}`}
               >
-                {t(item.key)}
+                <Icon size={18} className="shrink-0 opacity-80" />
+                <span className="truncate">{t(item.key)}</span>
               </Link>
             );
           })}
         </nav>
-        <div className="space-y-2 border-t border-[var(--brand-border)] px-2 py-4">
-          <div className="px-1">
+        <div className="space-y-1 border-t border-[var(--brand-border)] px-2 py-4">
+          <div className="px-1 pb-1">
             <LanguageSwitcher variant="compact" />
           </div>
           <button
             type="button"
             onClick={toggle}
-            className="w-full rounded-lg px-3 py-2 text-left text-xs text-[var(--brand-text-secondary)] hover:bg-[var(--brand-surface-elevated)]"
+            className="sidebar-nav-link sidebar-nav-link-inactive w-full text-left text-xs"
           >
             {dark ? t("lightMode") : t("darkMode")}
           </button>
-          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={logout}>
+          <Button variant="ghost" size="sm" className="w-full justify-start px-3" onClick={logout}>
             {t("signOut")}
           </Button>
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-[var(--brand-border)] px-4 py-3 lg:hidden">
-          <p className="text-sm font-medium text-[var(--brand-text-primary)]">{t("platformAdmin")}</p>
+        <header className="flex items-center justify-between border-b border-[var(--brand-border)] bg-[var(--brand-surface)] px-4 py-3 lg:hidden">
+          <BrandLogo src={DEFAULT_LOGO_WORDMARK} alt={BRAND_NAME} height={22} />
           <div className="flex items-center gap-2">
             <LanguageSwitcher variant="compact" />
             <Button variant="ghost" size="sm" onClick={logout}>

@@ -7,6 +7,7 @@ import (
 	"github.com/fieldforge/fieldforge/packages/core/events"
 	"github.com/fieldforge/fieldforge/packages/core/middleware"
 	"github.com/fieldforge/fieldforge/packages/core/plugin"
+	"github.com/fieldforge/fieldforge/packages/core/storage"
 	"github.com/fieldforge/fieldforge/packages/core/tenant"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -14,8 +15,9 @@ import (
 )
 
 type Plugin struct {
-	pool *pgxpool.Pool
-	bus  *events.Bus
+	pool    *pgxpool.Pool
+	bus     *events.Bus
+	storage *storage.Service
 }
 
 func New(pool *pgxpool.Pool, bus *events.Bus) *Plugin {
@@ -43,6 +45,8 @@ func (p *Plugin) Manifest() plugin.Manifest {
 }
 
 func (p *Plugin) RegisterRoutes(router fiber.Router, deps plugin.Deps) {
+	p.storage = deps.Storage
+
 	router.Get("/projects", p.listProjects)
 	router.Post("/projects", p.createProject)
 	router.Get("/projects/:id/daily-logs", p.listDailyLogs)

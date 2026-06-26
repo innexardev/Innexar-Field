@@ -79,3 +79,30 @@ func TestUploadLogo_localCreatesDirectory(t *testing.T) {
 	_, err = os.Stat(filepath.Join(dir, "tenants", "t1", "logo"))
 	require.NoError(t, err)
 }
+
+func TestUploadPhoto_mockMode(t *testing.T) {
+	svc := NewService(Config{Mock: true})
+	png := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00}
+
+	result, err := svc.UploadPhoto(context.Background(), "tenant-1", "cleaning/qc", "job-1", png)
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(result.URL, "data:image/png;base64,"))
+}
+
+func TestUploadPhoto_localFallback(t *testing.T) {
+	dir := t.TempDir()
+	svc := NewService(Config{
+		LocalDir:       dir,
+		LocalPublicURL: "http://localhost:8081/uploads",
+	})
+
+	png := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00}
+	result, err := svc.UploadPhoto(context.Background(), "tenant-abc", "construction/daily-logs", "log-1", png)
+	require.NoError(t, err)
+	assert.Contains(t, result.URL, "tenants/tenant-abc/construction/daily-logs/log-1/")
+	assert.Contains(t, result.URL, ".png")
+
+	matches, err := filepath.Glob(filepath.Join(dir, "tenants", "tenant-abc", "construction", "daily-logs", "log-1", "*.png"))
+	require.NoError(t, err)
+	assert.Len(t, matches, 1)
+}

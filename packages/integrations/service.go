@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fieldforge/fieldforge/packages/core/billing"
 	"github.com/fieldforge/fieldforge/packages/core/config"
 	"github.com/fieldforge/fieldforge/packages/core/tenant"
 	"github.com/jackc/pgx/v5"
@@ -27,12 +28,13 @@ type ConnectionStatus struct {
 
 // Service manages tenant integration connection state.
 type Service struct {
-	pool *pgxpool.Pool
-	cfg  *config.AppConfig
+	pool     *pgxpool.Pool
+	cfg      *config.AppConfig
+	resolver billing.SecretResolver
 }
 
-func NewService(pool *pgxpool.Pool, cfg *config.AppConfig) *Service {
-	return &Service{pool: pool, cfg: cfg}
+func NewService(pool *pgxpool.Pool, cfg *config.AppConfig, resolver billing.SecretResolver) *Service {
+	return &Service{pool: pool, cfg: cfg, resolver: resolver}
 }
 
 func (s *Service) ListStatus(ctx context.Context) ([]ConnectionStatus, error) {
@@ -47,6 +49,12 @@ func (s *Service) ListStatus(ctx context.Context) ([]ConnectionStatus, error) {
 		st, err := s.load(ctx, tenantID, def.ID)
 		if err != nil {
 			return nil, err
+		}
+		if def.ID == IDStripeConnect {
+			if st.Metadata == nil {
+				st.Metadata = map[string]interface{}{}
+			}
+			st.Metadata["mock"] = billing.UseMockStripe(ctx, s.cfg, s.resolver)
 		}
 		out = append(out, st)
 	}

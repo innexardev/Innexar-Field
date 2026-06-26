@@ -15,18 +15,9 @@ import {
   IconCalendar,
   Input,
 } from "@fieldforge/ui";
-import { DailyLogPhotoStub } from "@/components/construction/daily-log-photo-stub";
+import { DailyLogPhotoUpload } from "@/components/construction/daily-log-photo-upload";
 import { ModulePage } from "@/components/module-page";
 import { useAppPage } from "@/lib/use-app-page";
-
-function readFileAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
 
 export default function ProjectDailyLogsPage() {
   const params = useParams<{ id: string }>();
@@ -98,10 +89,8 @@ export default function ProjectDailyLogsPage() {
     if (!project) return;
     setUploadingLogId(logId);
     try {
-      const dataUrl = await readFileAsDataURL(file);
-      const photo = await client.uploadDailyLogPhoto(project.id, logId, {
+      const photo = await client.uploadDailyLogPhoto(project.id, logId, file, {
         caption: file.name,
-        data_url: dataUrl,
       });
       setLogPhotos((prev) => ({
         ...prev,
@@ -216,7 +205,7 @@ export default function ProjectDailyLogsPage() {
                 )}
                 {log.notes && <p>{log.notes}</p>}
                 {expandedLogId === log.id && (
-                  <DailyLogPhotoStub
+                  <DailyLogPhotoUpload
                     photos={logPhotos[log.id] ?? []}
                     uploading={uploadingLogId === log.id}
                     onUpload={(file) => uploadPhoto(log.id, file)}

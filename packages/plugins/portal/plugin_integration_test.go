@@ -80,7 +80,7 @@ func TestPortal_CustomerAuthAndInvoices_TenantIsolation(t *testing.T) {
 			},
 		},
 	}
-	portalPlugin := portal.New(pool.Pool, authSvc, appCfg, events.NewBus(pool.Pool))
+	portalPlugin := portal.New(pool.Pool, authSvc, appCfg, events.NewBus(pool.Pool), nil)
 	app := newPortalApp(pool, authSvc, portalPlugin)
 
 	t.Run("magic link and verify", func(t *testing.T) {
@@ -200,7 +200,7 @@ func runMigrations(ctx context.Context, pool *db.Pool) error {
 	_ = reg.Register(crm.New(pool.Pool))
 	bus := events.NewBus(pool.Pool)
 	_ = reg.Register(invoicing.New(pool.Pool, bus))
-	_ = reg.Register(portal.New(pool.Pool, auth.NewService("x", 1), &config.AppConfig{}, bus))
+	_ = reg.Register(portal.New(pool.Pool, auth.NewService("x", 1), &config.AppConfig{}, bus, nil))
 
 	var all []struct {
 		Version int

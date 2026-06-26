@@ -11,8 +11,6 @@ type ResilientClient struct {
 	inner   Client
 	breaker *resilience.CircuitBreaker
 }
-
-// WrapWithBreaker returns a Client guarded by the named circuit breaker.
 func WrapWithBreaker(inner Client, mgr *resilience.Manager, name string) Client {
 	if mgr == nil {
 		mgr = resilience.DefaultManager()
@@ -50,11 +48,21 @@ func (c *ResilientClient) ListInvoices(ctx context.Context, customerID string) (
 	return result, err
 }
 
-func (c *ResilientClient) VerifyWebhook(payload []byte, sigHeader string) (*WebhookEvent, error) {
+func (c *ResilientClient) CreateInvoicePayment(ctx context.Context, params InvoicePaymentParams) (*InvoicePaymentResult, error) {
+	var result *InvoicePaymentResult
+	err := c.breaker.Execute(func() error {
+		var innerErr error
+		result, innerErr = c.inner.CreateInvoicePayment(ctx, params)
+		return innerErr
+	})
+	return result, err
+}
+
+func (c *ResilientClient) VerifyWebhook(ctx context.Context, payload []byte, sigHeader string) (*WebhookEvent, error) {
 	var result *WebhookEvent
 	err := c.breaker.Execute(func() error {
 		var innerErr error
-		result, innerErr = c.inner.VerifyWebhook(payload, sigHeader)
+		result, innerErr = c.inner.VerifyWebhook(ctx, payload, sigHeader)
 		return innerErr
 	})
 	return result, err

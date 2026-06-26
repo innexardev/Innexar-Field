@@ -19,6 +19,11 @@ type LogoUploadResult struct {
 	LogoURL string `json:"logo_url"`
 }
 
+// PhotoUploadResult is returned after a successful photo upload.
+type PhotoUploadResult struct {
+	URL string `json:"url"`
+}
+
 // Service stores tenant logos in R2, local disk, or mock data URLs.
 type Service struct {
 	cfg Config
@@ -40,27 +45,54 @@ func (s *Service) UploadLogo(_ context.Context, tenantID string, data []byte) (*
 
 	objectID := uuid.New().String()
 	key := LogoObjectKey(tenantID, objectID, ext)
+	url, err := s.storeObject(key, data, contentType)
+	if err != nil {
+		return nil, fmt.Errorf("upload logo: %w", err)
+	}
+	return &LogoUploadResult{LogoURL: url}, nil
+}
 
+func (s *Service) UploadPhoto(_ context.Context, tenantID, category, entityID string, data []byte) (*PhotoUploadResult, error) {
+	if tenantID == "" {
+		return nil, ErrPhotoTenantMissing
+	}
+	if category == "" || entityID == "" {
+		return nil, fmt.Errorf("photo category and entity id required")
+	}
+
+	contentType, ext, err := ValidatePhoto(data)
+	if err != nil {
+		return nil, err
+	}
+
+	objectID := uuid.New().String()
+	key := PhotoObjectKey(tenantID, category, entityID, objectID, ext)
+	url, err := s.storeObject(key, data, contentType)
+	if err != nil {
+		return nil, fmt.Errorf("upload photo: %w", err)
+	}
+	return &PhotoUploadResult{URL: url}, nil
+}
+
+func (s *Service) storeObject(key string, data []byte, contentType string) (string, error) {
 	switch {
 	case s.cfg.Mock:
 		encoded := base64.StdEncoding.EncodeToString(data)
-		return &LogoUploadResult{
-			LogoURL: fmt.Sprintf("data:%s;base64,%s", contentType, encoded),
-		}, nil
+		return fmt.Sprintf("data:%s;base64,%s", contentType, encoded), nil
 	case s.cfg.R2Configured():
 		url, err := s.uploadR2(key, data, contentType)
 		if err != nil {
-			return nil, fmt.Errorf("upload logo to R2: %w", err)
+			return "", fmt.Errorf("upload to R2: %w", err)
 		}
-		return &LogoUploadResult{LogoURL: url}, nil
+		return url, nil
 	case s.cfg.UseLocal():
 		url, err := s.uploadLocal(key, data)
 		if err != nil {
-			return nil, fmt.Errorf("upload logo locally: %w", err)
+			return "", fmt.Errorf("upload locally: %w", err)
 		}
-		return &LogoUploadResult{LogoURL: url}, nil
+		return url, nil
 	default:
-		return nil, fmt.Errorf("file storage not configured: set R2_* env vars, R2_MOCK=1, or use local uploads/ fallback")
+		return "", fmt.Errorf("file storage not configured: set R2_* env vars, R2_MOCK=1, or use local uploads/ fallback")
 	}
 }
 

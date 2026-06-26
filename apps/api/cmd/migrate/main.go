@@ -13,6 +13,7 @@ import (
 	"github.com/fieldforge/fieldforge/packages/core/plugin"
 	"github.com/fieldforge/fieldforge/packages/plugins/accounting"
 	"github.com/fieldforge/fieldforge/packages/plugins/cleaning"
+	"github.com/fieldforge/fieldforge/packages/plugins/communications"
 	"github.com/fieldforge/fieldforge/packages/plugins/construction"
 	"github.com/fieldforge/fieldforge/packages/plugins/crm"
 	"github.com/fieldforge/fieldforge/packages/plugins/dispatch"
@@ -44,7 +45,7 @@ func main() {
 	_ = reg.Register(crm.New(pool.Pool))
 	bus := server.NewEventBus(pool.Pool)
 	_ = reg.Register(estimating.New(pool.Pool, bus))
-	_ = reg.Register(portal.New(pool.Pool, nil, nil, bus))
+	_ = reg.Register(portal.New(pool.Pool, nil, nil, bus, nil))
 	_ = reg.Register(scheduling.New(pool.Pool, bus))
 	_ = reg.Register(invoicing.New(pool.Pool, bus))
 	_ = reg.Register(cleaning.New(pool.Pool))
@@ -54,6 +55,7 @@ func main() {
 	_ = reg.Register(jobcosting.New(pool.Pool))
 	_ = reg.Register(accounting.New(pool.Pool))
 	_ = reg.Register(payroll.New(pool.Pool))
+	_ = reg.Register(communications.New(pool.Pool, nil, nil))
 
 	var all []struct {
 		Version int

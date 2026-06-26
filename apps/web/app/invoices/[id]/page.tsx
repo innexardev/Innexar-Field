@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import type { Invoice } from "@fieldforge/sdk";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@fieldforge/ui";
 import { ModulePage } from "@/components/module-page";
+import { downloadDocumentBlob } from "@/lib/download-document";
 import { useAppPage, formatCents } from "@/lib/use-app-page";
 
 export default function InvoiceDetailPage() {
@@ -18,6 +19,7 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const load = useCallback(async () => {
     if (!token || !params.id) return;
@@ -53,6 +55,17 @@ export default function InvoiceDetailPage() {
     }
   }
 
+  async function downloadPdf() {
+    if (!invoice) return;
+    setDownloading(true);
+    try {
+      const blob = await client.downloadInvoicePdf(invoice.id);
+      await downloadDocumentBlob(blob, invoice.invoice_number);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   if (loading) {
     return (
       <ModulePage title={tc("invoice")} subtitle={tc("loading")}>
@@ -77,6 +90,9 @@ export default function InvoiceDetailPage() {
       subtitle={t("subtitle")}
       actions={
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={() => void downloadPdf()} disabled={downloading}>
+            {downloading ? tc("loading") : ti("downloadPdf")}
+          </Button>
           <Link href={`/invoices/${invoice.id}/preview`}>
             <Button variant="secondary">{ti("previewPdf")}</Button>
           </Link>

@@ -7,7 +7,9 @@ import { useTranslations } from "next-intl";
 import type { EstimateDetail, PriceBookItem } from "@fieldforge/sdk";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@fieldforge/ui";
 import { EstimateLineEditor, type DraftLine } from "@/components/estimating/estimate-line-editor";
+import { EstimatePropertyPicker } from "@/components/estimating/estimate-property-picker";
 import { ModulePage } from "@/components/module-page";
+import { downloadDocumentBlob } from "@/lib/download-document";
 import { useAppPage, formatCents } from "@/lib/use-app-page";
 
 export default function EstimateDetailPage() {
@@ -21,7 +23,9 @@ export default function EstimateDetailPage() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingProperty, setSavingProperty] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const load = useCallback(async () => {
     if (!token || !params.id) return;
@@ -48,12 +52,17 @@ export default function EstimateDetailPage() {
   }, [token, client]);
 
   const isDraft = estimate?.status === "draft";
-  const property = estimate?.property;
-  const hasRoomCounts =
-    property?.bedrooms != null &&
-    property?.bathrooms != null &&
-    property.bedrooms > 0 &&
-    property.bathrooms > 0;
+
+  async function saveProperty(propertyId: string) {
+    if (!estimate) return;
+    setSavingProperty(true);
+    try {
+      const updated = await client.updateEstimate(estimate.id, { property_id: propertyId });
+      setEstimate(updated);
+    } finally {
+      setSavingProperty(false);
+    }
+  }
 
   async function saveLines() {
     if (!estimate) return;
@@ -92,6 +101,17 @@ export default function EstimateDetailPage() {
     }
   }
 
+  async function downloadPdf() {
+    if (!estimate) return;
+    setDownloading(true);
+    try {
+      const blob = await client.downloadEstimatePdf(estimate.id);
+      await downloadDocumentBlob(blob, estimate.title);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   if (loading) {
     return (
       <ModulePage title={tc("estimate")} subtitle={tc("loading")}>
@@ -116,6 +136,9 @@ export default function EstimateDetailPage() {
       subtitle={t("detailSubtitle")}
       actions={
         <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={() => void downloadPdf()} disabled={downloading}>
+            {downloading ? tc("loading") : t("downloadPdf")}
+          </Button>
           <Link href={`/estimates/${estimate.id}/preview`}>
             <Button variant="secondary">{t("previewPdf")}</Button>
           </Link>
@@ -161,18 +184,24 @@ export default function EstimateDetailPage() {
         </div>
       </div>
 
-      {estimate.property_id && (
-        <Card className="mb-6 border-[color-mix(in_srgb,var(--brand-accent)_25%,var(--brand-border))] bg-[var(--brand-info-subtle)]">
+      {estimate.customer_id && (
+        <Card className="mb-6">
           <CardContent className="py-4">
-            <p className="text-sm text-[var(--brand-text-secondary)]">
-              {hasRoomCounts
-                ? t("roomTierHint", {
-                    label: property?.label ?? "",
-                    beds: property?.bedrooms ?? 0,
-                    baths: property?.bathrooms ?? 0,
-                  })
-                : t("roomTierMissingHint")}
-            </p>
+            <div className="form-field max-w-xl">
+              <label className="form-label" htmlFor="est-property-detail">
+                {t("propertyOptional")}
+              </label>
+              <EstimatePropertyPicker
+                client={client}
+                token={token}
+                customerId={estimate.customer_id}
+                propertyId={estimate.property_id ?? ""}
+                onPropertyIdChange={(nextId) => void saveProperty(nextId)}
+                disabled={!isDraft || savingProperty}
+                selectId="est-property-detail"
+              />
+              <p className="form-hint">{t("propertyHint")}</p>
+            </div>
           </CardContent>
         </Card>
       )}

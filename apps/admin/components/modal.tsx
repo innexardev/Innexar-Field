@@ -1,5 +1,6 @@
 "use client";
 
+import { IconX } from "@fieldforge/ui";
 import { useEffect, type ReactNode } from "react";
 
 export function Modal({
@@ -29,17 +30,17 @@ export function Modal({
   return (
     <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div className={`modal-panel${wide ? " max-w-2xl" : ""}`}>
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-5 flex items-center justify-between border-b border-[var(--brand-border)] pb-4">
           <h2 id="modal-title" className="text-lg font-semibold text-[var(--brand-text-primary)]">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-2 py-1 text-[var(--brand-text-muted)] hover:bg-[var(--brand-surface-elevated)]"
+            className="rounded-lg p-1.5 text-[var(--brand-text-muted)] transition-colors hover:bg-[var(--brand-surface-elevated)] hover:text-[var(--brand-text-primary)]"
             aria-label="Close"
           >
-            ✕
+            <IconX size={18} />
           </button>
         </div>
         {children}

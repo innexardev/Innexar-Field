@@ -22,6 +22,12 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: splashScreenPlugin(mobile),
+    Camera: {
+      ...(typeof mobile === "object" && mobile !== null && "capacitor" in mobile
+        ? ((mobile as { capacitor?: { camera?: Record<string, unknown> } }).capacitor?.camera ?? {})
+        : {}),
+    },
+    App: {},
   },
   ios: {
     scheme: brandUrlScheme(brand.name),

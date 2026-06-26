@@ -40,6 +40,9 @@ export default function PortalPaymentsPage() {
       const intent = await client.createPortalPaymentIntent(invoiceId);
       if (intent.mock) {
         await client.confirmPortalPayment(invoiceId);
+      } else if (intent.checkout_url) {
+        window.location.href = intent.checkout_url;
+        return;
       }
       const refreshed = await client.listPortalPayments();
       setPayments(refreshed.data ?? []);

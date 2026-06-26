@@ -44,9 +44,35 @@ export interface PortalPayment {
 export interface PortalPaymentIntent {
   payment_intent_id: string;
   client_secret: string;
+  checkout_url?: string;
   amount_cents: number;
   invoice_id: string;
   mock?: boolean;
+}
+
+export interface PortalBooking {
+  id: string;
+  title: string;
+  status: string;
+  scheduled_at?: string;
+  notes?: string;
+}
+
+export interface PortalMessageThread {
+  id: string;
+  subject: string;
+  preview: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PortalSupportRequest {
+  id: string;
+  subject: string;
+  message: string;
+  status: string;
+  created_at: string;
 }
 
 export interface PortalAuthResponse {
@@ -138,6 +164,18 @@ export class PortalClient {
     return this.request<{ data: PortalDocument[] }>("GET", "/portal/documents");
   }
 
+  listBookings() {
+    return this.request<{ data: PortalBooking[] }>("GET", "/portal/bookings");
+  }
+
+  listMessages() {
+    return this.request<{ data: PortalMessageThread[] }>("GET", "/portal/messages");
+  }
+
+  createSupportRequest(data: { subject: string; message: string }) {
+    return this.request<PortalSupportRequest>("POST", "/portal/support", data);
+  }
+
   /** @deprecated Use requestMagicLink */
   requestPortalMagicLink(data: { email: string; tenant_slug: string }) {
     return this.requestMagicLink(data);
@@ -186,6 +224,21 @@ export class PortalClient {
   /** @deprecated Use listDocuments */
   listPortalDocuments() {
     return this.listDocuments();
+  }
+
+  /** @deprecated Use listBookings */
+  listPortalBookings() {
+    return this.listBookings();
+  }
+
+  /** @deprecated Use listMessages */
+  listPortalMessages() {
+    return this.listMessages();
+  }
+
+  /** @deprecated Use createSupportRequest */
+  createPortalSupportRequest(data: { subject: string; message: string }) {
+    return this.createSupportRequest(data);
   }
 }
 

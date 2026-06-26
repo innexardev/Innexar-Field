@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Badge, Button, Input } from "@fieldforge/ui";
+import { useTranslations } from "next-intl";
+import { Badge, Button, Input, PricingCard, IconCreditCard } from "@fieldforge/ui";
 import { formatErrorForUser, type PlatformPlan, type PlatformPlanInput } from "@fieldforge/sdk";
 import { DataTable } from "@/components/data-table";
 import { ErrorBanner } from "@/components/error-banner";
@@ -11,13 +12,17 @@ import { useAdminPage } from "@/lib/use-admin-page";
 
 function formatPrice(cents?: number | null) {
   if (cents == null) return "—";
-  return `$${(cents / 100).toFixed(2)}/mo`;
+  return `$${(cents / 100).toFixed(2)}`;
 }
 
-function parseFeatures(raw: unknown): string {
-  if (Array.isArray(raw)) return raw.join("\n");
-  if (typeof raw === "string") return raw;
-  return "";
+function parseFeatures(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.map(String);
+  if (typeof raw === "string" && raw.trim()) return [raw];
+  return [];
+}
+
+function parseFeaturesText(raw: unknown): string {
+  return parseFeatures(raw).join("\n");
 }
 
 function featuresToJson(text: string): string[] {
@@ -61,9 +66,14 @@ function validatePlanForm(
   return null;
 }
 
+type ViewMode = "cards" | "table";
+
 export default function PlansPage() {
   const { client } = useAdminPage();
+  const t = useTranslations("admin.pages.plans");
+  const tc = useTranslations("admin.common");
   const [plans, setPlans] = useState<PlatformPlan[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>("cards");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -110,7 +120,7 @@ export default function PlansPage() {
       active: plan.active,
       sort_order: plan.sort_order,
     });
-    setFeaturesText(parseFeatures(plan.features));
+    setFeaturesText(parseFeaturesText(plan.features));
     setPriceDollars(
       plan.price_monthly_cents != null ? String(plan.price_monthly_cents / 100) : "",
     );
@@ -161,27 +171,98 @@ export default function PlansPage() {
     }
   }
 
+  const sortedPlans = [...plans].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
   return (
     <>
       <PageHeader
-        title="Plans"
-        subtitle="Subscription plans, pricing, and Stripe price IDs."
-        actions={<Button onClick={openCreate}>Create plan</Button>}
+        title={t("title")}
+        subtitle={t("subtitle")}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {plans.length > 0 && (
+              <div className="view-toggle" role="group" aria-label="View mode">
+                <button
+                  type="button"
+                  className={`view-toggle-btn ${viewMode === "cards" ? "view-toggle-btn-active" : "view-toggle-btn-inactive"}`}
+                  onClick={() => setViewMode("cards")}
+                >
+                  {tc("cardsView")}
+                </button>
+                <button
+                  type="button"
+                  className={`view-toggle-btn ${viewMode === "table" ? "view-toggle-btn-active" : "view-toggle-btn-inactive"}`}
+                  onClick={() => setViewMode("table")}
+                >
+                  {tc("tableView")}
+                </button>
+              </div>
+            )}
+            <Button onClick={openCreate}>{t("createPlan")}</Button>
+          </div>
+        }
       />
       <ErrorBanner message={error} className="mb-4" />
 
       {loading ? (
-        <p className="text-sm text-[var(--brand-text-secondary)]">Loading plans…</p>
+        <p className="text-sm text-[var(--brand-text-secondary)]">{t("loadingPlans")}</p>
+      ) : viewMode === "cards" ? (
+        sortedPlans.length === 0 ? (
+          <DataTable
+            columns={[]}
+            rows={[]}
+            emptyTitle={t("emptyTitle")}
+            emptyDescription={t("emptyDesc")}
+            emptyIcon={IconCreditCard}
+            emptyAction={<Button onClick={openCreate}>{t("createPlan")}</Button>}
+          />
+        ) : (
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {sortedPlans.map((plan) => {
+              const features = parseFeatures(plan.features);
+              return (
+                <PricingCard
+                  key={plan.id}
+                  name={plan.name}
+                  badge={plan.active ? tc("active") : tc("inactive")}
+                  price={formatPrice(plan.price_monthly_cents)}
+                  description={plan.description ?? undefined}
+                  features={
+                    features.length > 0
+                      ? features
+                      : [plan.stripe_price_id ? `Stripe: ${plan.stripe_price_id}` : plan.id]
+                  }
+                  featured={plan.active}
+                  cta={
+                    <div className="flex gap-2">
+                      <Button className="flex-1" variant="secondary" onClick={() => openEdit(plan)}>
+                        {tc("edit")}
+                      </Button>
+                      <Button variant="ghost" onClick={() => setDeleteId(plan.id)}>
+                        {tc("delete")}
+                      </Button>
+                    </div>
+                  }
+                />
+              );
+            })}
+          </div>
+        )
       ) : (
         <DataTable
+          emptyTitle={t("emptyTitle")}
+          emptyDescription={t("emptyDesc")}
+          emptyIcon={IconCreditCard}
+          emptyAction={<Button onClick={openCreate}>{t("createPlan")}</Button>}
+          actionsLabel={tc("actions")}
           columns={[
-            { key: "id", label: "ID" },
-            { key: "name", label: "Name" },
-            { key: "price", label: "Price" },
-            { key: "stripe", label: "Stripe price" },
-            { key: "status", label: "Status" },
+            { key: "id", label: t("colId") },
+            { key: "name", label: t("colName") },
+            { key: "price", label: t("colPrice") },
+            { key: "stripe", label: t("colStripe") },
+            { key: "status", label: t("colStatus") },
           ]}
-          rows={plans.map((p) => ({
+          rows={sortedPlans.map((p) => ({
             id: p.id,
             cells: {
               id: <code className="text-xs">{p.id}</code>,
@@ -193,21 +274,27 @@ export default function PlansPage() {
                   )}
                 </div>
               ),
-              price: formatPrice(p.price_monthly_cents),
-              stripe: p.stripe_price_id || "—",
+              price: `${formatPrice(p.price_monthly_cents)}/mo`,
+              stripe: p.stripe_price_id ? (
+                <code className="text-xs">{p.stripe_price_id}</code>
+              ) : (
+                "—"
+              ),
               status: (
-                <Badge tone={p.active ? "success" : "default"}>{p.active ? "Active" : "Inactive"}</Badge>
+                <Badge tone={p.active ? "success" : "default"}>
+                  {p.active ? tc("active") : tc("inactive")}
+                </Badge>
               ),
             },
             actions: (
-              <div className="flex justify-end gap-2">
+              <>
                 <Button size="sm" variant="secondary" onClick={() => openEdit(p)}>
-                  Edit
+                  {tc("edit")}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setDeleteId(p.id)}>
-                  Delete
+                  {tc("delete")}
                 </Button>
-              </div>
+              </>
             ),
           }))}
         />
@@ -215,7 +302,7 @@ export default function PlansPage() {
 
       <Modal
         open={modalOpen}
-        title={editing ? "Edit plan" : "Create plan"}
+        title={editing ? t("editPlan") : t("createPlan")}
         onClose={() => setModalOpen(false)}
         wide
       >
@@ -268,45 +355,46 @@ export default function PlansPage() {
             />
           </div>
           <div className="form-field flex items-end">
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-2 text-sm text-[var(--brand-text-primary)]">
               <input
                 type="checkbox"
                 checked={form.active ?? true}
                 onChange={(e) => setForm({ ...form, active: e.target.checked })}
+                className="rounded border-[var(--brand-border)]"
               />
-              Active
+              {tc("active")}
             </label>
           </div>
           <div className="form-field sm:col-span-2">
             <label className="form-label">Features (one per line)</label>
             <textarea
-              className="w-full rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface)] px-3 py-2 text-sm"
+              className="form-textarea"
               rows={4}
               value={featuresText}
               onChange={(e) => setFeaturesText(e.target.value)}
             />
           </div>
         </div>
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-6 flex justify-end gap-2 border-t border-[var(--brand-border)] pt-4">
           <Button variant="secondary" onClick={() => setModalOpen(false)}>
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button onClick={() => void handleSave()} disabled={saving}>
-            {saving ? "Saving…" : "Save"}
+            {saving ? tc("saving") : tc("save")}
           </Button>
         </div>
       </Modal>
 
-      <Modal open={!!deleteId} title="Delete plan" onClose={() => setDeleteId(null)}>
+      <Modal open={!!deleteId} title={t("deletePlan")} onClose={() => setDeleteId(null)}>
         <p className="text-sm text-[var(--brand-text-secondary)]">
-          Delete plan <strong>{deleteId}</strong>? This cannot be undone.
+          {t("deleteConfirm", { id: deleteId ?? "" })}
         </p>
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-6 flex justify-end gap-2 border-t border-[var(--brand-border)] pt-4">
           <Button variant="secondary" onClick={() => setDeleteId(null)}>
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button onClick={() => void handleDelete()} disabled={saving}>
-            Delete
+            {tc("delete")}
           </Button>
         </div>
       </Modal>

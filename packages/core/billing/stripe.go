@@ -15,6 +15,7 @@ import (
 	"github.com/stripe/stripe-go/v81/customer"
 	billingportal "github.com/stripe/stripe-go/v81/billingportal/session"
 	"github.com/stripe/stripe-go/v81/invoice"
+	"github.com/stripe/stripe-go/v81/paymentintent"
 	"github.com/stripe/stripe-go/v81/webhook"
 )
 
@@ -44,12 +45,36 @@ type WebhookEvent struct {
 	Data map[string]interface{}
 }
 
+// InvoicePaymentParams are inputs for a one-time portal invoice payment.
+type InvoicePaymentParams struct {
+	TenantID      string
+	CustomerID    string
+	InvoiceID     string
+	InvoiceNumber string
+	AmountCents   int64
+	Currency      string
+	SuccessURL    string
+	CancelURL     string
+	CustomerEmail string
+}
+
+// InvoicePaymentResult is returned after creating a portal payment (Checkout or PaymentIntent).
+type InvoicePaymentResult struct {
+	PaymentIntentID string `json:"payment_intent_id,omitempty"`
+	ClientSecret    string `json:"client_secret,omitempty"`
+	CheckoutURL     string `json:"checkout_url,omitempty"`
+	AmountCents     int64  `json:"amount_cents"`
+	InvoiceID       string `json:"invoice_id"`
+	Mock            bool   `json:"mock,omitempty"`
+}
+
 // Client abstracts Stripe API calls (real or mock).
 type Client interface {
 	CreateCheckoutSession(ctx context.Context, params CheckoutParams) (*CheckoutResult, error)
 	CreatePortalSession(ctx context.Context, customerID, returnURL string) (*PortalResult, error)
 	ListInvoices(ctx context.Context, customerID string) ([]Invoice, error)
-	VerifyWebhook(payload []byte, sigHeader string) (*WebhookEvent, error)
+	CreateInvoicePayment(ctx context.Context, params InvoicePaymentParams) (*InvoicePaymentResult, error)
+	VerifyWebhook(ctx context.Context, payload []byte, sigHeader string) (*WebhookEvent, error)
 }
 
 // SecretResolver resolves integration credentials (DB with env override).
@@ -57,11 +82,17 @@ type SecretResolver interface {
 	Resolve(ctx context.Context, integrationKey, field, envVar string) string
 }
 
-// NewClient returns a Stripe client based on config (mock when debug.mock_stripe=true).
+// NewClient returns a Stripe client (mock when debug.mock_stripe=true and no keys are configured).
+// Keys resolve from env first, then platform_settings (admin integrations).
 // Live and mock clients are wrapped with a circuit breaker (ADR-0004).
 func NewClient(cfg *config.AppConfig, resolver SecretResolver) Client {
+	return NewClientWithContext(context.Background(), cfg, resolver)
+}
+
+// NewClientWithContext picks mock vs live using the same rules as NewClient.
+func NewClientWithContext(ctx context.Context, cfg *config.AppConfig, resolver SecretResolver) Client {
 	var inner Client
-	if cfg.MockStripe() {
+	if UseMockStripe(ctx, cfg, resolver) {
 		inner = &MockClient{appURL: env("WEB_APP_URL", "http://localhost:3000")}
 	} else {
 		inner = &StripeClient{resolver: resolver}
@@ -75,17 +106,11 @@ type StripeClient struct {
 }
 
 func (c *StripeClient) secretKey(ctx context.Context) string {
-	if c.resolver != nil {
-		return c.resolver.Resolve(ctx, "stripe", "secret_key", "STRIPE_SECRET_KEY")
-	}
-	return os.Getenv("STRIPE_SECRET_KEY")
+	return StripeSecretKey(ctx, c.resolver)
 }
 
 func (c *StripeClient) webhookSecret(ctx context.Context) string {
-	if c.resolver != nil {
-		return c.resolver.Resolve(ctx, "stripe", "webhook_secret", "STRIPE_WEBHOOK_SECRET")
-	}
-	return os.Getenv("STRIPE_WEBHOOK_SECRET")
+	return StripeWebhookSecret(ctx, c.resolver)
 }
 
 func (c *StripeClient) CreateCheckoutSession(ctx context.Context, params CheckoutParams) (*CheckoutResult, error) {
@@ -114,7 +139,8 @@ func (c *StripeClient) CreateCheckoutSession(ctx context.Context, params Checkou
 		Customer:   stripe.String(customerID),
 		SuccessURL: stripe.String(params.SuccessURL),
 		CancelURL:  stripe.String(params.CancelURL),
-		// Card enables Apple Pay in Checkout when enabled in the Stripe Dashboard.
+		// Card payment method type enables Apple Pay in Stripe Checkout when Apple Pay is
+		// activated for the account in Stripe Dashboard → Settings → Payment methods.
 		PaymentMethodTypes: stripe.StringSlice([]string{"card"}),
 		ClientReferenceID:  stripe.String(params.TenantID),
 		Metadata: map[string]string{
@@ -201,8 +227,88 @@ func normalizeInvoice(inv *stripe.Invoice) Invoice {
 	}
 }
 
-func (c *StripeClient) VerifyWebhook(payload []byte, sigHeader string) (*WebhookEvent, error) {
-	webhookSecret := c.webhookSecret(context.Background())
+func (c *StripeClient) CreateInvoicePayment(ctx context.Context, params InvoicePaymentParams) (*InvoicePaymentResult, error) {
+	secretKey := c.secretKey(ctx)
+	if secretKey == "" {
+		return nil, fmt.Errorf("STRIPE_SECRET_KEY is not set")
+	}
+	stripe.Key = secretKey
+
+	currency := params.Currency
+	if currency == "" {
+		currency = "usd"
+	}
+	productName := "Invoice payment"
+	if params.InvoiceNumber != "" {
+		productName = "Invoice " + params.InvoiceNumber
+	}
+
+	meta := map[string]string{
+		"tenant_id":   params.TenantID,
+		"invoice_id":  params.InvoiceID,
+		"customer_id": params.CustomerID,
+		"source":      "client_portal",
+	}
+
+	// Prefer hosted Checkout (redirect); PaymentIntent is available for Stripe.js confirm flows.
+	if params.SuccessURL != "" && params.CancelURL != "" {
+		sessParams := &stripe.CheckoutSessionParams{
+			Mode:       stripe.String(string(stripe.CheckoutSessionModePayment)),
+			SuccessURL: stripe.String(params.SuccessURL),
+			CancelURL:  stripe.String(params.CancelURL),
+			// Apple Pay appears in Checkout when enabled in Stripe Dashboard payment methods.
+			PaymentMethodTypes: stripe.StringSlice([]string{"card"}),
+			ClientReferenceID:  stripe.String(params.InvoiceID),
+			Metadata:           meta,
+			LineItems: []*stripe.CheckoutSessionLineItemParams{
+				{
+					PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
+						Currency: stripe.String(currency),
+						ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
+							Name: stripe.String(productName),
+						},
+						UnitAmount: stripe.Int64(params.AmountCents),
+					},
+					Quantity: stripe.Int64(1),
+				},
+			},
+		}
+		if params.CustomerEmail != "" {
+			sessParams.CustomerEmail = stripe.String(params.CustomerEmail)
+		}
+		sess, err := session.New(sessParams)
+		if err != nil {
+			return nil, fmt.Errorf("create checkout session: %w", err)
+		}
+		return &InvoicePaymentResult{
+			PaymentIntentID: sess.ID,
+			CheckoutURL:     sess.URL,
+			AmountCents:     params.AmountCents,
+			InvoiceID:       params.InvoiceID,
+		}, nil
+	}
+
+	pi, err := paymentintent.New(&stripe.PaymentIntentParams{
+		Amount:   stripe.Int64(params.AmountCents),
+		Currency: stripe.String(currency),
+		Metadata: meta,
+		AutomaticPaymentMethods: &stripe.PaymentIntentAutomaticPaymentMethodsParams{
+			Enabled: stripe.Bool(true),
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create payment intent: %w", err)
+	}
+	return &InvoicePaymentResult{
+		PaymentIntentID: pi.ID,
+		ClientSecret:    pi.ClientSecret,
+		AmountCents:     params.AmountCents,
+		InvoiceID:       params.InvoiceID,
+	}, nil
+}
+
+func (c *StripeClient) VerifyWebhook(ctx context.Context, payload []byte, sigHeader string) (*WebhookEvent, error) {
+	webhookSecret := c.webhookSecret(ctx)
 	if webhookSecret == "" {
 		return nil, fmt.Errorf("STRIPE_WEBHOOK_SECRET is not set")
 	}
@@ -255,7 +361,19 @@ func (c *MockClient) ListInvoices(_ context.Context, _ string) ([]Invoice, error
 	}, nil
 }
 
-func (c *MockClient) VerifyWebhook(payload []byte, sigHeader string) (*WebhookEvent, error) {
+func (c *MockClient) CreateInvoicePayment(_ context.Context, params InvoicePaymentParams) (*InvoicePaymentResult, error) {
+	intentID := "pi_mock_" + uuid.New().String()[:12]
+	return &InvoicePaymentResult{
+		PaymentIntentID: intentID,
+		ClientSecret:    fmt.Sprintf("%s_secret_%s", intentID, uuid.New().String()[:8]),
+		CheckoutURL:     fmt.Sprintf("%s/portal/payments?mock_pay=%s", c.appURL, params.InvoiceID),
+		AmountCents:     params.AmountCents,
+		InvoiceID:       params.InvoiceID,
+		Mock:            true,
+	}, nil
+}
+
+func (c *MockClient) VerifyWebhook(_ context.Context, payload []byte, sigHeader string) (*WebhookEvent, error) {
 	if sigHeader != "" && sigHeader != "mock" {
 		return nil, fmt.Errorf("mock stripe: use Stripe-Signature: mock or omit header")
 	}

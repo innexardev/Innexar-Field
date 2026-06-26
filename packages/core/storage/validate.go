@@ -6,13 +6,21 @@ import (
 	"fmt"
 )
 
-const MaxLogoBytes = 2 * 1024 * 1024
+const (
+	MaxLogoBytes  = 2 * 1024 * 1024
+	MaxPhotoBytes = 10 * 1024 * 1024
+)
 
 var (
 	ErrLogoTooLarge      = errors.New("logo must be 2MB or smaller")
 	ErrLogoInvalidType   = errors.New("logo must be PNG, JPEG, or WebP")
 	ErrLogoEmpty         = errors.New("logo file is empty")
 	ErrLogoTenantMissing = errors.New("tenant_id missing from context")
+	ErrPhotoTooLarge     = errors.New("photo must be 10MB or smaller")
+	ErrPhotoInvalidType  = errors.New("photo must be PNG, JPEG, or WebP")
+	ErrPhotoEmpty        = errors.New("photo file is empty")
+	ErrPhotoTenantMissing = errors.New("tenant_id missing from context")
+	ErrFileTooLarge      = errors.New("file exceeds size limit")
 )
 
 // ValidateLogo checks size and image type using magic bytes.
@@ -47,4 +55,25 @@ func detectLogoType(data []byte) (contentType string, ext string, ok bool) {
 // LogoObjectKey returns the R2/local object key for a tenant logo.
 func LogoObjectKey(tenantID, objectID, ext string) string {
 	return fmt.Sprintf("tenants/%s/logo/%s.%s", tenantID, objectID, ext)
+}
+
+// ValidatePhoto checks size and image type using magic bytes.
+func ValidatePhoto(data []byte) (contentType string, ext string, err error) {
+	if len(data) == 0 {
+		return "", "", ErrPhotoEmpty
+	}
+	if len(data) > MaxPhotoBytes {
+		return "", "", ErrPhotoTooLarge
+	}
+
+	contentType, ext, ok := detectLogoType(data)
+	if !ok {
+		return "", "", ErrPhotoInvalidType
+	}
+	return contentType, ext, nil
+}
+
+// PhotoObjectKey returns the R2/local object key for a tenant-scoped photo.
+func PhotoObjectKey(tenantID, category, entityID, objectID, ext string) string {
+	return fmt.Sprintf("tenants/%s/%s/%s/%s.%s", tenantID, category, entityID, objectID, ext)
 }

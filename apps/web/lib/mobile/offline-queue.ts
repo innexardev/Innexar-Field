@@ -9,9 +9,11 @@ const TOKEN_KEY = "ff_token";
 
 export const EXPENSE_POST_PATH = "/expenses/expenses";
 export const TIME_POST_PATH = "/payroll/timesheets";
+export const SIGNATURE_POST_PATH = "/scheduling/signatures";
+export const VEHICLE_CHECK_POST_PATH = "/scheduling/vehicle-checks";
 
 export type QueueItemStatus = "pending" | "syncing" | "failed";
-export type QueueItemKind = "job" | "expense" | "time";
+export type QueueItemKind = "job" | "expense" | "time" | "signature" | "vehicle";
 
 export interface OfflineQueueItem {
   id: string;
@@ -41,6 +43,23 @@ export interface TimeQueueBody {
   latitude?: number;
   longitude?: number;
   recorded_at: string;
+}
+
+export interface SignatureQueueBody {
+  signer_name: string;
+  image_data: string;
+  job_id?: string;
+  source?: "pad" | "camera";
+}
+
+export interface VehicleCheckQueueBody {
+  vehicle_label: string;
+  odometer_miles: number;
+  fuel_level?: string;
+  tires_ok?: boolean;
+  lights_ok?: boolean;
+  damage_notes?: string;
+  job_id?: string;
 }
 
 export const OFFLINE_QUEUE_EVENT = "ff-offline-queue-change";
@@ -160,6 +179,52 @@ export function enqueueTimeEntry(
   return entry;
 }
 
+export function enqueueSignature(
+  body: SignatureQueueBody,
+  status: QueueItemStatus = "pending",
+  error?: string,
+): OfflineQueueItem {
+  const entry: OfflineQueueItem = {
+    id: crypto.randomUUID(),
+    createdAt: new Date().toISOString(),
+    method: "POST",
+    path: SIGNATURE_POST_PATH,
+    body: body as unknown as Record<string, unknown>,
+    label: `Signature: ${body.signer_name}`,
+    kind: "signature",
+    status,
+    error,
+    retryCount: 0,
+  };
+  const queue = readQueue();
+  queue.push(entry);
+  writeQueue(queue);
+  return entry;
+}
+
+export function enqueueVehicleCheck(
+  body: VehicleCheckQueueBody,
+  status: QueueItemStatus = "pending",
+  error?: string,
+): OfflineQueueItem {
+  const entry: OfflineQueueItem = {
+    id: crypto.randomUUID(),
+    createdAt: new Date().toISOString(),
+    method: "POST",
+    path: VEHICLE_CHECK_POST_PATH,
+    body: body as unknown as Record<string, unknown>,
+    label: `Vehicle: ${body.vehicle_label} (${body.odometer_miles} mi)`,
+    kind: "vehicle",
+    status,
+    error,
+    retryCount: 0,
+  };
+  const queue = readQueue();
+  queue.push(entry);
+  writeQueue(queue);
+  return entry;
+}
+
 export function removeQueueItem(id: string) {
   writeQueue(readQueue().filter((item) => item.id !== id));
 }
@@ -225,6 +290,10 @@ export async function postOrEnqueue(params: {
       enqueueExpense(params.body as unknown as ExpenseQueueBody);
     } else if (params.kind === "time") {
       enqueueTimeEntry(params.body as unknown as TimeQueueBody);
+    } else if (params.kind === "signature") {
+      enqueueSignature(params.body as unknown as SignatureQueueBody);
+    } else if (params.kind === "vehicle") {
+      enqueueVehicleCheck(params.body as unknown as VehicleCheckQueueBody);
     } else {
       enqueueOffline({
         method: "POST",
@@ -255,6 +324,10 @@ export async function postOrEnqueue(params: {
       enqueueExpense(params.body as unknown as ExpenseQueueBody, "failed", message);
     } else if (params.kind === "time") {
       enqueueTimeEntry(params.body as unknown as TimeQueueBody, "failed", message);
+    } else if (params.kind === "signature") {
+      enqueueSignature(params.body as unknown as SignatureQueueBody, "failed", message);
+    } else if (params.kind === "vehicle") {
+      enqueueVehicleCheck(params.body as unknown as VehicleCheckQueueBody, "failed", message);
     } else {
       enqueueOffline({
         method: "POST",

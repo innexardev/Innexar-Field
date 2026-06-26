@@ -27,6 +27,15 @@ export default function NotificationsPage() {
     if (token) client.listNotifications().then((r) => setItems(r.data ?? [])).catch(console.error);
   }, [token, client]);
 
+  async function markRead(id: string) {
+    try {
+      const updated = await client.markNotificationRead(id);
+      setItems((prev) => prev.map((n) => (n.id === id ? updated : n)));
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   const unread = items.filter((n) => !n.read).length;
 
   return (
@@ -47,7 +56,20 @@ export default function NotificationsPage() {
           {items.map((n, i) => (
             <Card
               key={n.id}
-              className={`list-item-card stagger-item${n.read ? "" : " border-[color-mix(in_srgb,var(--brand-accent)_25%,var(--brand-border))]"}`}
+              role={n.read ? undefined : "button"}
+              tabIndex={n.read ? undefined : 0}
+              onClick={n.read ? undefined : () => markRead(n.id)}
+              onKeyDown={
+                n.read
+                  ? undefined
+                  : (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        markRead(n.id);
+                      }
+                    }
+              }
+              className={`list-item-card stagger-item${n.read ? "" : " cursor-pointer border-[color-mix(in_srgb,var(--brand-accent)_25%,var(--brand-border))]"}`}
               style={{ animationDelay: `${i * 40}ms` }}
             >
               <CardContent className="flex items-start justify-between gap-4 py-4">

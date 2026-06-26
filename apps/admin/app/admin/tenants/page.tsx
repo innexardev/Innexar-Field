@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Badge, Button, Input } from "@fieldforge/ui";
+import { useTranslations } from "next-intl";
+import { Badge, Button, Input, IconBuilding } from "@fieldforge/ui";
 import {
   formatErrorForUser,
   type PlatformPlan,
@@ -30,6 +31,8 @@ const emptyForm = (): PlatformTenantCreateInput => ({
 
 export default function TenantsPage() {
   const { client } = useAdminPage();
+  const t = useTranslations("admin.pages.tenants");
+  const tc = useTranslations("admin.common");
   const [tenants, setTenants] = useState<PlatformTenant[]>([]);
   const [plans, setPlans] = useState<PlatformPlan[]>([]);
   const [search, setSearch] = useState("");
@@ -61,11 +64,11 @@ export default function TenantsPage() {
     const q = search.trim().toLowerCase();
     if (!q) return tenants;
     return tenants.filter(
-      (t) =>
-        t.name.toLowerCase().includes(q) ||
-        t.slug.toLowerCase().includes(q) ||
-        t.plan_id.toLowerCase().includes(q) ||
-        t.subscription_status.toLowerCase().includes(q),
+      (row) =>
+        row.name.toLowerCase().includes(q) ||
+        row.slug.toLowerCase().includes(q) ||
+        row.plan_id.toLowerCase().includes(q) ||
+        row.subscription_status.toLowerCase().includes(q),
     );
   }, [tenants, search]);
 
@@ -87,9 +90,9 @@ export default function TenantsPage() {
   return (
     <>
       <PageHeader
-        title="Tenants"
-        subtitle="All workspaces on the platform."
-        actions={<Button onClick={() => setModalOpen(true)}>Create tenant</Button>}
+        title={t("title")}
+        subtitle={t("subtitle")}
+        actions={<Button onClick={() => setModalOpen(true)}>{t("createTenant")}</Button>}
       />
       <ErrorBanner message={error} className="mb-4" />
 
@@ -97,43 +100,52 @@ export default function TenantsPage() {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, slug, plan, or status…"
+          placeholder={t("searchPlaceholder")}
         />
       </div>
 
       {loading ? (
-        <p className="text-sm text-[var(--brand-text-secondary)]">Loading tenants…</p>
+        <p className="text-sm text-[var(--brand-text-secondary)]">{t("loadingTenants")}</p>
       ) : (
         <DataTable
+          emptyTitle={t("emptyTitle")}
+          emptyDescription={t("emptyDesc")}
+          emptyIcon={IconBuilding}
+          emptyAction={
+            !search.trim() ? (
+              <Button onClick={() => setModalOpen(true)}>{t("createTenant")}</Button>
+            ) : undefined
+          }
+          actionsLabel={tc("actions")}
           columns={[
-            { key: "name", label: "Tenant" },
-            { key: "plan", label: "Plan" },
-            { key: "industry", label: "Industry" },
-            { key: "status", label: "Status" },
-            { key: "created", label: "Created" },
+            { key: "name", label: t("colTenant") },
+            { key: "plan", label: t("colPlan") },
+            { key: "industry", label: t("colIndustry") },
+            { key: "status", label: t("colStatus") },
+            { key: "created", label: t("colCreated") },
           ]}
-          rows={filtered.map((t) => ({
-            id: t.id,
+          rows={filtered.map((row) => ({
+            id: row.id,
             cells: {
               name: (
                 <div>
-                  <p className="font-medium">{t.name}</p>
-                  <p className="text-xs text-[var(--brand-text-muted)]">{t.slug}</p>
+                  <p className="font-medium">{row.name}</p>
+                  <p className="text-xs text-[var(--brand-text-muted)]">{row.slug}</p>
                 </div>
               ),
-              plan: <code className="text-xs">{t.plan_id}</code>,
-              industry: t.industry_pack,
-              status: t.suspended_at ? (
-                <Badge tone="default">Suspended</Badge>
+              plan: <code className="text-xs">{row.plan_id}</code>,
+              industry: row.industry_pack,
+              status: row.suspended_at ? (
+                <Badge tone="default">{tc("suspended")}</Badge>
               ) : (
-                <Badge tone="success">{t.subscription_status || "active"}</Badge>
+                <Badge tone="success">{row.subscription_status || "active"}</Badge>
               ),
-              created: new Date(t.created_at).toLocaleDateString(),
+              created: new Date(row.created_at).toLocaleDateString(),
             },
             actions: (
-              <Link href={`/admin/tenants/${t.id}`}>
+              <Link href={`/admin/tenants/${row.id}`}>
                 <Button size="sm" variant="secondary">
-                  View
+                  {tc("view")}
                 </Button>
               </Link>
             ),
@@ -141,7 +153,7 @@ export default function TenantsPage() {
         />
       )}
 
-      <Modal open={modalOpen} title="Create tenant" onClose={() => setModalOpen(false)} wide>
+      <Modal open={modalOpen} title={t("createTenant")} onClose={() => setModalOpen(false)} wide>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="form-field sm:col-span-2">
             <label className="form-label">Company name</label>
@@ -158,7 +170,7 @@ export default function TenantsPage() {
           <div className="form-field">
             <label className="form-label">Industry pack</label>
             <select
-              className="w-full rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface)] px-3 py-2 text-sm"
+              className="form-select"
               value={form.industry_pack ?? "field-services"}
               onChange={(e) => setForm({ ...form, industry_pack: e.target.value })}
             >
@@ -172,7 +184,7 @@ export default function TenantsPage() {
           <div className="form-field">
             <label className="form-label">Plan</label>
             <select
-              className="w-full rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface)] px-3 py-2 text-sm"
+              className="form-select"
               value={form.plan_id ?? "starter"}
               onChange={(e) => setForm({ ...form, plan_id: e.target.value })}
             >
@@ -187,7 +199,7 @@ export default function TenantsPage() {
           <div className="form-field">
             <label className="form-label">Subscription status</label>
             <select
-              className="w-full rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface)] px-3 py-2 text-sm"
+              className="form-select"
               value={form.subscription_status ?? "trialing"}
               onChange={(e) => setForm({ ...form, subscription_status: e.target.value })}
             >
@@ -199,7 +211,9 @@ export default function TenantsPage() {
             </select>
           </div>
           <div className="form-field sm:col-span-2 border-t border-[var(--brand-border)] pt-4">
-            <p className="mb-2 text-sm font-medium text-[var(--brand-text-primary)]">Initial owner (optional)</p>
+            <p className="mb-2 text-sm font-medium text-[var(--brand-text-primary)]">
+              Initial owner (optional)
+            </p>
           </div>
           <div className="form-field">
             <label className="form-label">Owner email</label>
@@ -218,12 +232,12 @@ export default function TenantsPage() {
             />
           </div>
         </div>
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-6 flex justify-end gap-2 border-t border-[var(--brand-border)] pt-4">
           <Button variant="secondary" onClick={() => setModalOpen(false)}>
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button onClick={() => void handleCreate()} disabled={saving}>
-            {saving ? "Creating…" : "Create tenant"}
+            {saving ? tc("creating") : t("createTenant")}
           </Button>
         </div>
       </Modal>

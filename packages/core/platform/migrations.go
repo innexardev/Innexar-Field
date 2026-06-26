@@ -8,10 +8,12 @@ func Migrations() []plugin.Migration {
 	return []plugin.Migration{
 		{Version: 13, Name: "platform_admin", UpSQL: platformAdminSQL},
 		{Version: 14, Name: "platform_admin_role", UpSQL: platformAdminRoleSQL},
-		{Version: 15, Name: "platform_billing_settings", UpSQL: platformBillingSettingsSQL},
-		{Version: 16, Name: "platform_user_admin", UpSQL: platformUserAdminSQL},
-		{Version: 17, Name: "platform_settings", UpSQL: platformSettingsSQL},
+		// Versions 15–17 are reserved by core migrations (tenant_signup_attribution, etc.).
 		{Version: 18, Name: "platform_modules_announcements", UpSQL: platformModulesAnnouncementsSQL},
+		{Version: 202, Name: "platform_billing_settings", UpSQL: platformBillingSettingsSQL},
+		{Version: 203, Name: "platform_user_admin", UpSQL: platformUserAdminSQL},
+		{Version: 204, Name: "platform_settings", UpSQL: platformSettingsSQL},
+		{Version: 205, Name: "platform_seed_default_plans", UpSQL: platformSeedDefaultPlansSQL},
 	}
 }
 
@@ -165,6 +167,46 @@ AS $$
 	ORDER BY u.created_at DESC
 	LIMIT 1000;
 $$;
+
+CREATE OR REPLACE FUNCTION platform_get_user(p_user_id UUID)
+RETURNS TABLE (
+	id UUID,
+	tenant_id UUID,
+	tenant_name TEXT,
+	tenant_slug TEXT,
+	email TEXT,
+	role TEXT,
+	first_name TEXT,
+	last_name TEXT,
+	created_at TIMESTAMPTZ
+)
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+	SELECT u.id, u.tenant_id, t.name, t.slug, u.email, u.role, u.first_name, u.last_name, u.created_at
+	FROM users u
+	JOIN tenants t ON t.id = u.tenant_id
+	WHERE u.id = p_user_id
+	LIMIT 1;
+$$;
+`
+
+const platformSeedDefaultPlansSQL = `
+INSERT INTO platform_plans (id, name, description, price_monthly_cents, stripe_price_id, features, active, sort_order)
+SELECT v.id, v.name, v.description, v.price_monthly_cents, v.stripe_price_id, v.features::jsonb, true, v.sort_order
+FROM (VALUES
+	('starter', 'Starter', 'Perfect for solo operators and small crews getting started', 2500, '',
+		'["Up to 3 team members","1 industry vertical","Quotes & invoicing","Mobile PWA","Email support"]', 1),
+	('business', 'Business', 'Growing teams that need dispatch, portal, and job costing', 8900, '',
+		'["Up to 10 team members","2 industry verticals","Client self-service portal","Job costing & expenses","Priority email support"]', 2),
+	('pro', 'Pro', 'Full platform for established contractors across all trades', 14900, '',
+		'["Up to 25 team members","All 3 verticals included","Advanced reporting","QuickBooks sync","Phone & chat support"]', 3),
+	('enterprise', 'Enterprise', 'White-label, dedicated infrastructure, and custom SLAs', NULL, '',
+		'["Unlimited users","White-label & custom domain","Dedicated database tier","SSO / SAML","99.9% SLA","Dedicated account manager"]', 4)
+) AS v(id, name, description, price_monthly_cents, stripe_price_id, features, sort_order)
+WHERE NOT EXISTS (SELECT 1 FROM platform_plans LIMIT 1);
 `
 
 const platformModulesAnnouncementsSQL = `

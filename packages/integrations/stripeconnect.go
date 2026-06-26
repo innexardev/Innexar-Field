@@ -3,9 +3,9 @@ package integrations
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
+	"github.com/fieldforge/fieldforge/packages/core/billing"
 	"github.com/fieldforge/fieldforge/packages/core/config"
 	"github.com/google/uuid"
 )
@@ -28,12 +28,13 @@ type StripeConnectStatus struct {
 }
 
 type stripeConnectService struct {
-	cfg *config.AppConfig
-	svc *Service
+	cfg      *config.AppConfig
+	svc      *Service
+	resolver billing.SecretResolver
 }
 
-func newStripeConnect(cfg *config.AppConfig, base *Service) *stripeConnectService {
-	return &stripeConnectService{cfg: cfg, svc: base}
+func newStripeConnect(cfg *config.AppConfig, base *Service, resolver billing.SecretResolver) *stripeConnectService {
+	return &stripeConnectService{cfg: cfg, svc: base, resolver: resolver}
 }
 
 func (s *stripeConnectService) StartOnboarding(ctx context.Context, returnPath string) (*StripeConnectOnboardResult, error) {
@@ -43,9 +44,9 @@ func (s *stripeConnectService) StartOnboarding(ctx context.Context, returnPath s
 	}
 
 	accountID := "acct_mock_" + uuid.NewString()[:8]
-	mock := s.cfg.MockStripe()
+	mock := billing.UseMockStripe(ctx, s.cfg, s.resolver)
 
-	if !mock && os.Getenv("STRIPE_SECRET_KEY") == "" {
+	if !mock && billing.StripeSecretKey(ctx, s.resolver) == "" {
 		return nil, fmt.Errorf("STRIPE_SECRET_KEY is not set")
 	}
 
@@ -93,8 +94,8 @@ func (s *stripeConnectService) CompleteOnboarding(ctx context.Context, accountID
 		return StripeConnectStatus{}, fmt.Errorf("invalid account_id")
 	}
 
-	mock := s.cfg.MockStripe()
-	if v, ok := pending.Metadata["mock"].(bool); ok {
+	mock := billing.UseMockStripe(ctx, s.cfg, s.resolver)
+	if v, ok := pending.Metadata["mock"].(bool); ok && mock {
 		mock = v
 	}
 
@@ -106,7 +107,7 @@ func (s *stripeConnectService) CompleteOnboarding(ctx context.Context, accountID
 	if err != nil {
 		return StripeConnectStatus{}, err
 	}
-	return stripeConnectFromConnection(st, s.cfg.MockStripe()), nil
+	return stripeConnectFromConnection(ctx, st, s.cfg, s.resolver), nil
 }
 
 func (s *stripeConnectService) GetStatus(ctx context.Context) (StripeConnectStatus, error) {
@@ -114,10 +115,10 @@ func (s *stripeConnectService) GetStatus(ctx context.Context) (StripeConnectStat
 	if err != nil {
 		return StripeConnectStatus{}, err
 	}
-	return stripeConnectFromConnection(st, s.cfg.MockStripe()), nil
+	return stripeConnectFromConnection(ctx, st, s.cfg, s.resolver), nil
 }
 
-func stripeConnectFromConnection(st ConnectionStatus, mock bool) StripeConnectStatus {
+func stripeConnectFromConnection(ctx context.Context, st ConnectionStatus, cfg *config.AppConfig, resolver billing.SecretResolver) StripeConnectStatus {
 	charges := st.Status == "connected"
 	payouts := st.Status == "connected"
 	if v, ok := st.Metadata["charges_enabled"].(bool); ok {
@@ -126,7 +127,8 @@ func stripeConnectFromConnection(st ConnectionStatus, mock bool) StripeConnectSt
 	if v, ok := st.Metadata["payouts_enabled"].(bool); ok {
 		payouts = v
 	}
-	if m, ok := st.Metadata["mock"].(bool); ok {
+	mock := billing.UseMockStripe(ctx, cfg, resolver)
+	if m, ok := st.Metadata["mock"].(bool); ok && mock {
 		mock = m
 	}
 	return StripeConnectStatus{

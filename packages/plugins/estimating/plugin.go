@@ -10,6 +10,7 @@ import (
 
 	"github.com/fieldforge/fieldforge/packages/core/response"
 
+	"github.com/fieldforge/fieldforge/packages/core/config"
 	"github.com/fieldforge/fieldforge/packages/core/events"
 	"github.com/fieldforge/fieldforge/packages/core/plugin"
 	"github.com/fieldforge/fieldforge/packages/core/tenant"
@@ -19,8 +20,9 @@ import (
 )
 
 type Plugin struct {
-	pool *pgxpool.Pool
-	bus  *events.Bus
+	pool   *pgxpool.Pool
+	bus    *events.Bus
+	appCfg *config.AppConfig
 }
 
 func New(pool *pgxpool.Pool, bus *events.Bus) *Plugin {
@@ -44,8 +46,10 @@ func (p *Plugin) Manifest() plugin.Manifest {
 }
 
 func (p *Plugin) RegisterRoutes(router fiber.Router, deps plugin.Deps) {
+	p.registerConfig(deps)
 	router.Get("/estimates", p.list)
 	router.Post("/estimates", p.create)
+	router.Get("/estimates/:id/pdf", p.estimatePDF)
 	router.Get("/estimates/:id", p.get)
 	router.Patch("/estimates/:id", p.update)
 	router.Post("/estimates/:id/calculate", p.calculate)

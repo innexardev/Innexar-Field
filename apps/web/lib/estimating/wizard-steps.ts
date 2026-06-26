@@ -31,19 +31,26 @@ export const ESTIMATE_WIZARD_STORAGE_KEY = "fieldforge.estimate-wizard";
 export interface EstimateWizardDraft {
   title: string;
   customerId: string;
+  propertyId: string;
   lines: { description: string; quantity: number; unit_price_cents: number }[];
 }
 
 export function loadEstimateWizardDraft(): EstimateWizardDraft {
   if (typeof window === "undefined") {
-    return { title: "", customerId: "", lines: [] };
+    return { title: "", customerId: "", propertyId: "", lines: [] };
   }
   try {
     const raw = sessionStorage.getItem(ESTIMATE_WIZARD_STORAGE_KEY);
-    if (!raw) return { title: "", customerId: "", lines: [] };
-    return JSON.parse(raw) as EstimateWizardDraft;
+    if (!raw) return { title: "", customerId: "", propertyId: "", lines: [] };
+    const parsed = JSON.parse(raw) as Partial<EstimateWizardDraft>;
+    return {
+      title: parsed.title ?? "",
+      customerId: parsed.customerId ?? "",
+      propertyId: parsed.propertyId ?? "",
+      lines: parsed.lines ?? [],
+    };
   } catch {
-    return { title: "", customerId: "", lines: [] };
+    return { title: "", customerId: "", propertyId: "", lines: [] };
   }
 }
 

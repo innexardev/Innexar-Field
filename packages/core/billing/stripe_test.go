@@ -24,7 +24,7 @@ func TestMockClient_CreateCheckoutSession(t *testing.T) {
 func TestMockClient_VerifyWebhook(t *testing.T) {
 	client := &MockClient{appURL: "http://localhost:3000"}
 	payload := MockWebhookPayload("tenant-abc", "business")
-	event, err := client.VerifyWebhook(payload, "mock")
+	event, err := client.VerifyWebhook(context.Background(), payload, "mock")
 	require.NoError(t, err)
 	assert.Equal(t, "checkout.session.completed", event.Type)
 }

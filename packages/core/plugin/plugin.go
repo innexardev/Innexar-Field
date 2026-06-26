@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"github.com/fieldforge/fieldforge/packages/core/storage"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -39,9 +40,10 @@ type Plugin interface {
 
 // Deps are shared services injected into plugins.
 type Deps struct {
-	DB     DB
-	Events EventBus
-	Config AppConfig
+	DB      DB
+	Events  EventBus
+	Config  AppConfig
+	Storage *storage.Service
 }
 
 // DB is the minimal database interface plugins need.
