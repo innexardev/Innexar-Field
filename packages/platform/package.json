@@ -1,0 +1,29 @@
+{
+  "name": "@fieldforge/platform",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "test": "npx tsx --test src/deepLinks.test.ts src/signupAttribution.test.ts",
+    "cap:sync": "npm run cap:sync -w @fieldforge/web",
+    "cap:ios": "npm run cap:open:ios -w @fieldforge/web",
+    "cap:android": "npm run cap:open:android -w @fieldforge/web",
+    "mobile:build": "npm run mobile:build -w @fieldforge/web",
+    "mobile:build:ios": "npm run mobile:build -w @fieldforge/web && npm run cap:open:ios -w @fieldforge/web",
+    "mobile:build:android": "npm run mobile:build -w @fieldforge/web && npm run cap:open:android -w @fieldforge/web"
+  },
+  "peerDependencies": {
+    "@capacitor/app": "^7.0.0",
+    "react": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@capacitor/app": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.7.2"
+  }
+}

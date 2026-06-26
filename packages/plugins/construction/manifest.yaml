@@ -1,0 +1,33 @@
+id: construction
+name: Construction
+version: 1.0.0
+dependencies:
+  - crm
+  - estimating
+industry_packs:
+  - construction
+permissions:
+  - construction.read
+  - construction.write
+nav:
+  - label: Projects
+    path: /projects
+    icon: building
+  - label: Change Orders
+    path: /change-orders
+    icon: file-diff
+  - label: Milestones
+    path: /milestones
+    icon: flag
+  - label: Subcontractors
+    path: /subcontractors
+    icon: users
+  - label: Permits
+    path: /permits
+    icon: shield
+  - label: Lien Waivers
+    path: /lien-waivers
+    icon: file-text
+  - label: RFIs
+    path: /rfis
+    icon: clipboard-list

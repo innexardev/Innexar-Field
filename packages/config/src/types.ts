@@ -2,6 +2,31 @@
  * Tipos gerados a partir de config/app.config.yaml
  * Em produção: gerar via script ou ler YAML em build time.
  */
+export interface MobileCapacitorSplashConfig {
+  launch_show_duration_ms: number;
+  background_color: string;
+  show_spinner?: boolean;
+}
+
+export interface MobileCapacitorDeepLinksConfig {
+  path_prefix: string;
+  jobs_path: string;
+}
+
+export interface MobileCapacitorConfig {
+  splash: MobileCapacitorSplashConfig;
+  deep_links: MobileCapacitorDeepLinksConfig;
+}
+
+export interface MobileConfig {
+  capacitor: MobileCapacitorConfig;
+}
+
+export interface I18nConfig {
+  default_locale: string;
+  locales: string[];
+}
+
 export interface AppConfig {
   version: string;
   environment: "development" | "staging" | "production";
@@ -9,12 +34,16 @@ export interface AppConfig {
   pricing: PricingConfig;
   debug: DebugConfig;
   features: Record<string, boolean>;
+  integrations?: Record<string, IntegrationConfig>;
+  i18n?: I18nConfig;
   ux: UxConfig;
+  mobile?: MobileConfig;
   contact: ContactConfig;
 }
 
 export interface BrandConfig {
   name: string;
+  short_name: string;
   legal_name: string;
   tagline: string;
   description: string;
@@ -22,6 +51,7 @@ export interface BrandConfig {
     marketing: string;
     app: string;
     api: string;
+    admin: string;
     docs: string;
   };
   colors: BrandColors;
@@ -31,10 +61,12 @@ export interface BrandConfig {
     scale: "compact" | "comfortable" | "spacious";
   };
   logo: {
-    light: string;
-    dark: string;
+    wordmark: string;
     icon: string;
     favicon: string;
+    /** @deprecated Use wordmark — kept for legacy YAML overrides */
+    light?: string;
+    dark?: string;
   };
   name_candidates: string[];
 }
@@ -108,6 +140,65 @@ export interface ContactConfig {
   phone: string;
 }
 
+export interface IntegrationOAuthConfig {
+  authorize_url: string;
+  scopes: string[];
+}
+
+export interface IntegrationConfig {
+  id: string;
+  name: string;
+  enabled: boolean;
+  category: string;
+  description: string;
+  plans?: string[];
+  oauth?: IntegrationOAuthConfig;
+  mock_rate_percent?: number;
+  onboarding_return_path?: string;
+}
+
+export interface IntegrationConnectionStatus {
+  integration_id: string;
+  status: "disconnected" | "pending" | "connected";
+  external_id?: string;
+  metadata?: Record<string, unknown>;
+  connected_at?: string;
+  updated_at: string;
+}
+
+export interface AvalaraTaxResult {
+  amount_cents: number;
+  tax_cents: number;
+  total_cents: number;
+  rate_percent: number;
+  jurisdiction: string;
+  mock?: boolean;
+  tax_pending?: boolean;
+  provider: string;
+  integration_id: string;
+}
+
+export interface StripeConnectOnboardResult {
+  onboarding_url: string;
+  account_id: string;
+  mock?: boolean;
+}
+
+export interface StripeConnectStatus {
+  integration_id: string;
+  status: string;
+  account_id?: string;
+  charges_enabled: boolean;
+  payouts_enabled: boolean;
+  mock?: boolean;
+}
+
+export interface QuickBooksOAuthStart {
+  authorize_url: string;
+  state: string;
+  mock?: boolean;
+}
+
 /** Helpers — uso no app */
 export function isDebugEnabled(config: AppConfig): boolean {
   return config.debug.enabled;
@@ -115,6 +206,19 @@ export function isDebugEnabled(config: AppConfig): boolean {
 
 export function isDebugFeature(config: AppConfig, feature: string): boolean {
   return config.debug.enabled && Boolean(config.debug.features[feature]);
+}
+
+export function isIntegrationMockMode(config: AppConfig, integrationId: string): boolean {
+  switch (integrationId) {
+    case "quickbooks":
+      return isDebugFeature(config, "mock_quickbooks");
+    case "avalara":
+      return isDebugFeature(config, "mock_avalara");
+    case "stripe_connect":
+      return isDebugFeature(config, "mock_stripe");
+    default:
+      return false;
+  }
 }
 
 export function getPlan(config: AppConfig, planId: string): PricingPlan | undefined {
@@ -128,4 +232,35 @@ export function brandCssVars(colors: BrandColors): Record<string, string> {
       value,
     ]),
   );
+}
+
+/** Capacitor bundle id from app subdomain (e.g. app.field.innexar.app → app.field.innexar.app). */
+export function brandAppId(appDomain: string): string {
+  return appDomain.split(".").filter(Boolean).reverse().join(".");
+}
+
+/** iOS URL scheme from brand name (e.g. Innexar Field → InnexarField). */
+export function brandUrlScheme(brandName: string): string {
+  return brandName.replace(/[^a-zA-Z0-9]/g, "");
+}
+
+function iconMimeType(path: string): string {
+  return path.endsWith(".svg") ? "image/svg+xml" : "image/png";
+}
+
+/** Next.js metadata.icons — favicon paths are identical across app public folders. */
+export function brandMetadataIcons(brand: BrandConfig) {
+  const favicon = brand.logo.favicon;
+  const icon = brand.logo.icon || favicon;
+  return {
+    icon: [
+      { url: favicon, type: iconMimeType(favicon) },
+      { url: icon, type: iconMimeType(icon) },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: "/apple-touch-icon.png",
+    shortcut: favicon,
+  };
 }

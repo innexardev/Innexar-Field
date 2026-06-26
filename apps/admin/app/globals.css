@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+html.dark {
+  --background: #0b1120;
+  --foreground: #f1f5f9;
+  --brand-background: #0b1120;
+  --brand-background-subtle: #0f172a;
+  --brand-surface: #1e293b;
+  --brand-surface-elevated: #334155;
+  --brand-border: #334155;
+  --brand-text-primary: #f1f5f9;
+  --brand-text-secondary: #cbd5e1;
+  --brand-text-muted: #94a3b8;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+.form-error {
+  @apply rounded-lg border border-[var(--brand-error)] bg-[var(--brand-error-subtle)] px-3 py-2 text-sm text-[var(--brand-error)];
+}
+
+.admin-table {
+  @apply w-full text-left text-sm;
+}
+
+.admin-table th {
+  @apply border-b border-[var(--brand-border)] px-4 py-3 font-medium text-[var(--brand-text-secondary)];
+}
+
+.admin-table td {
+  @apply border-b border-[var(--brand-border)] px-4 py-3 text-[var(--brand-text-primary)];
+}
+
+.admin-table tr:hover td {
+  @apply bg-[var(--brand-surface-elevated)];
+}
+
+.stat-card {
+  @apply rounded-xl border border-[var(--brand-border)] bg-[var(--brand-surface)] p-5 shadow-sm;
+}
+
+.modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm;
+}
+
+.modal-panel {
+  @apply max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-[var(--brand-border)] bg-[var(--brand-surface)] p-6 shadow-xl;
+}
+
+.form-label {
+  @apply mb-1 block text-xs font-medium text-[var(--brand-text-secondary)];
+}
+
+.form-field {
+  @apply mb-4;
+}

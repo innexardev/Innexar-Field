@@ -1,0 +1,16 @@
+---
+description: Git workflow — branches, commits, PRs, no force push to main
+alwaysApply: true
+---
+
+# Git Workflow
+
+- Branch: `feat/`, `fix/`, `chore/`, `docs/` + short description
+- Commits: [Conventional Commits](https://www.conventionalcommits.org/) — `feat:`, `fix:`, `test:`, `docs:`
+- One logical change per commit; PR groups related commits
+- **Never** push directly to `main` — PR + review + CI green
+- **Never** force push to `main`/`master`
+- **Never** commit: `.env`, secrets, `node_modules/`, build artifacts
+- Do not amend pushed commits unless explicitly requested
+
+PR template: `projects/fieldforge/.github/PULL_REQUEST_TEMPLATE.md`

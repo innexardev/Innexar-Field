@@ -1,0 +1,35 @@
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  transpilePackages: ["@fieldforge/config", "@fieldforge/platform", "@fieldforge/sdk", "@fieldforge/ui"],
+  productionBrowserSourceMaps: false,
+  experimental: {
+    webpackMemoryOptimizations: true,
+    webpackBuildWorker: false,
+  },
+  typescript: {
+    // Validated separately via `npm run typecheck` at repo root.
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  webpack: (config, { dev }) => {
+    if (!dev) config.cache = false;
+    config.resolve.extensionAlias = {
+      ".js": [".ts", ".tsx", ".js"],
+    };
+    return config;
+  },
+  // Prevent stale HTML after redeploys (avoids ChunkLoadError on old chunk hashes).
+  async headers() {
+    return [
+      {
+        source: "/((?!_next/static|_next/image|favicon.ico).*)",
+        headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }],
+      },
+    ];
+  },
+};
+
+export default nextConfig;

@@ -1,0 +1,15 @@
+id: job-costing
+name: Job Costing
+version: 1.0.0
+dependencies:
+  - scheduling
+industry_packs:
+  - construction
+  - field-services
+permissions:
+  - job-costing.read
+  - job-costing.write
+nav:
+  - label: Job Costing
+    path: /job-costing
+    icon: calculator

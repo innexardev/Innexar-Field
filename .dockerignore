@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+.git
+.github
+.cursor
+*.md
+apps/web/.next
+apps/marketing/.next
+.env
+.env.*
+**/*_test.go
+**/.DS_Store

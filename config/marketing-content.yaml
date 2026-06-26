@@ -1,0 +1,249 @@
+# =============================================================================
+# Innexar Field — Marketing content (stub CMS)
+# =============================================================================
+# Blog listings and industry case studies for apps/marketing.
+# Full article bodies live in apps/marketing/app/lib/posts.ts until a real CMS.
+# Optional API override: GET /api/v1/public/marketing-content
+# =============================================================================
+
+blog:
+  posts:
+    - slug: recurring-revenue-for-cleaning-companies
+      title: How Cleaning Companies Build Predictable Recurring Revenue
+      description: >
+        Turn one-off deep cleans into stable monthly contracts — pricing,
+        scheduling, and client communication strategies for residential and
+        commercial cleaning businesses.
+      published_at: "2026-06-20"
+      read_minutes: 6
+      category: Cleaning
+      featured: true
+
+    - slug: job-costing-for-contractors
+      title: "Job Costing for Contractors: Know Your Margins Before You Bid"
+      description: >
+        Learn how general contractors and specialty trades track labor,
+        materials, and overhead so every estimate protects profit — not just
+        wins the job.
+      published_at: "2026-06-10"
+      read_minutes: 8
+      category: Construction
+      featured: false
+
+    - slug: field-service-dispatch-best-practices
+      title: "Field Service Dispatch: 7 Ways to Get More Jobs Done Per Day"
+      description: >
+        Practical dispatch tactics for HVAC, plumbing, and electrical teams —
+        from first call to invoice without the chaos.
+      published_at: "2026-06-01"
+      read_minutes: 7
+      category: Field Services
+      featured: false
+
+case_studies:
+  cleaning:
+    - company: Sparkle Pro Cleaning
+      location: Austin, TX
+      team_size: "12 crew members"
+      headline: From spreadsheet chaos to 340 recurring contracts in 18 months
+      challenge: >
+        Owner Maria ran routes in Google Calendar and invoiced in QuickBooks.
+        Missed visits, double-booked crews, and no-shows cost an estimated
+        $4,200/month in lost revenue.
+      solution: >
+        Migrated recurring clients to schedule templates with automatic job
+        generation, crew mobile checklists, and a client portal for
+        reschedules and card-on-file payments.
+      results:
+        - label: Recurring contracts
+          value: "340+"
+        - label: No-show rate
+          value: "-62%"
+        - label: Admin hours/week
+          value: "-15 hrs"
+      quote: >
+        We stopped firefighting the calendar and started selling maintenance
+        plans. Recurring revenue finally feels predictable.
+      author: Maria Gonzalez, Owner
+
+  construction:
+    - company: RidgeLine Builders
+      location: Denver, CO
+      team_size: "8 field + 3 office"
+      headline: Job costing caught a $18K overrun before the client noticed
+      challenge: >
+        PMs tracked budgets in spreadsheets disconnected from timesheets and
+        AP. Two active remodels were trending 12% over budget with no early
+        warning until month-end.
+      solution: >
+        Rolled out cost-code budgets tied to daily labor entries and material
+        POs. Weekly job reviews with percent-complete vs. spend dashboards for
+        every active project.
+      results:
+        - label: Budget variance caught early
+          value: "100%"
+        - label: Change order capture
+          value: "+28%"
+        - label: Gross margin on fixed-price jobs
+          value: "+4.2 pts"
+      quote: >
+        We saw the slide on week three, not week twelve. That one job paid for
+        the platform for the year.
+      author: James Whitfield, Project Manager
+
+  field-services:
+    - company: Summit HVAC & Plumbing
+      location: Phoenix, AZ
+      team_size: "22 technicians"
+      headline: Same-day invoicing lifted cash collection from 34 to 11 days
+      challenge: >
+        Technicians left paper work orders at the shop; billing lagged 3–5 days.
+        Parts usage was under-billed and maintenance agreement renewals slipped
+        through the cracks.
+      solution: >
+        Mobile work orders with checklists, photo capture, and parts logging.
+        Dispatch board with skill-based routing and automated post-visit
+        invoices with payment links.
+      results:
+        - label: Days to collect
+          value: "11 avg"
+        - label: Jobs completed/day/tech
+          value: "+1.4"
+        - label: Maintenance renewals
+          value: "+41%"
+      quote: >
+        Techs collect payment before they leave the driveway. The office
+        stopped playing catch-up every Friday.
+      author: Derek Chen, Operations Director
+
+# -----------------------------------------------------------------------------
+# Marketing stub pages — /about, /security, /changelog, /referral
+# -----------------------------------------------------------------------------
+pages:
+  about:
+    meta_description: >
+      Learn about Innexar Field — premium field operations software for cleaning,
+      construction, and field service companies in the United States.
+    hero:
+      title: About Innexar Field
+      subtitle: Field operations, built for growth
+    intro: >
+      Innexar builds premium ERP software for field service businesses
+      across the United States. We believe contractors deserve tools as polished
+      as enterprise software — without enterprise complexity or pricing.
+    mission:
+      title: Our mission
+      subtitle: Help every field service business grow with confidence
+      body: >
+        From solo operators to established contractors with multiple crews,
+        Innexar Field provides one platform to win work, run operations, and
+        protect margins. We serve three core verticals — house cleaning,
+        construction, and field services — with purpose-built workflows that
+        respect how each trade actually works.
+    values:
+      - title: Built for contractors
+        description: >
+          We design for the people who run jobs, dispatch crews, and protect
+          margins — not generic office software.
+      - title: Margins matter
+        description: >
+          Every feature ties back to knowing your numbers. Job costing and
+          real-time reporting are core, not add-ons.
+      - title: Trust by default
+        description: >
+          Multitenant isolation with PostgreSQL RLS, RBAC, and US compliance
+          readiness from day one.
+    cta:
+      title: Join us on the journey
+      subtitle: Whether you are evaluating software or ready to switch, we are here to help.
+
+  security:
+    meta_description: >
+      How Innexar Field protects your data — encryption, tenant isolation, SOC 2
+      roadmap, and security practices for field service businesses.
+    hero:
+      title: Security & Trust
+      subtitle: Enterprise-grade protection for every tenant
+    sections:
+      - title: SOC 2 roadmap
+        body: >
+          We are pursuing SOC 2 Type II certification with a target audit window
+          in 2027. Controls cover access management, change management,
+          incident response, and vendor risk. Enterprise customers receive our
+          security packet and audit timeline under NDA.
+      - title: Encryption
+        body: >
+          Data is encrypted in transit with TLS 1.2+ and at rest using
+          AES-256. Database connections require SSL. Secrets are stored in a
+          dedicated secrets manager — never in source code or container images.
+      - title: Tenant isolation
+        body: >
+          Every table carries tenant_id. PostgreSQL row-level security (RLS)
+          enforces isolation at the database layer — not only in application
+          code. Cross-tenant access is blocked by default.
+      - title: Access control
+        body: >
+          Role-based access control (RBAC) scopes permissions by module and
+          action. Platform administrators use separate credentials and audit
+          trails. API keys are scoped per integration with rotation support.
+      - title: Incident response
+        body: >
+          We maintain a documented incident response plan with defined severity
+          levels, customer notification SLAs, and post-incident reviews. Report
+          security concerns to security@field.innexar.app.
+
+  changelog:
+    meta_description: >
+      Public product updates for Innexar Field — new features, improvements, and
+      fixes for cleaning, construction, and field service teams.
+    hero:
+      title: Changelog
+      subtitle: What we shipped recently
+    entries:
+      - date: "2026-06-20"
+        version: "0.2.0"
+        title: Marketing site & public API
+        highlights:
+          - Blog and industry case studies from config/marketing-content.yaml
+          - Public contact form and marketing content API
+          - Stub pages for About, Security, Changelog, and Referral
+      - date: "2026-06-01"
+        version: "0.1.0"
+        title: Platform foundation
+        highlights:
+          - Multitenant Go API with plugin architecture
+          - PostgreSQL RLS and RBAC across core modules
+          - Next.js web app with PWA field routes
+
+  referral:
+    meta_description: >
+      Refer a contractor to Innexar Field and earn rewards when they subscribe.
+      Help fellow field service businesses discover better operations software.
+    hero:
+      title: Refer a contractor
+      subtitle: Share Innexar Field with peers who run crews, jobs, and margins
+    sections:
+      - title: How it works
+        body: >
+          Share your unique referral link with another cleaning, construction,
+          or field service business. When they start a paid subscription and
+          remain active for 60 days, you both receive a credit on your next
+          invoice.
+      - title: Who qualifies
+        body: >
+          Referrals must be new Innexar Field customers — not existing accounts or
+          subsidiaries of your organization. Self-referrals and duplicate
+          signups are not eligible.
+      - title: Tracking
+        body: >
+          Referral attribution uses UTM parameters and signed referral codes
+          on signup. Credits appear automatically on your billing page once the
+          referred account meets the active-period requirement.
+    reward:
+      referrer_credit: "$50 account credit"
+      referee_credit: "$50 account credit"
+      active_days_required: 60
+    cta:
+      title: Get your referral link
+      subtitle: Available to active subscribers from the billing settings page.
+      fallback_href: /contact

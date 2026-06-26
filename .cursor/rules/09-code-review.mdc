@@ -1,0 +1,23 @@
+---
+description: Code review standards before merge — quality, security, tests
+alwaysApply: false
+---
+
+# Code Review Gate
+
+Before approving any PR:
+
+- [ ] Matches acceptance criteria and glossary terms
+- [ ] Tests added/updated; CI green
+- [ ] No secrets, no debug flags enabled in prod config
+- [ ] Tenant isolation considered
+- [ ] ADR/docs updated if architecture changed
+- [ ] Diff is focused — no unrelated changes
+
+Feedback format:
+- **Blocker:** must fix
+- **Should:** strongly recommend
+- **Nit:** optional
+
+Skill: `.cursor/skills/code-review/SKILL.md`  
+Agent: `@.cursor/agents/tech-lead-reviewer.md`

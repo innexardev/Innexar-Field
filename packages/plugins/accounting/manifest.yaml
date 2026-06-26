@@ -1,0 +1,25 @@
+id: accounting
+name: Accounting
+version: 1.0.0
+dependencies:
+  - invoicing
+industry_packs:
+  - cleaning
+  - construction
+  - field-services
+permissions:
+  - accounting.read
+  - accounting.write
+nav:
+  - label: Chart of Accounts
+    path: /accounting/chart
+    icon: chart
+  - label: Accounts Payable
+    path: /accounting/ap
+    icon: receipt
+  - label: Accounts Receivable
+    path: /accounting/ar
+    icon: credit-card
+  - label: Purchase Orders
+    path: /purchase-orders
+    icon: truck

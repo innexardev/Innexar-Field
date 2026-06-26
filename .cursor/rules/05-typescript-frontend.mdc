@@ -1,0 +1,18 @@
+---
+description: TypeScript and React conventions for web and packages
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# TypeScript
+
+- Strict mode; no `any` without justified comment.
+- Prefer `interface` for object shapes; `type` for unions.
+- Async: always handle rejection; use Result patterns for expected failures.
+- Import `@fieldforge/config` for brand colors — CSS vars `--brand-*`.
+- Shared types from `packages/sdk` (OpenAPI-generated when available).
+
+**React/Next.js:**
+- Server Components default; `'use client'` only when needed.
+- Colocate tests as `*.test.ts(x)` beside source.
+- Mobile routes under `app/(mobile)/m/` use `usePlatform()` — never raw Capacitor in components.

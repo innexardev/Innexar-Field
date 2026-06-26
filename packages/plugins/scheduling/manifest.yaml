@@ -1,0 +1,31 @@
+id: scheduling
+name: Scheduling
+version: 1.0.0
+dependencies:
+  - crm
+industry_packs:
+  - cleaning
+  - construction
+  - field-services
+permissions:
+  - scheduling.read
+  - scheduling.write
+nav:
+  - label: Jobs
+    path: /jobs
+    icon: calendar
+  - label: Schedule
+    path: /schedule
+    icon: clock
+  - label: Schedule Map
+    path: /schedule/map
+    icon: map-pin
+  - label: Crews
+    path: /crews
+    icon: users
+  - label: Routes
+    path: /routes
+    icon: clipboard-list
+  - label: Recurring
+    path: /recurring
+    icon: repeat

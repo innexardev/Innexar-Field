@@ -1,0 +1,17 @@
+---
+description: REST API design — versioning, idempotency, errors, OpenAPI
+globs: "apps/api/**"
+alwaysApply: false
+---
+
+# API Design
+
+- Prefix: `/api/v1/`; breaking changes → v2 + 6-month sunset.
+- REST nouns plural: `/clients`, `/estimates/{id}/accept`.
+- Errors: `{ "error": { "code", "message", "details" } }` + correct HTTP status.
+- **Idempotency:** `Idempotency-Key` header on POST payments, invoices, onboarding complete.
+- Pagination: `?page=&limit=`; max limit 100.
+- List endpoints: always filter by tenant (middleware).
+- Update `docs/api/openapi.yaml` when adding public routes.
+
+Skill: `.cursor/skills/api-endpoint/SKILL.md`

@@ -1,0 +1,16 @@
+id: expenses
+name: Expenses
+version: 1.0.0
+dependencies:
+  - scheduling
+industry_packs:
+  - cleaning
+  - construction
+  - field-services
+permissions:
+  - expenses.read
+  - expenses.write
+nav:
+  - label: Expenses
+    path: /expenses
+    icon: wallet

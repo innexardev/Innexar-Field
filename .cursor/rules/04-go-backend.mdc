@@ -1,0 +1,24 @@
+---
+description: Go backend conventions — Fiber, plugins, errors, context
+globs: "**/*.go"
+alwaysApply: false
+---
+
+# Go Backend
+
+**Layout:** `apps/api` gateway · `packages/core` kernel · `packages/plugins/*` modules.
+
+**Plugin interface:** `Name`, `RegisterRoutes`, `RegisterEvents`, `Migrations`, `Permissions`.
+
+- Pass `context.Context` as first param; respect cancellation.
+- Return domain errors typed; map to HTTP in handlers only.
+- DB: use repository pattern; transactions per aggregate.
+- Migrations: one folder per plugin; never break expand/contract.
+- Logging: structured JSON; include `tenant_id`, `request_id`.
+- External APIs: use `packages/core/resilience` (circuit breaker, timeout).
+
+```go
+// Handler: thin — parse, authorize, call service, respond
+// Service: business logic + domain events
+// Repo: SQL only
+```

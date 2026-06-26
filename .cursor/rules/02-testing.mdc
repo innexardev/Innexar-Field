@@ -1,0 +1,25 @@
+---
+description: Tests required for all production code — unit, integration, tenant isolation
+globs: "**/*.{go,ts,tsx}"
+alwaysApply: false
+---
+
+# Testing Required
+
+Every feature/module ships with tests. No merge without them.
+
+| Layer | Tool | Minimum |
+|-------|------|---------|
+| Go unit | `go test` | Domain logic, validators |
+| Go integration | testcontainers | API + RLS leak tests |
+| TS unit | Jest/Vitest | hooks, utils, config |
+| E2E | Playwright | Critical paths per module |
+
+**Rules:**
+- Test behavior, not implementation details.
+- Multitenant: always test tenant A cannot read tenant B data.
+- Billing: idempotency key replay returns same result.
+- Name tests: `TestEstimate_Accept_CreatesJob`.
+- Run tests before marking task done.
+
+Skill: `.cursor/skills/write-tests/SKILL.md`

@@ -16,46 +16,183 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Validate YAML config
-        run: npm run validate:config
-
-      - name: Validate documentation structure
-        run: npm run validate:docs
-
-      - name: Lint markdown links
-        run: npm run validate:markdown
+      - run: npm ci
+      - run: npm run validate
 
   typecheck:
-    name: Typecheck packages
+    name: Typecheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: package-lock.json
-
       - run: npm ci
       - run: npm run typecheck
 
-  # Placeholder — ativar quando apps/api existir
-  # test-go:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-go@v5
-  #       with:
-  #         go-version: "1.22"
-  #     - run: go test ./...
+  test-go:
+    name: Go tests
+    runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - run: go test ./packages/... -race -count=1
+
+  test-go-integration:
+    name: Go integration tests
+    runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - run: go test -tags integration -p 1 ./packages/core/identity/...
+      - run: go test -tags integration ./packages/core/platform/... -race -count=1
+      - run: go test -tags integration -p 1 ./packages/plugins/crm/... ./packages/plugins/dispatch/... ./packages/plugins/scheduling/... -race -count=1
+      - run: go test -tags integration -run TenantIsolation ./packages/plugins/accounting/... -race -count=1
+      - run: go test -tags integration -run TenantIsolation ./packages/plugins/invoicing/... -race -count=1
+      - run: go test -tags integration -run TenantIsolation ./packages/plugins/crm/... -race -count=1
+      - run: go test -tags integration -run TenantIsolation ./packages/plugins/estimating/... -race -count=1
+      - run: go test -tags integration -run TenantIsolation ./packages/integrations/... -race -count=1
+      - run: go test -tags integration -run QuoteAccepted ./packages/plugins/scheduling/... -race -count=1
+      - run: go test -tags integration -run TenantIsolation ./packages/plugins/payroll/... -race -count=1
+      - run: go test -tags integration -run TenantIsolation ./packages/plugins/expenses/... -race -count=1
+      - run: go test -tags integration -run TenantIsolation ./packages/plugins/dispatch/... -race -count=1
+      - run: go test -tags integration -run TenantIsolation ./packages/plugins/construction/... -race -count=1
+      - run: go test -tags integration -run TenantIsolation ./packages/plugins/cleaning/... -race -count=1
+      - run: go test -tags integration -run TenantIsolation ./packages/plugins/jobcosting/... -race -count=1
+
+  build-api:
+    name: Build API
+    runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - run: go build -o /tmp/api ./apps/api/cmd/server/
+
+  build-api-image:
+    name: Build API Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: false
+          load: true
+          tags: fieldforge-api:ci
+
+  build-web-image:
+    name: Build web Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: false
+          load: true
+          tags: fieldforge-web:ci
+          build-args: |
+            NEXT_PUBLIC_API_URL=http://localhost:8081/api/v1
+
+  build-marketing-image:
+    name: Build marketing Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/marketing/Dockerfile
+          push: false
+          load: true
+          tags: fieldforge-marketing:ci
+          build-args: |
+            NEXT_PUBLIC_API_URL=http://localhost:8081/api/v1
+            NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+  build-frontend:
+    name: Build frontend apps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run build -w @fieldforge/marketing
+      - run: npm run build -w @fieldforge/web
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8081/api/v1
+
+  test-e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: local
+      CI: "1"
+      E2E_TEST: "1"
+    needs: [validate, typecheck, build-frontend]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: fieldforge
+          POSTGRES_PASSWORD: fieldforge
+          POSTGRES_DB: fieldforge
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fieldforge"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Migrate and seed platform admin
+        run: make migrate && make seed-platform-admin EMAIL=admin@fieldforge.local PASSWORD='Admin123!'
+        env:
+          DATABASE_URL: postgres://fieldforge:fieldforge@localhost:5432/fieldforge?sslmode=disable
+      - run: npm run test:e2e
+        env:
+          DATABASE_URL: postgres://fieldforge:fieldforge@localhost:5432/fieldforge?sslmode=disable
+          JWT_SECRET: ci-test-secret
+          PLAYWRIGHT_API_URL: http://127.0.0.1:8081
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+          PLATFORM_ADMIN_EMAIL: admin@fieldforge.local
+          PLATFORM_ADMIN_PASSWORD: Admin123!

@@ -1,0 +1,27 @@
+id: cleaning
+name: Cleaning
+version: 1.0.0
+dependencies:
+  - crm
+  - scheduling
+industry_packs:
+  - cleaning
+permissions:
+  - cleaning.read
+  - cleaning.write
+nav:
+  - label: Today's Cleans
+    path: /cleaning/jobs
+    icon: calendar
+  - label: Quality Review
+    path: /cleaning/qc
+    icon: clipboard-list
+  - label: Supplies
+    path: /cleaning/supplies
+    icon: receipt
+  - label: Recurring Cleans
+    path: /recurring-cleans
+    icon: repeat
+  - label: Clean Phases
+    path: /clean-phases
+    icon: layers

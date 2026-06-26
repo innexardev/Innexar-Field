@@ -1,3 +1,12 @@
-export type { AppConfig, BrandConfig, BrandColors, DebugConfig, PricingConfig, PricingPlan } from "./types.js";
-export { brandCssVars, getPlan, isDebugEnabled, isDebugFeature } from "./types.js";
+export type { AppConfig, BrandConfig, BrandColors, DebugConfig, IntegrationConfig, IntegrationConnectionStatus, PricingConfig, PricingPlan } from "./types.js";
+export {
+  brandAppId,
+  brandCssVars,
+  brandMetadataIcons,
+  brandUrlScheme,
+  getPlan,
+  isDebugEnabled,
+  isDebugFeature,
+  isIntegrationMockMode,
+} from "./types.js";
 export { getConfig, loadConfig, reloadConfig } from "./load.js";

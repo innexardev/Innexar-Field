@@ -1,0 +1,19 @@
+id: invoicing
+name: Invoicing
+version: 1.0.0
+dependencies:
+  - crm
+industry_packs:
+  - cleaning
+  - construction
+  - field-services
+permissions:
+  - invoicing.read
+  - invoicing.write
+nav:
+  - label: Invoices
+    path: /invoices
+    icon: receipt
+  - label: Payments
+    path: /payments
+    icon: wallet

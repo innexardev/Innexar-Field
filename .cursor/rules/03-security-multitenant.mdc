@@ -1,0 +1,18 @@
+---
+description: Security and multitenant isolation — RLS, auth, OWASP, secrets
+globs: "**/*.{go,ts,tsx,yaml}"
+alwaysApply: false
+---
+
+# Security & Multitenant
+
+Read `docs/security/threat-model.md` before auth/billing/PII work.
+
+- **RLS:** every table has `tenant_id`; policies enforced in PostgreSQL.
+- **JWT:** `tenant_id` from token only; middleware sets session var.
+- **Input:** validate all POST/PATCH bodies; max body size; sanitize outputs.
+- **Secrets:** env vars only; never log tokens, passwords, or full PAN.
+- **Rate limit:** public endpoints (signup, login) — see `api-security.md`.
+- **Debug:** `bypass_auth` never in staging/prod configs.
+
+New endpoints handling money or PII → invoke security-auditor agent.

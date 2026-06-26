@@ -1,0 +1,23 @@
+---
+description: Core FieldForge identity — stack, monorepo paths, non-negotiables
+alwaysApply: true
+---
+
+# FieldForge Core
+
+Multitenant ERP (US): cleaning, construction, field services.
+
+**Paths:** `projects/fieldforge/` — config `config/app.config.yaml`, docs `docs/`, packages `packages/`.
+
+**Stack:** Go API (plugin-play) · Next.js web · PostgreSQL RLS · `@fieldforge/config`.
+
+**Always:**
+- Use ubiquitous language from `docs/domain/glossary.md` (Job ≠ Work Order ≠ Project).
+- Include `tenant_id` in all persistence; never trust client-only tenant headers.
+- Minimal diff; match existing patterns; no drive-by refactors.
+- Conventional Commits: `feat:`, `fix:`, `test:`, `docs:`, `chore:`.
+
+**Never:**
+- Hardcode brand name, prices, or colors — use config.
+- Commit secrets, `.env`, or API keys.
+- Push to `main` without PR + CI green.

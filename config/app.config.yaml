@@ -1,5 +1,5 @@
 # =============================================================================
-# FieldForge — Configuração Central Dinâmica
+# Innexar Field — Configuração Central Dinâmica
 # =============================================================================
 # Fonte única de verdade para brand, preços, features e debug.
 # Altere aqui sem redeploy de código — apps/web e apps/api leem este arquivo.
@@ -15,9 +15,9 @@ environment: development  # development | staging | production
 # Brand — nome e identidade podem mudar a qualquer momento
 # -----------------------------------------------------------------------------
 brand:
-  # Nome de trabalho — troque quando decidir o nome final
-  name: FieldForge
-  legal_name: FieldForge Inc.
+  name: Innexar Field
+  short_name: Innexar
+  legal_name: Innexar
   tagline: Field operations, built for growth
   description: >
     Premium ERP for house cleaning, construction, and field services
@@ -25,10 +25,11 @@ brand:
 
   # Domínios (sem https://)
   domains:
-    marketing: fieldforge.com
-    app: app.fieldforge.com
-    api: api.fieldforge.com
-    docs: docs.fieldforge.com
+    marketing: field.innexar.app
+    app: app.field.innexar.app
+    api: api.field.innexar.app
+    admin: admin.field.innexar.app
+    docs: docs.field.innexar.app
 
   # Identidade visual — premium, profissional, fácil acesso
   colors:
@@ -67,18 +68,12 @@ brand:
     scale: compact  # compact | comfortable | spacious
 
   logo:
-    # Caminhos relativos a apps/web/public ou CDN
-    light: /brand/logo-light.svg
-    dark: /brand/logo-dark.svg
-    icon: /brand/icon.svg
-    favicon: /brand/favicon.ico
+    wordmark: /brand/innexarfield.svg
+    icon: /brand/ifavicon.svg
+    favicon: /brand/ifavicon.svg
 
-  # Nomes alternativos em avaliação (referência interna)
   name_candidates:
-    - FieldForge
-    - ServiceStack US
-    - CleanBuild Pro
-    - BuildClean OS
+    - Innexar Field
 
 # -----------------------------------------------------------------------------
 # Pricing — planos SaaS (valores em USD/mês, cobrança mensal)
@@ -222,6 +217,18 @@ pricing:
       price_monthly: 49
 
 # -----------------------------------------------------------------------------
+# Security — rate limits and API hardening (see docs/security/api-security.md)
+# -----------------------------------------------------------------------------
+security:
+  rate_limit:
+    public:
+      requests: 20
+      window_seconds: 60
+    tenant:
+      requests: 1000
+      window_seconds: 60
+
+# -----------------------------------------------------------------------------
 # Debug — master switch + features granulares (desenvolvimento)
 # -----------------------------------------------------------------------------
 debug:
@@ -240,6 +247,7 @@ debug:
     api_timing: true             # headers X-Response-Time
     mock_stripe: true            # pagamentos simulados, sem cobrança real
     mock_avalara: true           # sales tax fixo 8.25%
+    mock_quickbooks: true        # OAuth simulado, sem credenciais Intuit
     skip_email_send: true        # emails logados, não enviados
     skip_sms_send: true
     verbose_sql: false           # queries SQL no log (cuidado: dados sensíveis)
@@ -255,6 +263,100 @@ debug:
   debug_tenants: []
 
 # -----------------------------------------------------------------------------
+# Industry packs — onboarding wizard module provisioning
+# -----------------------------------------------------------------------------
+industry_packs:
+  cleaning:
+    id: cleaning
+    name: House Cleaning
+    description: Recurring cleans, crews, and client portal
+    core_modules:
+      - crm
+      - estimating
+      - scheduling
+      - invoicing
+    plugins:
+      - cleaning
+    optional:
+      - dispatch
+      - expenses
+      - payroll
+  construction:
+    id: construction
+    name: Construction
+    description: Estimates, job costing, change orders
+    core_modules:
+      - crm
+      - estimating
+      - scheduling
+      - invoicing
+    plugins:
+      - construction
+      - job-costing
+    optional:
+      - dispatch
+      - expenses
+      - payroll
+  field-services:
+    id: field-services
+    name: Field Services
+    description: Dispatch, work orders, and mobile PWA
+    core_modules:
+      - crm
+      - estimating
+      - scheduling
+      - invoicing
+    plugins:
+      - dispatch
+      - accounting
+    optional:
+      - expenses
+      - job-costing
+      - payroll
+
+# -----------------------------------------------------------------------------
+# Integrations — external vendors (ACL stubs; secrets via env)
+# -----------------------------------------------------------------------------
+integrations:
+  quickbooks:
+    id: quickbooks
+    name: QuickBooks Online
+    enabled: true
+    category: accounting
+    description: Sync customers, invoices, and payments with QuickBooks Online
+    oauth:
+      authorize_url: https://appcenter.intuit.com/connect/oauth2
+      scopes:
+        - com.intuit.quickbooks.accounting
+    env:
+      client_id: QUICKBOOKS_CLIENT_ID
+      client_secret: QUICKBOOKS_CLIENT_SECRET
+    plans: [pro, enterprise]
+
+  avalara:
+    id: avalara
+    name: Avalara AvaTax
+    enabled: true
+    category: tax
+    description: Automated US sales tax calculation on quotes and invoices
+    mock_rate_percent: 8.25
+    env:
+      account_id: AVALARA_ACCOUNT_ID
+      license_key: AVALARA_LICENSE_KEY
+    plans: [business, pro, enterprise]
+
+  stripe_connect:
+    id: stripe_connect
+    name: Stripe Connect
+    enabled: true
+    category: payments
+    description: Accept card payments from customers and receive payouts
+    onboarding_return_path: /settings/integrations
+    env:
+      secret_key: STRIPE_SECRET_KEY
+    plans: [starter, business, pro, enterprise]
+
+# -----------------------------------------------------------------------------
 # Feature flags — rollout gradual sem deploy
 # -----------------------------------------------------------------------------
 features:
@@ -265,22 +367,46 @@ features:
   background_gps: false
 
 # -----------------------------------------------------------------------------
+# i18n — locales for web, marketing, and admin (next-intl)
+# -----------------------------------------------------------------------------
+i18n:
+  default_locale: en
+  locales:
+    - en
+    - es
+    - pt-BR
+
+# -----------------------------------------------------------------------------
 # Acessibilidade e UX premium
 # -----------------------------------------------------------------------------
 ux:
   reduce_motion: false           # respeitar prefers-reduced-motion do OS
-  default_locale: en-US
+  default_locale: en
   supported_locales:
-    - en-US
-    - es-US
+    - en
+    - es
+    - pt-BR
   date_format: MM/DD/YYYY
   time_format: 12h             # 12h | 24h
   first_day_of_week: 0           # 0=Sunday (US)
 
 # -----------------------------------------------------------------------------
+# Mobile — Capacitor shell (iOS/Android) + PWA deep links
+# -----------------------------------------------------------------------------
+mobile:
+  capacitor:
+    splash:
+      launch_show_duration_ms: 2000
+      background_color: "#0F172A"   # brand.colors.primary
+      show_spinner: false
+    deep_links:
+      path_prefix: /m
+      jobs_path: /m/jobs
+
+# -----------------------------------------------------------------------------
 # Contato e suporte (landing + app)
 # -----------------------------------------------------------------------------
 contact:
-  support_email: support@fieldforge.com
-  sales_email: sales@fieldforge.com
+  support_email: support@field.innexar.app
+  sales_email: sales@field.innexar.app
   phone: "+1 (555) 000-0000"

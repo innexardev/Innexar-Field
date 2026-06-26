@@ -1,0 +1,22 @@
+id: estimating
+name: Estimating
+version: 1.0.0
+dependencies:
+  - crm
+industry_packs:
+  - cleaning
+  - construction
+  - field-services
+permissions:
+  - estimating.read
+  - estimating.write
+nav:
+  - label: Estimates
+    path: /estimates
+    icon: file-text
+  - label: Price book
+    path: /price-book
+    icon: calculator
+  - label: Takeoff
+    path: /takeoff
+    icon: clipboard-list

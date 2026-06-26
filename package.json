@@ -4,16 +4,35 @@
   "private": true,
   "description": "Premium multitenant ERP for field services — US market",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
     "validate:config": "node scripts/validate-config.mjs",
     "validate:docs": "node scripts/validate-docs.mjs",
     "validate:markdown": "node scripts/validate-markdown.mjs",
     "validate": "npm run validate:config && npm run validate:docs && npm run validate:markdown",
-    "typecheck": "tsc -p packages/config/tsconfig.json --noEmit"
+    "typecheck": "tsc -p packages/config/tsconfig.json --noEmit && tsc -p packages/i18n/tsconfig.json --noEmit && tsc -p packages/platform/tsconfig.json --noEmit && tsc -p packages/sdk/tsconfig.json --noEmit && tsc -p packages/ui/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.typecheck.json --noEmit && tsc -p apps/marketing/tsconfig.typecheck.json --noEmit && tsc -p apps/admin/tsconfig.typecheck.json --noEmit",
+    "dev:api": "make api",
+    "dev:web": "npm run dev -w @fieldforge/web",
+    "start:web": "npm run start -w @fieldforge/web",
+    "dev:marketing": "npm run dev -w @fieldforge/marketing",
+    "dev:admin": "npm run dev -w @fieldforge/admin",
+    "build:web": "npm run build --prefix apps/web",
+    "build:marketing": "npm run build --prefix apps/marketing",
+    "build:admin": "npm run build --prefix apps/admin",
+    "start:e2e:web": "npm run build --prefix apps/web && npm run start --prefix apps/web",
+    "cap:sync": "npm run cap:sync -w @fieldforge/web",
+    "cap:open:ios": "npm run cap:open:ios -w @fieldforge/web",
+    "cap:open:android": "npm run cap:open:android -w @fieldforge/web",
+    "mobile:build": "npm run mobile:build -w @fieldforge/web",
+    "test:go": "go test ./... -race -count=1",
+    "test:go:integration": "go test -tags integration ./packages/plugins/crm/... -race -count=1",
+    "test:e2e": "playwright test",
+    "test:smoke:platform": "PLAYWRIGHT_EXTERNAL=1 playwright test tests/e2e/platform-admin-smoke.spec.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2",
     "yaml": "^2.7.0"

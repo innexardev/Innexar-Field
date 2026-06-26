@@ -1,0 +1,21 @@
+---
+description: Clean code standards — SOLID, DRY, small functions, naming
+alwaysApply: true
+---
+
+# Clean Code
+
+- Functions do one thing; prefer &lt;40 lines; extract when unclear.
+- Names from `docs/domain/glossary.md` — no abbreviations except `id`, `url`, `api`.
+- No commented-out code; no TODO without issue reference.
+- Errors: wrap with context; never empty `catch` / `_ = err`.
+- Dependencies point inward (domain does not import Fiber/Next.js).
+- Delete dead code; don't leave "just in case" branches.
+- Comments only for non-obvious business rules or invariants.
+
+**Go:** accept interfaces, return structs. **TS:** explicit types on public APIs.
+
+```go
+// BAD: handler with SQL + business logic mixed
+// GOOD: service.Estimate.Accept() → repository + events
+```

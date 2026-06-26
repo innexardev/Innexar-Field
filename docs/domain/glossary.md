@@ -57,7 +57,20 @@
 | **Progress Billing** | Fatura por % de conclusão |
 | **WIP** | Work in Progress — receita/custo não faturado |
 
+## Payroll (US)
+
+| Termo | Definição |
+|-------|-----------|
+| **Employee** | Pessoa na folha do tenant (W-2 ou 1099 contractor) |
+| **Timesheet** | Horas registradas por employee e job, sujeitas a aprovação |
+| **Payroll Run** | Processamento de um período de pagamento (gross, withholdings, net) |
+| **Tax Profile** | Configuração de retenção federal por employee (W-4: filing status + allowances) |
+| **Filing Status** | Status de declaração IRS no W-4 (single, married filing jointly, etc.) |
+| **Allowances** | Número de allowances no W-4 usado para calcular retenção federal (stub) |
+
 ## Papéis (RBAC)
+
+### Tenant (workspace)
 
 | Role | Escopo |
 |------|--------|
@@ -68,6 +81,14 @@
 | **accountant** | Financeiro e relatórios |
 | **client** | Portal self-service |
 | **sub-contractor** | Work orders atribuídos |
+
+### Platform (uber-admin)
+
+| Role | Escopo |
+|------|--------|
+| **super_admin** | Operações cross-tenant: config global, registry, stats, audit (não confundir com tenant `admin`) |
+
+Conta em `platform_admins`, JWT sem `tenant_id`. Ver [ADR-0005](../adr/0005-platform-admin-boundary.md).
 
 ## Eventos de domínio (nomes canônicos)
 

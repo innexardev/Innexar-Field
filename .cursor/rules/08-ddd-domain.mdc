@@ -1,0 +1,20 @@
+---
+description: DDD domain alignment — aggregates, events, glossary terms
+globs: "docs/domain/**"
+alwaysApply: false
+---
+
+# Domain-Driven Design
+
+Before coding domain logic, read:
+- `docs/domain/glossary.md` — terms are law
+- `docs/domain/aggregates.md` — transaction boundaries
+- `docs/domain/context-map.md` — no cross-context table access
+
+- Publish cross-context changes via domain events + outbox only.
+- Aggregates: optimistic locking via `version` field.
+- Financial flows: saga per ADR-0003.
+
+If introducing a new term → update glossary in same PR.
+
+Agent: `@.cursor/agents/product-analyst.md`

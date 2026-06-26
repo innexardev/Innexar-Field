@@ -1,0 +1,23 @@
+---
+description: New plugin module creation — manifest, tests, migrations, review gate
+globs: "packages/plugins/**"
+alwaysApply: false
+---
+
+# Plugin Module
+
+Creating or modifying a plugin requires the full module workflow.
+
+**Checklist:**
+1. `manifest.yaml` — id, dependencies, industry_packs, permissions, nav
+2. ADR if new external integration or context boundary
+3. Migrations with `tenant_id` + RLS policies
+4. Routes under `/api/v1/{plugin}/`
+5. Domain events documented in `docs/domain/events.md`
+6. Unit + integration tests including tenant isolation
+7. Tech-lead review before merge
+
+**Naming:** plugin id = kebab-case folder name.
+
+Skill: `.cursor/skills/create-plugin-module/SKILL.md`  
+Agent: `@.cursor/agents/tech-lead-reviewer.md`

@@ -1,4 +1,4 @@
-# FieldForge — Documentação do Projeto
+# Innexar Field — Documentação do Projeto
 
 Índice central da documentação técnica e de engenharia.
 
@@ -20,6 +20,20 @@
 | [adr/0002-multitenant-rls.md](adr/0002-multitenant-rls.md) | Multitenant com RLS |
 | [adr/0003-event-outbox-saga.md](adr/0003-event-outbox-saga.md) | Outbox + sagas financeiras |
 | [adr/0004-resilience-integrations.md](adr/0004-resilience-integrations.md) | Circuit breaker e timeouts |
+| [adr/0005-platform-admin-boundary.md](adr/0005-platform-admin-boundary.md) | Platform Admin boundary e super-admin auth |
+
+## Módulos
+
+| Documento | Descrição | Status |
+|-----------|-----------|--------|
+| [modules/onboarding.md](modules/onboarding.md) | Onboarding wizard — `packages/core/onboarding`, `apps/web/app/onboarding` | Implementado |
+| [modules/platform-admin.md](modules/platform-admin.md) | Platform Admin — `packages/core/platform`, `apps/admin` | Implementado |
+
+## Testes
+
+| Item | Status |
+|------|--------|
+| DT-04 TenantIsolation | Completo — 11 plugins + integrations no CI (`.github/workflows/ci.yml`) |
 
 ## Segurança
 

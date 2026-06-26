@@ -1,16 +1,181 @@
 openapi: 3.1.0
 info:
   title: FieldForge API
-  version: 0.1.0
+  version: 0.3.0
   description: |
     Multitenant ERP API for field services (US).
-    Full spec generated from Go handlers — Fase 4 development.
+    Protected routes require `Authorization: Bearer <token>` and `X-Tenant-ID` header.
+
+    ## Cross-cutting middleware
+
+    - **Rate limiting:** Public routes (`/auth/signup`, `/auth/login`) are limited per client IP.
+      Authenticated routes are limited per tenant. Responses include `X-RateLimit-Limit`,
+      `X-RateLimit-Remaining`, and `X-RateLimit-Reset`. HTTP 429 includes `Retry-After`.
+    - **Idempotency:** `POST` requests on protected routes accept optional `Idempotency-Key`.
+      Replays within 24h return the cached response with `Idempotency-Replayed: true`.
+    - **Domain events:** Mutations publish to the transactional outbox (`domain_events`);
+      a background worker marks events `processed` after dispatch.
 
 servers:
   - url: https://api.fieldforge.com/api/v1
     description: Production
-  - url: http://localhost:8080/api/v1
-    description: Local
+  - url: http://localhost:8081/api/v1
+    description: Local API
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    TenantID:
+      name: X-Tenant-ID
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: |
+        Optional UUID for safe POST retries. When present, duplicate requests return
+        the original response (HTTP 2xx) with `Idempotency-Replayed: true`.
+      schema:
+        type: string
+        format: uuid
+  responses:
+    RateLimited:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema: { type: integer }
+        X-RateLimit-Limit:
+          schema: { type: integer }
+        X-RateLimit-Remaining:
+          schema: { type: integer }
+        X-RateLimit-Reset:
+          schema: { type: integer, description: Unix timestamp when the window resets }
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  code: { type: string, example: HTTP_429 }
+                  message: { type: string, example: rate limit exceeded }
+    IdempotentReplay:
+      description: Cached response from a prior request with the same Idempotency-Key
+      headers:
+        Idempotency-Replayed:
+          schema: { type: string, enum: ["true"] }
+  schemas:
+    PublicPlan:
+      type: object
+      required: [id, name, description]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        price_monthly: { type: number, nullable: true }
+        price_monthly_cents: { type: integer, nullable: true }
+        price_from: { type: number, nullable: true }
+        badge: { type: string, nullable: true }
+        features:
+          type: array
+          items: { type: string }
+    PlatformPlan:
+      type: object
+      required: [id, name, description, active, sort_order]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        price_monthly_cents: { type: integer, nullable: true }
+        stripe_price_id: { type: string }
+        features: {}
+        active: { type: boolean }
+        sort_order: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    PlatformPromotion:
+      type: object
+      required: [id, code, active, redemption_count]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        description: { type: string }
+        discount_percent: { type: integer, nullable: true }
+        discount_cents: { type: integer, nullable: true }
+        plan_id: { type: string }
+        starts_at: { type: string, format: date-time, nullable: true }
+        ends_at: { type: string, format: date-time, nullable: true }
+        max_redemptions: { type: integer, nullable: true }
+        redemption_count: { type: integer }
+        active: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    LandingContentBlock:
+      type: object
+      required: [id, section, block_key, content, active, sort_order]
+      properties:
+        id: { type: string, format: uuid }
+        section:
+          type: string
+          enum: [hero, features, pricing, footer]
+        block_key: { type: string }
+        content: { type: object, additionalProperties: true }
+        active: { type: boolean }
+        sort_order: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    PlatformConfig:
+      type: object
+      properties:
+        brand_overrides: { type: object, additionalProperties: true }
+        feature_flags:
+          type: object
+          additionalProperties: { type: boolean }
+        updated_at: { type: string, format: date-time }
+    PlatformTenant:
+      type: object
+      required: [id, slug, name, industry_pack, plan_id, subscription_status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        industry_pack: { type: string }
+        plan_id: { type: string }
+        subscription_status: { type: string }
+        suspended_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    PlatformStats:
+      type: object
+      properties:
+        total_tenants: { type: integer }
+        active_tenants: { type: integer }
+        suspended_tenants: { type: integer }
+        signups_last_30_days: { type: integer }
+        tenants_by_plan:
+          type: object
+          additionalProperties: { type: integer }
+        total_plans: { type: integer }
+        active_promotions: { type: integer }
+    PlatformAuditEntry:
+      type: object
+      required: [id, action, resource_type, details, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        admin_id: { type: string, format: uuid, nullable: true }
+        action: { type: string }
+        resource_type: { type: string }
+        resource_id: { type: string, nullable: true }
+        details: { type: object, additionalProperties: true }
+        created_at: { type: string, format: date-time }
 
 paths:
   /health:
@@ -23,7 +188,7 @@ paths:
 
   /health/ready:
     get:
-      summary: Readiness probe (DB, Redis, queue)
+      summary: Readiness probe (DB)
       tags: [System]
       responses:
         "200":
@@ -39,6 +204,44 @@ paths:
         "200":
           description: Public configuration
 
+  /public/quotes/{token}:
+    get:
+      summary: Client-facing quote by public token (no auth)
+      tags: [Estimating]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public quote with line items and company name
+        "404":
+          description: Quote not found or not shareable
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /public/quotes/{token}/accept:
+    post:
+      summary: Accept quote from client portal (no auth)
+      tags: [Estimating]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Quote accepted
+        "400":
+          description: Cannot accept
+        "404":
+          description: Quote not found
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
   /industry-packs:
     get:
       summary: List industry packs for onboarding
@@ -47,4 +250,1554 @@ paths:
         "200":
           description: Industry packs
 
-# TODO Fase 4: generate full spec from code (swaggo/swag or oapi-codegen)
+  /plugins:
+    get:
+      summary: List registered plugins
+      tags: [System]
+      responses:
+        "200":
+          description: Plugin manifests
+
+  /auth/signup:
+    post:
+      summary: Create tenant and owner account
+      tags: [Auth]
+      description: Rate limited per client IP (default 20 req/min).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [company_name, email, password, industry_pack]
+              properties:
+                company_name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string }
+                industry_pack: { type: string }
+                plan_id: { type: string }
+      responses:
+        "201":
+          description: Account created with JWT
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /auth/login:
+    post:
+      summary: Authenticate user
+      tags: [Auth]
+      description: Rate limited per client IP (default 20 req/min).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        "200":
+          description: JWT token
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /auth/me:
+    get:
+      summary: Current user profile
+      tags: [Auth]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: User profile
+
+  /users:
+    get:
+      summary: List workspace users for the current tenant
+      tags: [Auth]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Tenant-scoped user list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        email: { type: string, format: email }
+                        role: { type: string }
+                        first_name: { type: string }
+                        last_name: { type: string }
+                        created_at: { type: string, format: date-time }
+
+  /nav:
+    get:
+      summary: Aggregated navigation items from enabled plugins
+      tags: [System]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Nav items
+
+  /billing/checkout:
+    post:
+      summary: Create Stripe checkout session (mock when debug.mock_stripe=true)
+      tags: [Billing]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                plan_id: { type: string }
+                success_url: { type: string }
+                cancel_url: { type: string }
+      responses:
+        "200":
+          description: Checkout session with checkout_url
+
+  /billing/webhook:
+    post:
+      summary: Stripe webhook receiver
+      tags: [Billing]
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          schema: { type: string }
+      responses:
+        "200":
+          description: Event received
+
+  /crm/customers:
+    get:
+      summary: List customers
+      tags: [CRM]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Customer list
+    post:
+      summary: Create customer
+      tags: [CRM]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      responses:
+        "201":
+          description: Customer created
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /crm/leads:
+    get:
+      summary: List leads
+      tags: [CRM]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Lead list
+    post:
+      summary: Create lead
+      tags: [CRM]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "201":
+          description: Lead created
+
+  /crm/leads/{id}:
+    get:
+      summary: Get lead
+      tags: [CRM]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Lead detail
+    patch:
+      summary: Update lead status or contact info
+      tags: [CRM]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Updated lead
+
+  /crm/leads/board:
+    get:
+      summary: Leads pipeline board — columns grouped by status
+      tags: [CRM]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Board with columns, summary counts, and flat lead list
+
+  /crm/customers/{id}:
+    get:
+      summary: Get customer
+      tags: [CRM]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Customer detail
+    patch:
+      summary: Update customer
+      tags: [CRM]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Updated customer
+
+  /crm/customers/{id}/properties:
+    get:
+      summary: List customer properties
+      tags: [CRM]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Property list
+
+  /crm/contracts:
+    get:
+      summary: List contracts
+      tags: [CRM]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Contract list
+
+  /crm/contracts/templates:
+    get:
+      summary: List contract templates
+      tags: [CRM]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Standard US service agreement templates for the tenant
+
+  /payroll/employees:
+    get:
+      summary: List employees
+      tags: [Payroll]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Employee list
+    post:
+      summary: Create employee
+      tags: [Payroll]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, last_name]
+              properties:
+                first_name: { type: string }
+                last_name: { type: string }
+                email: { type: string }
+                employment_type: { type: string, enum: [w2, "1099"] }
+                hourly_rate_cents: { type: integer, format: int64 }
+      responses:
+        "201":
+          description: Employee created
+
+  /payroll/timesheets:
+    get:
+      summary: List timesheets
+      tags: [Payroll]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Timesheet list
+    post:
+      summary: Create timesheet entry
+      tags: [Payroll]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "201":
+          description: Timesheet created
+
+  /payroll/timesheets/{id}/submit:
+    post:
+      summary: Submit timesheet for approval
+      tags: [Payroll]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Timesheet submitted
+
+  /payroll/timesheets/{id}/approve:
+    post:
+      summary: Approve submitted timesheet
+      tags: [Payroll]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Timesheet approved
+
+  /payroll/runs:
+    get:
+      summary: List payroll runs
+      tags: [Payroll]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Payroll run list
+    post:
+      summary: Create payroll run draft
+      tags: [Payroll]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "201":
+          description: Payroll run created
+
+  /payroll/runs/{id}/submit:
+    post:
+      summary: Submit payroll run for processing
+      tags: [Payroll]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Payroll run submitted
+
+  /payroll/tax-profiles:
+    get:
+      summary: List employee tax withholding profiles
+      tags: [Payroll]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Tax profile list
+    post:
+      summary: Create or update employee W-4 tax profile
+      tags: [Payroll]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "201":
+          description: Tax profile saved
+
+  /scheduling/jobs:
+    get:
+      summary: List jobs
+      tags: [Scheduling]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Job list
+    post:
+      summary: Schedule a job
+      tags: [Scheduling]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      responses:
+        "201":
+          description: Job created
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /scheduling/schedule:
+    get:
+      summary: Calendar view of scheduled jobs
+      tags: [Scheduling]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+          description: Range start (RFC3339 or YYYY-MM-DD; default today)
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+          description: Range end (default from + 7 days)
+      responses:
+        "200":
+          description: Jobs grouped by date with by_date array
+
+  /scheduling/crews:
+    get:
+      summary: List crews
+      tags: [Scheduling]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Crew list
+    post:
+      summary: Create crew
+      tags: [Scheduling]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "201":
+          description: Crew created
+
+  /scheduling/crews/{id}:
+    get:
+      summary: Get crew
+      tags: [Scheduling]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Crew detail
+    patch:
+      summary: Update crew
+      tags: [Scheduling]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated crew
+    delete:
+      summary: Delete crew
+      tags: [Scheduling]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Crew deleted
+
+  /scheduling/routes:
+    get:
+      summary: Daily route stops (stub — optimization pending)
+      tags: [Scheduling]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: date
+          in: query
+          schema: { type: string, format: date }
+          description: Route date (YYYY-MM-DD; default today)
+      responses:
+        "200":
+          description: Route list with ordered stops
+
+  /scheduling/map:
+    get:
+      summary: Map pins for scheduled jobs and active crews
+      tags: [Scheduling]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Geo pins (stub coordinates)
+
+  /scheduling/recurring-jobs:
+    get:
+      summary: List recurring job templates
+      tags: [Scheduling]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Recurring job list
+    post:
+      summary: Create recurring job template
+      tags: [Scheduling]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "201":
+          description: Recurring job created
+
+  /scheduling/recurring-jobs/{id}:
+    get:
+      summary: Get recurring job
+      tags: [Scheduling]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Recurring job detail
+    patch:
+      summary: Update recurring job
+      tags: [Scheduling]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated recurring job
+
+  /dispatch/work-orders:
+    get:
+      summary: List work orders
+      tags: [Dispatch]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Work order list
+    post:
+      summary: Create work order
+      tags: [Dispatch]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      responses:
+        "201":
+          description: Work order created
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /dispatch/board:
+    get:
+      summary: Dispatch board — work orders with assignments grouped by status
+      tags: [Dispatch]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Board data with columns and summary counts
+
+  /construction/projects:
+    get:
+      summary: List construction projects
+      tags: [Construction]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Project list
+
+  /construction/change-orders:
+    get:
+      summary: List change orders
+      tags: [Construction]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Change order list
+    post:
+      summary: Create change order
+      tags: [Construction]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "201":
+          description: Change order created
+
+  /construction/milestones:
+    get:
+      summary: List milestones
+      tags: [Construction]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Milestone list
+    post:
+      summary: Create milestone
+      tags: [Construction]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "201":
+          description: Milestone created
+
+  /cleaning/jobs:
+    get:
+      summary: List today's scheduled cleans
+      tags: [Cleaning]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Today's clean jobs with checklist progress
+
+  /cleaning/jobs/{id}:
+    get:
+      summary: Get clean job with phase checklist
+      tags: [Cleaning]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Clean job detail
+
+  /cleaning/jobs/{id}/checklist:
+    patch:
+      summary: Update clean job checklist items
+      tags: [Cleaning]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated checklist
+
+  /cleaning/jobs/{id}/photos:
+    get:
+      summary: List QC photos for a clean job
+      tags: [Cleaning]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: QC photo list
+    post:
+      summary: Upload QC photo stub (data URL)
+      tags: [Cleaning]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Photo saved
+
+  /cleaning/qc:
+    get:
+      summary: QC review queue (stub)
+      tags: [Cleaning]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: QC review items
+
+  /cleaning/supplies:
+    get:
+      summary: List cleaning supplies with reorder thresholds
+      tags: [Cleaning]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Supply inventory stub
+
+  /cleaning/supplies/{id}:
+    patch:
+      summary: Update supply reorder threshold or on-hand count
+      tags: [Cleaning]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated supply
+
+  /cleaning/recurring-cleans:
+    get:
+      summary: List recurring cleans
+      tags: [Cleaning]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Recurring clean list
+    post:
+      summary: Create recurring clean (title optional — auto-generated from frequency/phase)
+      tags: [Cleaning]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "201":
+          description: Recurring clean created
+
+  /cleaning/clean-phases:
+    get:
+      summary: List clean phases
+      tags: [Cleaning]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Clean phase list
+    post:
+      summary: Create clean phase
+      tags: [Cleaning]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "201":
+          description: Clean phase created
+
+  /estimating/estimates:
+    get:
+      summary: List estimates
+      tags: [Estimating]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Estimate list
+
+  /invoicing/invoices:
+    get:
+      summary: List invoices
+      tags: [Invoicing]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Invoice list
+
+  /expenses/expenses:
+    get:
+      summary: List expenses
+      tags: [Expenses]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Expense list
+
+  /job-costing/job-costs:
+    get:
+      summary: List job cost lines
+      tags: [Job Costing]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Job cost list
+
+  /integrations/:
+    get:
+      summary: List enabled integrations from config
+      tags: [Integrations]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Integration catalog
+
+  /integrations/status:
+    get:
+      summary: Tenant connection status for all integrations
+      tags: [Integrations]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Connection statuses
+
+  /integrations/quickbooks/oauth/start:
+    get:
+      summary: Start QuickBooks OAuth (mock when debug.mock_quickbooks=true or credentials absent)
+      tags: [Integrations]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: redirect_uri
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Authorize URL and state
+
+  /integrations/quickbooks/oauth/callback:
+    get:
+      summary: QuickBooks OAuth callback (query params)
+      tags: [Integrations]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/TenantID" }
+        - name: code
+          in: query
+          required: true
+          schema: { type: string }
+        - name: state
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Connection established
+    post:
+      summary: QuickBooks OAuth callback (JSON body)
+      tags: [Integrations]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+                state: { type: string }
+      responses:
+        "200":
+          description: Connection established
+
+  /integrations/quickbooks/disconnect:
+    post:
+      summary: Disconnect QuickBooks
+      tags: [Integrations]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Disconnected
+
+  /integrations/avalara/tax/calculate:
+    post:
+      summary: Calculate sales tax (mock when debug.mock_avalara=true)
+      tags: [Integrations]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount_cents, ship_to_state]
+              properties:
+                amount_cents: { type: integer }
+                ship_to_state: { type: string }
+                ship_to_zip: { type: string }
+      responses:
+        "200":
+          description: Tax breakdown
+
+  /integrations/stripe-connect/onboard:
+    post:
+      summary: Start Stripe Connect onboarding (mock when debug.mock_stripe=true)
+      tags: [Integrations]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                return_path: { type: string }
+      responses:
+        "200":
+          description: Onboarding URL and account id
+
+  /integrations/stripe-connect/complete:
+    post:
+      summary: Complete Stripe Connect onboarding after redirect
+      tags: [Integrations]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [account_id]
+              properties:
+                account_id: { type: string }
+      responses:
+        "200":
+          description: Connect account status
+
+  /integrations/stripe-connect/status:
+    get:
+      summary: Stripe Connect account readiness
+      tags: [Integrations]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Connect status
+
+  /reports/kpis:
+    get:
+      summary: KPI metrics for dashboards
+      tags: [Reports]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: KPI list
+
+  /reports/owner:
+    get:
+      summary: Owner dashboard summary
+      tags: [Reports]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Owner dashboard
+
+  /reports/dispatcher:
+    get:
+      summary: Dispatcher operations board
+      tags: [Reports]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Dispatcher dashboard
+
+  /reports/accountant:
+    get:
+      summary: Accountant AR and expense queue
+      tags: [Reports]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Accountant dashboard
+
+  /reports/pl:
+    get:
+      summary: Profit and loss summary
+      tags: [Reports]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: P&L report
+
+  /reports/cash-flow:
+    get:
+      summary: Cash flow summary
+      tags: [Reports]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: Cash flow report
+
+  /reports/wip:
+    get:
+      summary: Work in progress summary
+      tags: [Reports]
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/TenantID" }]
+      responses:
+        "200":
+          description: WIP report
+
+  /public/contact:
+    post:
+      summary: Submit marketing contact form (stub)
+      tags: [Platform]
+      description: >
+        Accepts demo and sales inquiries from the marketing site. In development,
+        submissions are logged when debug.features.skip_email_send is true.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [firstName, lastName, email, company, inquiry, message]
+              properties:
+                firstName: { type: string }
+                lastName: { type: string }
+                email: { type: string, format: email }
+                company: { type: string }
+                inquiry:
+                  type: string
+                  enum: [demo, sales, support, enterprise]
+                message: { type: string }
+      responses:
+        "201":
+          description: Submission accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  reference_id: { type: string, format: uuid }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /public/marketing-content:
+    get:
+      summary: Blog listings and industry case studies for marketing site
+      tags: [Platform]
+      description: Returns content from config/marketing-content.yaml (stub CMS).
+      responses:
+        "200":
+          description: Marketing content payload
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  blog:
+                    type: object
+                    properties:
+                      posts:
+                        type: array
+                        items:
+                          type: object
+                  case_studies:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: object
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /public/plans:
+    get:
+      summary: Active SaaS plans for signup and marketing (no auth)
+      tags: [Platform]
+      description: Returns active platform plans. Falls back to config pricing when DB catalog is empty.
+      responses:
+        "200":
+          description: Public plan catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/PublicPlan" }
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /platform/auth/login:
+    post:
+      summary: Authenticate platform operator
+      tags: [Platform]
+      description: Rate limited per client IP. Issues a platform JWT without tenant scope.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200":
+          description: Platform JWT and admin profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  admin:
+                    type: object
+                    properties:
+                      id: { type: string, format: uuid }
+                      email: { type: string, format: email }
+        "401":
+          description: Invalid credentials
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /platform/plans:
+    get:
+      summary: List all platform plans (admin)
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Plan catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/PlatformPlan" }
+        "401":
+          description: Unauthorized
+        "403":
+          description: Not a platform admin
+    post:
+      summary: Create platform plan
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, name]
+              properties:
+                id: { type: string }
+                name: { type: string }
+                description: { type: string }
+                price_monthly_cents: { type: integer, nullable: true }
+                stripe_price_id: { type: string }
+                features: {}
+                active: { type: boolean }
+                sort_order: { type: integer }
+      responses:
+        "201":
+          description: Plan created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformPlan" }
+        "400":
+          description: Validation error
+        "403":
+          description: Not a platform admin
+
+  /platform/plans/{id}:
+    patch:
+      summary: Update platform plan
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                price_monthly_cents: { type: integer, nullable: true }
+                stripe_price_id: { type: string }
+                features: {}
+                active: { type: boolean }
+                sort_order: { type: integer }
+      responses:
+        "200":
+          description: Plan updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformPlan" }
+        "404":
+          description: Plan not found
+        "403":
+          description: Not a platform admin
+    delete:
+      summary: Delete platform plan
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Plan deleted
+        "404":
+          description: Plan not found
+        "403":
+          description: Not a platform admin
+
+  /platform/promotions:
+    get:
+      summary: List promotions
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Promotion list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/PlatformPromotion" }
+    post:
+      summary: Create promotion
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+                description: { type: string }
+                discount_percent: { type: integer, nullable: true }
+                discount_cents: { type: integer, nullable: true }
+                plan_id: { type: string }
+                starts_at: { type: string, format: date-time, nullable: true }
+                ends_at: { type: string, format: date-time, nullable: true }
+                max_redemptions: { type: integer, nullable: true }
+                active: { type: boolean }
+      responses:
+        "201":
+          description: Promotion created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformPromotion" }
+
+  /platform/promotions/{id}:
+    patch:
+      summary: Update promotion
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: { type: string }
+                description: { type: string }
+                discount_percent: { type: integer, nullable: true }
+                discount_cents: { type: integer, nullable: true }
+                plan_id: { type: string }
+                starts_at: { type: string, format: date-time, nullable: true }
+                ends_at: { type: string, format: date-time, nullable: true }
+                max_redemptions: { type: integer, nullable: true }
+                active: { type: boolean }
+      responses:
+        "200":
+          description: Promotion updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformPromotion" }
+        "404":
+          description: Promotion not found
+    delete:
+      summary: Delete promotion
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Promotion deleted
+        "404":
+          description: Promotion not found
+
+  /platform/landing-content:
+    get:
+      summary: List landing page content blocks
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: section
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [hero, features, pricing, footer]
+      responses:
+        "200":
+          description: Landing content blocks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/LandingContentBlock" }
+    post:
+      summary: Create landing content block
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [section]
+              properties:
+                section:
+                  type: string
+                  enum: [hero, features, pricing, footer]
+                block_key: { type: string }
+                content: { type: object, additionalProperties: true }
+                active: { type: boolean }
+                sort_order: { type: integer }
+      responses:
+        "201":
+          description: Block created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LandingContentBlock" }
+
+  /platform/landing-content/{id}:
+    patch:
+      summary: Update landing content block
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                section:
+                  type: string
+                  enum: [hero, features, pricing, footer]
+                block_key: { type: string }
+                content: { type: object, additionalProperties: true }
+                active: { type: boolean }
+                sort_order: { type: integer }
+      responses:
+        "200":
+          description: Block updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LandingContentBlock" }
+        "404":
+          description: Block not found
+    delete:
+      summary: Delete landing content block
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Block deleted
+        "404":
+          description: Block not found
+
+  /platform/config:
+    get:
+      summary: Get platform config overrides
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Platform config
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformConfig" }
+    patch:
+      summary: Update platform config overrides
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                brand_overrides: { type: object, additionalProperties: true }
+                feature_flags:
+                  type: object
+                  additionalProperties: { type: boolean }
+      responses:
+        "200":
+          description: Config updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformConfig" }
+
+  /platform/tenants:
+    get:
+      summary: List all tenants (registry)
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Tenant registry
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/PlatformTenant" }
+
+  /platform/tenants/{id}:
+    patch:
+      summary: Suspend tenant or assign plan
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                suspended: { type: boolean }
+                plan_id: { type: string }
+      responses:
+        "200":
+          description: Tenant updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformTenant" }
+        "404":
+          description: Tenant not found
+
+  /platform/stats:
+    get:
+      summary: Platform dashboard KPIs
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Aggregate statistics
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformStats" }
+
+  /platform/audit-log:
+    get:
+      summary: Platform audit log (read-only)
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 200 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        "200":
+          description: Audit entries (newest first)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/PlatformAuditEntry" }
