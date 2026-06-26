@@ -76,4 +76,81 @@ describe("PlatformAdminClient", () => {
     const client = new PlatformAdminClient(BASE, "plat-tok");
     await client.listAuditLog({ limit: 10, offset: 20 });
   });
+
+  it("getBillingSettings and updateBillingSettings", async () => {
+    let method = "";
+    globalThis.fetch = async (input, init) => {
+      const url = String(input);
+      method = init?.method ?? "GET";
+      if (url.endsWith("/platform/billing-settings") && method === "GET") {
+        return jsonResponse({
+          trial_days: 14,
+          default_plan_id: "starter",
+          updated_at: "2026-01-01T00:00:00Z",
+        });
+      }
+      if (url.endsWith("/platform/billing-settings") && method === "PATCH") {
+        const body = JSON.parse(String(init?.body));
+        assert.equal(body.trial_days, 0);
+        return jsonResponse({
+          trial_days: 0,
+          default_plan_id: "starter",
+          updated_at: "2026-01-02T00:00:00Z",
+        });
+      }
+      throw new Error(`unexpected ${method} ${url}`);
+    };
+
+    const client = new PlatformAdminClient(BASE, "plat-tok");
+    const current = await client.getBillingSettings();
+    assert.equal(current.trial_days, 14);
+
+    const updated = await client.updateBillingSettings({ trial_days: 0 });
+    assert.equal(updated.trial_days, 0);
+  });
+
+  it("listUsers supports tenant filter", async () => {
+    globalThis.fetch = async (input) => {
+      const url = String(input);
+      assert.match(url, /\/platform\/users\?tenant_id=t1/);
+      return jsonResponse({ data: [] });
+    };
+
+    const client = new PlatformAdminClient(BASE, "plat-tok");
+    await client.listUsers({ tenant_id: "t1" });
+  });
+
+  it("createTenant posts body", async () => {
+    globalThis.fetch = async (input, init) => {
+      assert.match(String(input), /\/platform\/tenants$/);
+      assert.equal(init?.method, "POST");
+      return jsonResponse(
+        {
+          id: "t1",
+          slug: "acme",
+          name: "Acme",
+          industry_pack: "cleaning",
+          plan_id: "starter",
+          subscription_status: "trialing",
+          created_at: "",
+        },
+        201,
+      );
+    };
+
+    const client = new PlatformAdminClient(BASE, "plat-tok");
+    const result = await client.createTenant({ name: "Acme" });
+    assert.equal(result.id, "t1");
+  });
+
+  it("deleteUser sends DELETE", async () => {
+    globalThis.fetch = async (input, init) => {
+      assert.match(String(input), /\/platform\/users\/u1$/);
+      assert.equal(init?.method, "DELETE");
+      return new Response(null, { status: 204 });
+    };
+
+    const client = new PlatformAdminClient(BASE, "plat-tok");
+    await client.deleteUser("u1");
+  });
 });

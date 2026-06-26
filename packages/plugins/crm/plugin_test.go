@@ -21,9 +21,9 @@ func TestPlugin_Migrations(t *testing.T) {
 	p := New(nil)
 	migs := p.Migrations()
 
-	assert.Len(t, migs, 5)
+	assert.Len(t, migs, 6)
 	assert.Equal(t, 100, migs[0].Version)
 	assert.Equal(t, "crm_customers", migs[0].Name)
-	assert.Equal(t, 104, migs[4].Version)
-	assert.Equal(t, "crm_contract_templates", migs[4].Name)
+	assert.Equal(t, 105, migs[5].Version)
+	assert.Equal(t, "crm_property_beds_baths_sqft", migs[5].Name)
 }

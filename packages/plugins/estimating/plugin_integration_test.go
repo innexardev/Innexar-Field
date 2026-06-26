@@ -3,6 +3,7 @@
 package estimating_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	ffmiddleware "github.com/fieldforge/fieldforge/packages/core/middleware"
 	"github.com/fieldforge/fieldforge/packages/core/plugin"
 	"github.com/fieldforge/fieldforge/packages/core/tenant"
+	"github.com/fieldforge/fieldforge/packages/plugins/crm"
 	"github.com/fieldforge/fieldforge/packages/plugins/estimating"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -96,6 +98,123 @@ func TestEstimating_ListEndpoints_TenantIsolation(t *testing.T) {
 	}
 }
 
+func TestEstimating_Calculate_AppliesRoomBasedTier(t *testing.T) {
+	ctx := context.Background()
+
+	pg, err := tcpostgres.RunContainer(ctx,
+		testcontainers.WithImage("postgres:16-alpine"),
+		tcpostgres.WithDatabase("fieldforge"),
+		tcpostgres.WithUsername("fieldforge"),
+		tcpostgres.WithPassword("fieldforge"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").WithOccurrence(2),
+		),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = pg.Terminate(ctx) })
+
+	connStr, err := pg.ConnectionString(ctx, "sslmode=disable")
+	require.NoError(t, err)
+
+	pool, err := db.Connect(ctx, connStr)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+
+	require.NoError(t, runMigrations(ctx, pool))
+
+	tenantID := uuid.New().String()
+	seedTenant(t, ctx, pool, tenantID, "tenant-tier")
+	estimateID, err := seedRoomBasedCalculateFixture(t, ctx, pool, tenantID)
+	require.NoError(t, err)
+
+	authSvc := auth.NewService("integration-test-secret-32-chars!!", 24)
+	token, err := authSvc.IssueToken(uuid.New().String(), tenantID, "a@example.com", "owner")
+	require.NoError(t, err)
+
+	app := newEstimatingApp(pool, authSvc)
+
+	calcResp := postJSON(t, app, "/estimating/estimates/"+estimateID+"/calculate", token, map[string]any{
+		"markup_percent": 0,
+		"tax_percent":    0,
+	})
+	require.Equal(t, http.StatusOK, calcResp.StatusCode)
+	defer calcResp.Body.Close()
+
+	var calcBody struct {
+		SubtotalCents    int64 `json:"subtotal_cents"`
+		TierLinesUpdated int   `json:"tier_lines_updated"`
+		RoomTiersApplied bool  `json:"room_tiers_applied"`
+	}
+	require.NoError(t, json.NewDecoder(calcResp.Body).Decode(&calcBody))
+	assert.True(t, calcBody.RoomTiersApplied)
+	assert.Equal(t, 1, calcBody.TierLinesUpdated)
+	assert.Equal(t, int64(18500), calcBody.SubtotalCents)
+
+	detail := getJSON(t, app, "/estimating/estimates/"+estimateID, token)
+	require.Equal(t, http.StatusOK, detail.StatusCode)
+	defer detail.Body.Close()
+	var est struct {
+		Lines []struct {
+			Description    string `json:"description"`
+			UnitPriceCents int64  `json:"unit_price_cents"`
+		} `json:"lines"`
+	}
+	require.NoError(t, json.NewDecoder(detail.Body).Decode(&est))
+	require.Len(t, est.Lines, 1)
+	assert.Equal(t, int64(18500), est.Lines[0].UnitPriceCents)
+}
+
+func seedRoomBasedCalculateFixture(t *testing.T, ctx context.Context, pool *db.Pool, tenantID string) (string, error) {
+	t.Helper()
+	seedCtx := tenant.WithID(ctx, tenantID)
+
+	customerID := uuid.New().String()
+	propertyID := uuid.New().String()
+	estimateID := uuid.New().String()
+	lineID := uuid.New().String()
+	priceBookID := uuid.New().String()
+	bedrooms := 3
+	bathrooms := 2.0
+
+	_, err := pool.Exec(seedCtx, `
+		INSERT INTO customers (id, tenant_id, name) VALUES ($1, $2, 'Smith family')
+	`, customerID, tenantID)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = pool.Exec(seedCtx, `
+		INSERT INTO customer_properties (id, tenant_id, customer_id, label, bedrooms, bathrooms)
+		VALUES ($1, $2, $3, 'Main home', $4, $5)
+	`, propertyID, tenantID, customerID, bedrooms, bathrooms)
+	if err != nil {
+		return "", err
+	}
+
+	tiers := `[{"beds":3,"baths":2,"price_cents":18500}]`
+	_, err = pool.Exec(seedCtx, `
+		INSERT INTO price_book_items (id, tenant_id, name, category, unit, unit_price_cents, pricing_model, pricing_tiers)
+		VALUES ($1, $2, 'Standard cleaning', 'service', 'visit', 12000, 'room_based', $3::jsonb)
+	`, priceBookID, tenantID, tiers)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = pool.Exec(seedCtx, `
+		INSERT INTO estimates (id, tenant_id, customer_id, property_id, title, status, subtotal_cents, total_cents)
+		VALUES ($1, $2, $3, $4, 'Spring clean', 'draft', 12000, 12000)
+	`, estimateID, tenantID, customerID, propertyID)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = pool.Exec(seedCtx, `
+		INSERT INTO estimate_line_items (id, tenant_id, estimate_id, description, quantity, unit_price_cents)
+		VALUES ($1, $2, $3, 'Standard cleaning', 1, 12000)
+	`, lineID, tenantID, estimateID)
+	return estimateID, err
+}
+
 func seedEstimatingData(t *testing.T, ctx context.Context, pool *db.Pool, tenantID string) {
 	t.Helper()
 	seedCtx := tenant.WithID(ctx, tenantID)
@@ -133,6 +252,14 @@ func runMigrations(ctx context.Context, pool *db.Pool) error {
 		}{m.Version, m.Name, m.UpSQL})
 	}
 	bus := events.NewBus(pool.Pool)
+	crmPlugin := crm.New(pool.Pool)
+	for _, m := range crmPlugin.Migrations() {
+		all = append(all, struct {
+			Version int
+			Name    string
+			UpSQL   string
+		}{m.Version, m.Name, m.UpSQL})
+	}
 	estPlugin := estimating.New(pool.Pool, bus)
 	for _, m := range estPlugin.Migrations() {
 		all = append(all, struct {
@@ -168,6 +295,18 @@ func getJSON(t *testing.T, app *fiber.App, path, token string) *http.Response {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1"+path, nil)
 	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := app.Test(req, -1)
+	require.NoError(t, err)
+	return resp
+}
+
+func postJSON(t *testing.T, app *fiber.App, path, token string, body any) *http.Response {
+	t.Helper()
+	payload, err := json.Marshal(body)
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1"+path, bytes.NewReader(payload))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
 	resp, err := app.Test(req, -1)
 	require.NoError(t, err)
 	return resp

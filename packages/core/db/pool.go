@@ -29,11 +29,19 @@ func Connect(ctx context.Context, databaseURL string) (*Pool, error) {
 		if !ok {
 			return true
 		}
-		_, err := conn.Exec(ctx, `SELECT set_config('app.tenant_id', $1, false)`, tid)
+		if _, err := conn.Exec(ctx, `SELECT set_config('app.tenant_id', $1, false)`, tid); err != nil {
+			return false
+		}
+		if cid, ok := tenant.CustomerID(ctx); ok {
+			_, err := conn.Exec(ctx, `SELECT set_config('app.customer_id', $1, false)`, cid)
+			return err == nil
+		}
+		_, err := conn.Exec(ctx, `SELECT set_config('app.customer_id', '', false)`)
 		return err == nil
 	}
 	cfg.AfterRelease = func(conn *pgx.Conn) bool {
 		_, _ = conn.Exec(context.Background(), `SELECT set_config('app.tenant_id', '', false)`)
+		_, _ = conn.Exec(context.Background(), `SELECT set_config('app.customer_id', '', false)`)
 		_, _ = conn.Exec(context.Background(), `SELECT set_config('app.worker', '', false)`)
 		return true
 	}

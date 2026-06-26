@@ -40,6 +40,12 @@ const SETTINGS_SECTIONS = [
         icon: IconUsers,
       },
       {
+        href: "/settings/billing",
+        title: "Plan configuration",
+        description: "Stripe price IDs and SaaS plan mapping.",
+        icon: IconCreditCard,
+      },
+      {
         href: "/billing",
         title: "Billing",
         description: "Subscription plan, payment method, and SaaS checkout.",

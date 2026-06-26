@@ -141,6 +141,15 @@ components:
           type: object
           additionalProperties: { type: boolean }
         updated_at: { type: string, format: date-time }
+    PlatformBillingSettings:
+      type: object
+      properties:
+        trial_days: { type: integer, minimum: 0 }
+        default_plan_id: { type: string }
+        checkout_success_url: { type: string }
+        checkout_cancel_url: { type: string }
+        portal_return_url: { type: string }
+        updated_at: { type: string, format: date-time }
     PlatformTenant:
       type: object
       required: [id, slug, name, industry_pack, plan_id, subscription_status, created_at]
@@ -241,6 +250,96 @@ paths:
           description: Quote not found
         "429":
           $ref: "#/components/responses/RateLimited"
+
+  /public/portal/login:
+    post:
+      summary: Request customer portal magic link (no auth)
+      tags: [Portal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, tenant_slug]
+              properties:
+                email:
+                  type: string
+                  format: email
+                tenant_slug:
+                  type: string
+      responses:
+        "200":
+          description: Generic success (no email enumeration)
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /public/portal/verify:
+    post:
+      summary: Exchange magic link token for customer session JWT
+      tags: [Portal]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+      responses:
+        "200":
+          description: Customer session token
+        "401":
+          description: Invalid or expired link
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /portal/me:
+    get:
+      summary: Current customer portal profile
+      tags: [Portal]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Customer profile
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /portal/invoices:
+    get:
+      summary: List invoices for authenticated customer (sent/paid only)
+      tags: [Portal]
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Invoice list
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /portal/invoices/{id}:
+    get:
+      summary: Get one invoice for authenticated customer
+      tags: [Portal]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Invoice
+        "404":
+          description: Not found
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /industry-packs:
     get:
@@ -1720,6 +1819,42 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PlatformConfig" }
+
+  /platform/billing-settings:
+    get:
+      summary: Get platform billing settings
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Billing settings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformBillingSettings" }
+    patch:
+      summary: Update platform billing settings
+      tags: [Platform]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trial_days: { type: integer, minimum: 0 }
+                default_plan_id: { type: string }
+                checkout_success_url: { type: string }
+                checkout_cancel_url: { type: string }
+                portal_return_url: { type: string }
+      responses:
+        "200":
+          description: Billing settings updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformBillingSettings" }
+        "400":
+          description: Validation error
 
   /platform/tenants:
     get:

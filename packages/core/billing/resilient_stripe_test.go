@@ -23,6 +23,14 @@ func (s *stubClient) CreateCheckoutSession(_ context.Context, _ CheckoutParams) 
 	return &CheckoutResult{SessionID: "cs_test"}, nil
 }
 
+func (s *stubClient) CreatePortalSession(_ context.Context, _ string, _ string) (*PortalResult, error) {
+	return &PortalResult{PortalURL: "https://billing.example/portal"}, nil
+}
+
+func (s *stubClient) ListInvoices(_ context.Context, _ string) ([]Invoice, error) {
+	return []Invoice{}, nil
+}
+
 func (s *stubClient) VerifyWebhook(_ []byte, _ string) (*WebhookEvent, error) {
 	return &WebhookEvent{Type: "test"}, nil
 }

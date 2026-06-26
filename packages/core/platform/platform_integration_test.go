@@ -84,6 +84,41 @@ func TestPlatform_AdminCRUDPlans(t *testing.T) {
 	_ = delRes.Body.Close()
 }
 
+func TestPlatform_BillingSettings(t *testing.T) {
+	ctx := context.Background()
+	pool, cleanup := startPostgres(t, ctx)
+	defer cleanup()
+
+	adminID := seedPlatformAdmin(t, ctx, pool, "admin@platform.com", "secret123")
+	_, err := pool.Exec(ctx, `
+		INSERT INTO platform_plans (id, name, description, price_monthly_cents, stripe_price_id, active)
+		VALUES ('starter', 'Starter', '', 2500, 'price_starter', true)
+	`)
+	require.NoError(t, err)
+
+	authSvc := auth.NewService("integration-test-secret-32-chars!!", 24)
+	adminToken, err := authSvc.IssuePlatformToken(adminID, "admin@platform.com")
+	require.NoError(t, err)
+
+	app := newPlatformApp(pool, authSvc)
+
+	getRes := getWithToken(t, app, "/platform/billing-settings", adminToken)
+	require.Equal(t, http.StatusOK, getRes.StatusCode)
+	defer getRes.Body.Close()
+
+	patchRes := patchWithToken(t, app, "/platform/billing-settings", adminToken, map[string]any{
+		"trial_days":      0,
+		"default_plan_id": "starter",
+	})
+	require.Equal(t, http.StatusOK, patchRes.StatusCode)
+	defer patchRes.Body.Close()
+
+	var body map[string]any
+	require.NoError(t, json.NewDecoder(patchRes.Body).Decode(&body))
+	assert.Equal(t, float64(0), body["trial_days"])
+	assert.Equal(t, "starter", body["default_plan_id"])
+}
+
 func TestPlatform_LoginAndStats(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanup := startPostgres(t, ctx)
@@ -115,6 +150,60 @@ func TestPlatform_LoginAndStats(t *testing.T) {
 	var stats map[string]any
 	require.NoError(t, json.NewDecoder(statsRes.Body).Decode(&stats))
 	assert.Equal(t, float64(1), stats["total_tenants"])
+
+	metricsRes := getWithToken(t, app, "/platform/metrics", loginBody.Token)
+	require.Equal(t, http.StatusOK, metricsRes.StatusCode)
+	defer metricsRes.Body.Close()
+
+	var metrics map[string]any
+	require.NoError(t, json.NewDecoder(metricsRes.Body).Decode(&metrics))
+	assert.Equal(t, float64(1), metrics["total_tenants"])
+	assert.Contains(t, metrics, "mrr_estimate_cents")
+	assert.Contains(t, metrics, "recent_tenants")
+}
+
+func TestPlatform_TenantAndUserCRUD(t *testing.T) {
+	ctx := context.Background()
+	pool, cleanup := startPostgres(t, ctx)
+	defer cleanup()
+
+	adminID := seedPlatformAdmin(t, ctx, pool, "admin@platform.com", "secret123")
+	authSvc := auth.NewService("integration-test-secret-32-chars!!", 24)
+	adminToken, err := authSvc.IssuePlatformToken(adminID, "admin@platform.com")
+	require.NoError(t, err)
+
+	app := newPlatformApp(pool, authSvc)
+
+	createRes := postWithToken(t, app, "/platform/tenants", adminToken, map[string]any{
+		"name":           "New Co",
+		"industry_pack":  "cleaning",
+		"plan_id":        "starter",
+		"owner_email":    "owner@newco.com",
+		"owner_password": "password123",
+	})
+	require.Equal(t, http.StatusCreated, createRes.StatusCode)
+	defer createRes.Body.Close()
+
+	var tenant map[string]any
+	require.NoError(t, json.NewDecoder(createRes.Body).Decode(&tenant))
+	tenantID, ok := tenant["id"].(string)
+	require.True(t, ok)
+
+	getRes := getWithToken(t, app, "/platform/tenants/"+tenantID, adminToken)
+	require.Equal(t, http.StatusOK, getRes.StatusCode)
+	_ = getRes.Body.Close()
+
+	listUsersRes := getWithToken(t, app, "/platform/users?tenant_id="+tenantID, adminToken)
+	require.Equal(t, http.StatusOK, listUsersRes.StatusCode)
+	defer listUsersRes.Body.Close()
+
+	var usersBody struct {
+		Data []map[string]any `json:"data"`
+	}
+	require.NoError(t, json.NewDecoder(listUsersRes.Body).Decode(&usersBody))
+	require.Len(t, usersBody.Data, 1)
+	assert.Equal(t, "owner@newco.com", usersBody.Data[0]["email"])
+	assert.NotContains(t, usersBody.Data[0], "password_hash")
 }
 
 func startPostgres(t *testing.T, ctx context.Context) (*db.Pool, func()) {
@@ -193,7 +282,7 @@ func newPlatformApp(pool *db.Pool, authSvc *auth.Service) *fiber.App {
 	app := fiber.New()
 	api := app.Group("/api/v1")
 	publicRL := func(c *fiber.Ctx) error { return c.Next() }
-	svc := platform.NewService(pool.Pool, authSvc, nil)
+	svc := platform.NewService(pool.Pool, authSvc, nil, nil)
 	platform.RegisterRoutes(api, svc, authSvc, publicRL)
 	return app
 }

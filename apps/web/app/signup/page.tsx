@@ -128,7 +128,7 @@ function SignupForm() {
         plan_id: form.plan_id,
         company_name: form.company_name,
       });
-      router.push("/onboarding/industry");
+      router.push("/onboarding/billing");
     } catch (err) {
       setError(formatErrorForUser(err));
     } finally {

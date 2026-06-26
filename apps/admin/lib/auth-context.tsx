@@ -61,7 +61,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(ADMIN_KEY, JSON.stringify(res.admin));
       setToken(res.token);
       setAdmin(res.admin);
-      router.push("/");
+      router.push("/admin/dashboard");
     },
     [router],
   );

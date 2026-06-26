@@ -8,6 +8,8 @@ import { useAuth } from "@/lib/auth-context";
 import { usePlatform } from "@fieldforge/platform";
 import { enqueueOffline, readJobsCache } from "@/lib/mobile/offline-queue";
 import { formatJobTime, formatStatus, statusBadgeTone } from "@/lib/mobile/job-utils";
+import { buildDirectionsUrl, resolveJobDirectionsUrl } from "@/lib/maps";
+import { NavigateButton } from "@/components/maps/navigate-button";
 
 export default function MobileJobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +21,7 @@ export default function MobileJobDetailPage() {
   const [saving, setSaving] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [queued, setQueued] = useState(false);
+  const [directionsUrl, setDirectionsUrl] = useState("");
 
   useEffect(() => {
     if (!token) {
@@ -48,6 +51,16 @@ export default function MobileJobDetailPage() {
 
     void load();
   }, [token, client, id, router, isOnline]);
+
+  useEffect(() => {
+    if (!job) {
+      setDirectionsUrl("");
+      return;
+    }
+    setDirectionsUrl(buildDirectionsUrl({ address: job.title }));
+    if (!isOnline) return;
+    void resolveJobDirectionsUrl(client, job).then(setDirectionsUrl);
+  }, [job, client, isOnline]);
 
   async function saveNotes() {
     if (!job) return;
@@ -110,6 +123,7 @@ export default function MobileJobDetailPage() {
           <Badge tone={statusBadgeTone(job.status)}>{formatStatus(job.status)}</Badge>
           <span className="mobile-page__subtitle">{formatJobTime(job.scheduled_at)}</span>
         </div>
+        <NavigateButton href={directionsUrl} className="mt-3" />
       </div>
 
       <Card className="mobile-detail-card">

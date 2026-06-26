@@ -1,6 +1,7 @@
 package estimating
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -68,6 +69,7 @@ func (p *Plugin) Migrations() []plugin.Migration {
 		{Version: 112, Name: "estimate_public_token", UpSQL: publicTokenSQL},
 		{Version: 113, Name: "takeoff_measurements", UpSQL: takeoffSQL},
 		{Version: 114, Name: "price_book_pricing_model", UpSQL: priceBookPricingModelSQL},
+		{Version: 115, Name: "estimate_property_id", UpSQL: estimatePropertyIDSQL},
 	}
 }
 
@@ -123,6 +125,11 @@ ALTER TABLE price_book_items ADD COLUMN IF NOT EXISTS pricing_model TEXT NOT NUL
 ALTER TABLE price_book_items ADD COLUMN IF NOT EXISTS pricing_tiers JSONB NOT NULL DEFAULT '[]';
 `
 
+const estimatePropertyIDSQL = `
+ALTER TABLE estimates ADD COLUMN IF NOT EXISTS property_id UUID;
+CREATE INDEX IF NOT EXISTS idx_estimates_property ON estimates (tenant_id, property_id) WHERE property_id IS NOT NULL;
+`
+
 const publicTokenSQL = `
 ALTER TABLE estimates ADD COLUMN IF NOT EXISTS public_token TEXT UNIQUE;
 CREATE INDEX IF NOT EXISTS idx_estimates_public_token ON estimates (public_token) WHERE public_token IS NOT NULL;
@@ -164,9 +171,17 @@ DROP POLICY IF EXISTS takeoff_tenant ON takeoff_measurements;
 CREATE POLICY takeoff_tenant ON takeoff_measurements USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
 `
 
+type EstimateProperty struct {
+	ID        string   `json:"id"`
+	Label     string   `json:"label"`
+	Bedrooms  *int     `json:"bedrooms,omitempty"`
+	Bathrooms *float64 `json:"bathrooms,omitempty"`
+}
+
 type Estimate struct {
 	ID            string    `json:"id"`
 	CustomerID    string    `json:"customer_id,omitempty"`
+	PropertyID    string    `json:"property_id,omitempty"`
 	Title         string    `json:"title"`
 	Status        string    `json:"status"`
 	SubtotalCents int64     `json:"subtotal_cents"`
@@ -199,6 +214,7 @@ func (p *Plugin) create(c *fiber.Ctx) error {
 	var body struct {
 		Title      string `json:"title"`
 		CustomerID string `json:"customer_id"`
+		PropertyID string `json:"property_id"`
 		Lines      []struct {
 			Description    string  `json:"description"`
 			Quantity       float64 `json:"quantity"`
@@ -213,10 +229,13 @@ func (p *Plugin) create(c *fiber.Ctx) error {
 	for _, l := range body.Lines {
 		subtotal += int64(float64(l.UnitPriceCents) * l.Quantity)
 	}
+	if err := p.validateEstimateProperty(c.UserContext(), tid, body.CustomerID, body.PropertyID); err != nil {
+		return err
+	}
 	_, err := p.pool.Exec(c.UserContext(), `
-		INSERT INTO estimates (id, tenant_id, customer_id, title, subtotal_cents, total_cents)
-		VALUES ($1, $2, NULLIF($3,'')::uuid, $4, $5, $5)
-	`, id, tid, body.CustomerID, body.Title, subtotal)
+		INSERT INTO estimates (id, tenant_id, customer_id, property_id, title, subtotal_cents, total_cents)
+		VALUES ($1, $2, NULLIF($3,'')::uuid, NULLIF($4,'')::uuid, $5, $6, $6)
+	`, id, tid, body.CustomerID, body.PropertyID, body.Title, subtotal)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to create estimate")
 	}
@@ -239,15 +258,19 @@ type EstimateLine struct {
 func (p *Plugin) get(c *fiber.Ctx) error {
 	tid, _ := tenant.ID(c.UserContext())
 	var e Estimate
+	var propertyID *string
 	err := p.pool.QueryRow(c.UserContext(), `
-		SELECT id, COALESCE(customer_id::text,''), title, status, subtotal_cents, total_cents,
+		SELECT id, COALESCE(customer_id::text,''), property_id::text, title, status, subtotal_cents, total_cents,
 		       COALESCE(public_token, ''), created_at
 		FROM estimates WHERE id = $1 AND tenant_id = $2
 	`, c.Params("id"), tid).Scan(
-		&e.ID, &e.CustomerID, &e.Title, &e.Status, &e.SubtotalCents, &e.TotalCents, &e.PublicToken, &e.CreatedAt,
+		&e.ID, &e.CustomerID, &propertyID, &e.Title, &e.Status, &e.SubtotalCents, &e.TotalCents, &e.PublicToken, &e.CreatedAt,
 	)
 	if err != nil {
 		return fiber.NewError(404, "not found")
+	}
+	if propertyID != nil {
+		e.PropertyID = *propertyID
 	}
 	rows, err := p.pool.Query(c.UserContext(), `
 		SELECT id, description, quantity, unit_price_cents
@@ -263,7 +286,7 @@ func (p *Plugin) get(c *fiber.Ctx) error {
 		_ = rows.Scan(&l.ID, &l.Description, &l.Quantity, &l.UnitPriceCents)
 		lines = append(lines, l)
 	}
-	return c.JSON(fiber.Map{
+	resp := fiber.Map{
 		"id":             e.ID,
 		"customer_id":    e.CustomerID,
 		"title":          e.Title,
@@ -273,7 +296,14 @@ func (p *Plugin) get(c *fiber.Ctx) error {
 		"public_token":   e.PublicToken,
 		"created_at":     e.CreatedAt,
 		"lines":          response.NilToEmpty(lines),
-	})
+	}
+	if e.PropertyID != "" {
+		resp["property_id"] = e.PropertyID
+		if prop, err := p.loadEstimateProperty(c.UserContext(), tid, e.PropertyID); err == nil {
+			resp["property"] = prop
+		}
+	}
+	return c.JSON(resp)
 }
 
 type lineInput struct {
@@ -296,6 +326,7 @@ func (p *Plugin) update(c *fiber.Ctx) error {
 	var body struct {
 		Title      *string     `json:"title"`
 		CustomerID *string     `json:"customer_id"`
+		PropertyID *string     `json:"property_id"`
 		Lines      []lineInput `json:"lines"`
 	}
 	if err := c.BodyParser(&body); err != nil {
@@ -323,6 +354,21 @@ func (p *Plugin) update(c *fiber.Ctx) error {
 		_, err = p.pool.Exec(c.UserContext(), `
 			UPDATE estimates SET customer_id = NULLIF($3,'')::uuid, updated_at = NOW() WHERE id = $1 AND tenant_id = $2
 		`, id, tid, *body.CustomerID)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "failed to update estimate")
+		}
+	}
+	if body.PropertyID != nil {
+		var customerID string
+		_ = p.pool.QueryRow(c.UserContext(), `
+			SELECT COALESCE(customer_id::text, '') FROM estimates WHERE id = $1 AND tenant_id = $2
+		`, id, tid).Scan(&customerID)
+		if err := p.validateEstimateProperty(c.UserContext(), tid, customerID, *body.PropertyID); err != nil {
+			return err
+		}
+		_, err = p.pool.Exec(c.UserContext(), `
+			UPDATE estimates SET property_id = NULLIF($3,'')::uuid, updated_at = NOW() WHERE id = $1 AND tenant_id = $2
+		`, id, tid, *body.PropertyID)
 		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "failed to update estimate")
 		}
@@ -356,12 +402,16 @@ func (p *Plugin) update(c *fiber.Ctx) error {
 }
 
 type CalculateResult struct {
-	SubtotalCents  int64   `json:"subtotal_cents"`
-	MarkupCents    int64   `json:"markup_cents"`
-	TaxCents       int64   `json:"tax_cents"`
-	TotalCents     int64   `json:"total_cents"`
-	MarkupPercent  float64 `json:"markup_percent"`
-	TaxPercent     float64 `json:"tax_percent"`
+	SubtotalCents      int64    `json:"subtotal_cents"`
+	MarkupCents        int64    `json:"markup_cents"`
+	TaxCents           int64    `json:"tax_cents"`
+	TotalCents         int64    `json:"total_cents"`
+	MarkupPercent      float64  `json:"markup_percent"`
+	TaxPercent         float64  `json:"tax_percent"`
+	TierLinesUpdated   int      `json:"tier_lines_updated,omitempty"`
+	PropertyBedrooms   *int     `json:"property_bedrooms,omitempty"`
+	PropertyBathrooms  *float64 `json:"property_bathrooms,omitempty"`
+	RoomTiersApplied   bool     `json:"room_tiers_applied"`
 }
 
 func (p *Plugin) calculate(c *fiber.Ctx) error {
@@ -372,13 +422,45 @@ func (p *Plugin) calculate(c *fiber.Ctx) error {
 		TaxPercent    float64 `json:"tax_percent"`
 	}
 	_ = c.BodyParser(&body)
-	var subtotal int64
+
+	var propertyID *string
 	err := p.pool.QueryRow(c.UserContext(), `
-		SELECT subtotal_cents FROM estimates WHERE id = $1 AND tenant_id = $2
-	`, id, tid).Scan(&subtotal)
+		SELECT property_id::text FROM estimates WHERE id = $1 AND tenant_id = $2
+	`, id, tid).Scan(&propertyID)
 	if err != nil {
 		return fiber.NewError(404, "not found")
 	}
+
+	result := CalculateResult{
+		MarkupPercent: body.MarkupPercent,
+		TaxPercent:    body.TaxPercent,
+	}
+
+	if propertyID != nil && *propertyID != "" {
+		prop, err := p.loadEstimateProperty(c.UserContext(), tid, *propertyID)
+		if err == nil && propertyHasRoomCounts(prop.Bedrooms, prop.Bathrooms) {
+			result.PropertyBedrooms = prop.Bedrooms
+			result.PropertyBathrooms = prop.Bathrooms
+			updated, err := p.applyRoomBasedLinePricing(
+				c.UserContext(), tid, id, *prop.Bedrooms, *prop.Bathrooms,
+			)
+			if err != nil {
+				return fiber.NewError(fiber.StatusInternalServerError, "failed to apply room-based pricing")
+			}
+			result.TierLinesUpdated = updated
+			result.RoomTiersApplied = updated > 0
+		}
+	}
+
+	var subtotal int64
+	err = p.pool.QueryRow(c.UserContext(), `
+		SELECT COALESCE(SUM(ROUND(quantity * unit_price_cents)), 0)::bigint
+		FROM estimate_line_items WHERE estimate_id = $1 AND tenant_id = $2
+	`, id, tid).Scan(&subtotal)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "failed to calculate estimate")
+	}
+
 	markupCents := int64(math.Round(float64(subtotal) * body.MarkupPercent / 100))
 	taxable := subtotal + markupCents
 	taxCents := int64(math.Round(float64(taxable) * body.TaxPercent / 100))
@@ -390,14 +472,113 @@ func (p *Plugin) calculate(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to calculate estimate")
 	}
-	return c.JSON(CalculateResult{
-		SubtotalCents: subtotal,
-		MarkupCents:   markupCents,
-		TaxCents:      taxCents,
-		TotalCents:    total,
-		MarkupPercent: body.MarkupPercent,
-		TaxPercent:    body.TaxPercent,
-	})
+
+	result.SubtotalCents = subtotal
+	result.MarkupCents = markupCents
+	result.TaxCents = taxCents
+	result.TotalCents = total
+	return c.JSON(result)
+}
+
+func (p *Plugin) loadEstimateProperty(ctx context.Context, tid, propertyID string) (EstimateProperty, error) {
+	var prop EstimateProperty
+	var bedrooms *int
+	var bathrooms *float64
+	err := p.pool.QueryRow(ctx, `
+		SELECT id::text, label, bedrooms, bathrooms
+		FROM customer_properties
+		WHERE id = $1 AND tenant_id = $2
+	`, propertyID, tid).Scan(&prop.ID, &prop.Label, &bedrooms, &bathrooms)
+	if err != nil {
+		return EstimateProperty{}, err
+	}
+	prop.Bedrooms = bedrooms
+	prop.Bathrooms = bathrooms
+	return prop, nil
+}
+
+func (p *Plugin) validateEstimateProperty(ctx context.Context, tid, customerID, propertyID string) error {
+	if propertyID == "" {
+		return nil
+	}
+	if customerID == "" {
+		return fiber.NewError(400, "customer required when linking a property")
+	}
+	var exists int
+	err := p.pool.QueryRow(ctx, `
+		SELECT 1 FROM customer_properties
+		WHERE id = $1 AND tenant_id = $2 AND customer_id = $3
+	`, propertyID, tid, customerID).Scan(&exists)
+	if err != nil {
+		return fiber.NewError(400, "property not found for customer")
+	}
+	return nil
+}
+
+func (p *Plugin) applyRoomBasedLinePricing(ctx context.Context, tid, estimateID string, bedrooms int, bathrooms float64) (int, error) {
+	items, err := p.loadPriceBookItems(ctx, tid)
+	if err != nil {
+		return 0, err
+	}
+	byName := priceBookByName(items)
+
+	rows, err := p.pool.Query(ctx, `
+		SELECT id, description, quantity, unit_price_cents
+		FROM estimate_line_items WHERE estimate_id = $1 AND tenant_id = $2
+	`, estimateID, tid)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	updated := 0
+	for rows.Next() {
+		var lineID, description string
+		var quantity float64
+		var unitPriceCents int64
+		if err := rows.Scan(&lineID, &description, &quantity, &unitPriceCents); err != nil {
+			return updated, err
+		}
+		item, ok := byName[strings.ToLower(strings.TrimSpace(description))]
+		if !ok || item.PricingModel != "room_based" {
+			continue
+		}
+		newPrice := ResolveRoomBasedUnitPrice(item, bedrooms, bathrooms)
+		if newPrice == unitPriceCents {
+			continue
+		}
+		_, err := p.pool.Exec(ctx, `
+			UPDATE estimate_line_items SET unit_price_cents = $3
+			WHERE id = $1 AND tenant_id = $2
+		`, lineID, tid, newPrice)
+		if err != nil {
+			return updated, err
+		}
+		updated++
+	}
+	return updated, rows.Err()
+}
+
+func (p *Plugin) loadPriceBookItems(ctx context.Context, tid string) ([]PriceBookItem, error) {
+	rows, err := p.pool.Query(ctx, `
+		SELECT id, name, category, unit, unit_price_cents, pricing_model, pricing_tiers
+		FROM price_book_items WHERE tenant_id = $1
+	`, tid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []PriceBookItem
+	for rows.Next() {
+		var item PriceBookItem
+		var tiersJSON []byte
+		if err := rows.Scan(&item.ID, &item.Name, &item.Category, &item.Unit, &item.UnitPriceCents, &item.PricingModel, &tiersJSON); err != nil {
+			return nil, err
+		}
+		items = append(items, scanPriceBookItem(item.ID, item.Name, item.Category, item.Unit, item.UnitPriceCents, item.PricingModel, tiersJSON))
+	}
+	return items, rows.Err()
 }
 
 func (p *Plugin) sendQuote(c *fiber.Ctx) error {

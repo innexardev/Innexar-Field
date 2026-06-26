@@ -66,13 +66,37 @@ func CreateInitialState(ctx context.Context, pool *pgxpool.Pool, tenantID, indus
 		INSERT INTO onboarding_state (tenant_id, current_step, completed_steps, industry_packs)
 		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (tenant_id) DO NOTHING
-	`, tenantID, StepIndustry, completedJSON, packsJSON)
+	`, tenantID, StepBilling, completedJSON, packsJSON)
 	return err
 }
 
 func (s *Service) GetStatus(ctx context.Context, tenantID string) (*StatusResponse, error) {
 	row, err := s.loadState(ctx, tenantID)
 	if err != nil {
+		return nil, err
+	}
+	return row.toStatus(), nil
+}
+
+func (s *Service) CompleteBilling(ctx context.Context, tenantID string) (*StatusResponse, error) {
+	var subStatus string
+	err := s.pool.QueryRow(ctx, `SELECT subscription_status FROM tenants WHERE id = $1`, tenantID).Scan(&subStatus)
+	if err != nil {
+		return nil, fmt.Errorf("tenant not found")
+	}
+	if subStatus != "active" && subStatus != "trialing" {
+		return nil, fmt.Errorf("subscription payment required")
+	}
+
+	row, err := s.loadState(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	row.CompletedSteps = markCompleted(row.CompletedSteps, StepBilling)
+	row.CurrentStep = StepIndustry
+
+	if err := s.saveState(ctx, tenantID, row); err != nil {
 		return nil, err
 	}
 	return row.toStatus(), nil

@@ -3,6 +3,7 @@ package onboarding
 // Wizard step identifiers (ordered flow).
 const (
 	StepSignup   = "signup"
+	StepBilling  = "billing"
 	StepIndustry = "industry"
 	StepProfile  = "profile"
 	StepModules  = "modules"
@@ -11,7 +12,7 @@ const (
 )
 
 // stepOrder defines valid progression through the wizard.
-var stepOrder = []string{StepSignup, StepIndustry, StepProfile, StepModules, StepSetup, StepComplete}
+var stepOrder = []string{StepSignup, StepBilling, StepIndustry, StepProfile, StepModules, StepSetup, StepComplete}
 
 func nextStep(current string) string {
 	for i, s := range stepOrder {

@@ -26,7 +26,7 @@ func TestPlugin_Migrations(t *testing.T) {
 	p := New(nil, nil)
 	migs := p.Migrations()
 
-	assert.Len(t, migs, 5)
+	assert.Len(t, migs, 6)
 	assert.Equal(t, 110, migs[0].Version)
 	assert.Equal(t, "estimates", migs[0].Name)
 	assert.Contains(t, migs[0].UpSQL, "estimate_line_items")
@@ -40,6 +40,8 @@ func TestPlugin_Migrations(t *testing.T) {
 	assert.Equal(t, 114, migs[4].Version)
 	assert.Equal(t, "price_book_pricing_model", migs[4].Name)
 	assert.Contains(t, migs[4].UpSQL, "pricing_model")
+	assert.Equal(t, 115, migs[5].Version)
+	assert.Equal(t, "estimate_property_id", migs[5].Name)
 }
 
 func TestPlugin_PriceBookRoutesRegistered(t *testing.T) {

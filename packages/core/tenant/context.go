@@ -45,3 +45,18 @@ func UserID(ctx context.Context) (string, bool) {
 	v, ok := ctx.Value(userKey).(string)
 	return v, ok && v != ""
 }
+
+type customerKeyType struct{}
+
+var customerKey = customerKeyType{}
+
+// WithCustomerID stores customer_id for portal RLS scoping.
+func WithCustomerID(ctx context.Context, customerID string) context.Context {
+	return context.WithValue(ctx, customerKey, customerID)
+}
+
+// CustomerID extracts customer_id from context.
+func CustomerID(ctx context.Context) (string, bool) {
+	v, ok := ctx.Value(customerKey).(string)
+	return v, ok && v != ""
+}

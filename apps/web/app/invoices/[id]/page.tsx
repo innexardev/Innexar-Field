@@ -13,6 +13,7 @@ export default function InvoiceDetailPage() {
   const params = useParams<{ id: string }>();
   const { client, token } = useAppPage();
   const t = useTranslations("modules.invoiceDetail");
+  const ti = useTranslations("modules.invoices");
   const tc = useTranslations("modules.common");
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +72,20 @@ export default function InvoiceDetailPage() {
   }
 
   return (
-    <ModulePage title={invoice.invoice_number} subtitle={t("subtitle")}>
+    <ModulePage
+      title={invoice.invoice_number}
+      subtitle={t("subtitle")}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={`/invoices/${invoice.id}/preview`}>
+            <Button variant="secondary">{ti("previewPdf")}</Button>
+          </Link>
+          <Link href={`/invoices/${invoice.id}/preview?print=1`}>
+            <Button variant="secondary">{ti("printInvoice")}</Button>
+          </Link>
+        </div>
+      }
+    >
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <Link href="/invoices" className="text-sm text-[var(--brand-accent)] hover:underline">
           {tc("allInvoices")}
@@ -82,12 +96,12 @@ export default function InvoiceDetailPage() {
           </Badge>
           {invoice.status === "draft" && (
             <Button onClick={sendInvoice} disabled={acting}>
-              {acting ? "Sending…" : "Send invoice"}
+              {acting ? tc("sending") : t("sendInvoice")}
             </Button>
           )}
           {invoice.status === "sent" && (
             <Button onClick={payInvoice} disabled={acting}>
-              {acting ? "Processing…" : "Record payment"}
+              {acting ? t("processing") : t("recordPayment")}
             </Button>
           )}
         </div>
@@ -96,31 +110,31 @@ export default function InvoiceDetailPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Invoice details</CardTitle>
+            <CardTitle>{t("invoiceDetails")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div className="flex justify-between border-b border-[var(--brand-border)] pb-3">
-              <span className="text-[var(--brand-text-muted)]">Invoice number</span>
+              <span className="text-[var(--brand-text-muted)]">{t("invoiceNumber")}</span>
               <span className="font-medium">{invoice.invoice_number}</span>
             </div>
             {invoice.customer_id && (
               <div className="flex justify-between border-b border-[var(--brand-border)] pb-3">
-                <span className="text-[var(--brand-text-muted)]">Customer</span>
+                <span className="text-[var(--brand-text-muted)]">{tc("customer")}</span>
                 <Link href={`/customers/${invoice.customer_id}`} className="text-[var(--brand-accent)] hover:underline">
-                  View customer
+                  {tc("viewCustomer")}
                 </Link>
               </div>
             )}
             {invoice.due_at && (
               <div className="flex justify-between border-b border-[var(--brand-border)] pb-3">
-                <span className="text-[var(--brand-text-muted)]">Due date</span>
-                <span>{new Date(invoice.due_at).toLocaleDateString("en-US")}</span>
+                <span className="text-[var(--brand-text-muted)]">{t("dueDate")}</span>
+                <span>{new Date(invoice.due_at).toLocaleDateString()}</span>
               </div>
             )}
             {invoice.paid_at && (
               <div className="flex justify-between">
-                <span className="text-[var(--brand-text-muted)]">Paid on</span>
-                <span>{new Date(invoice.paid_at).toLocaleDateString("en-US")}</span>
+                <span className="text-[var(--brand-text-muted)]">{t("paidOn")}</span>
+                <span>{new Date(invoice.paid_at).toLocaleDateString()}</span>
               </div>
             )}
           </CardContent>
@@ -128,7 +142,7 @@ export default function InvoiceDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Amount due</CardTitle>
+            <CardTitle>{t("amountDue")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold tracking-tight text-[var(--brand-text-primary)]">
@@ -136,11 +150,11 @@ export default function InvoiceDetailPage() {
             </p>
             {invoice.status === "sent" && (
               <Button onClick={payInvoice} disabled={acting} className="mt-4 w-full">
-                {acting ? "Processing…" : "Pay invoice"}
+                {acting ? t("processing") : t("payInvoice")}
               </Button>
             )}
             {invoice.status === "paid" && (
-              <p className="mt-3 text-sm text-[var(--brand-success)]">Payment recorded.</p>
+              <p className="mt-3 text-sm text-[var(--brand-success)]">{t("paymentRecorded")}</p>
             )}
           </CardContent>
         </Card>

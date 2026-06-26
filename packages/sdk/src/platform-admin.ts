@@ -96,6 +96,48 @@ export interface PlatformTenant {
 export interface PlatformTenantPatch {
   suspended?: boolean;
   plan_id?: string;
+  name?: string;
+  industry_pack?: string;
+  subscription_status?: string;
+}
+
+export interface PlatformTenantCreateInput {
+  name: string;
+  slug?: string;
+  industry_pack?: string;
+  plan_id?: string;
+  subscription_status?: string;
+  owner_email?: string;
+  owner_password?: string;
+}
+
+export interface PlatformUser {
+  id: string;
+  tenant_id: string;
+  tenant_name?: string;
+  tenant_slug?: string;
+  email: string;
+  role: string;
+  first_name: string;
+  last_name: string;
+  created_at: string;
+}
+
+export interface PlatformUserCreateInput {
+  tenant_id: string;
+  email: string;
+  password: string;
+  role?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+export interface PlatformUserUpdateInput {
+  email?: string;
+  role?: string;
+  first_name?: string;
+  last_name?: string;
+  password?: string;
 }
 
 export interface PlatformStats {
@@ -108,6 +150,50 @@ export interface PlatformStats {
   active_promotions: number;
 }
 
+export interface PlatformMetrics {
+  total_tenants: number;
+  active_subscriptions: number;
+  trialing: number;
+  past_due: number;
+  churned: number;
+  suspended_tenants: number;
+  mrr_estimate_cents: number;
+  signups_last_7_days: number;
+  signups_last_30_days: number;
+  total_users: number;
+  tenants_by_plan: Record<string, number>;
+  subscription_by_status: Record<string, number>;
+  recent_tenants: PlatformTenant[];
+  tenants_needing_attention: PlatformTenant[];
+}
+
+export interface MaskedSecret {
+  set: boolean;
+  last4?: string;
+}
+
+export interface IntegrationBlock {
+  enabled?: boolean;
+  [key: string]: boolean | string | MaskedSecret | undefined;
+}
+
+export interface PlatformIntegrationsSettings {
+  stripe: IntegrationBlock;
+  quickbooks: IntegrationBlock;
+  avalara: IntegrationBlock;
+  smtp: IntegrationBlock;
+  storage: IntegrationBlock;
+  updated_at: string;
+}
+
+export interface PlatformIntegrationsSettingsInput {
+  stripe?: Record<string, string>;
+  quickbooks?: Record<string, string>;
+  avalara?: Record<string, string>;
+  smtp?: Record<string, string>;
+  storage?: Record<string, string>;
+}
+
 export interface PlatformConfig {
   brand_overrides: Record<string, unknown>;
   feature_flags: Record<string, boolean>;
@@ -117,6 +203,62 @@ export interface PlatformConfig {
 export interface PlatformConfigInput {
   brand_overrides?: Record<string, unknown>;
   feature_flags?: Record<string, boolean>;
+}
+
+export interface PlatformBillingSettings {
+  trial_days: number;
+  default_plan_id: string;
+  checkout_success_url?: string;
+  checkout_cancel_url?: string;
+  portal_return_url?: string;
+  updated_at?: string;
+}
+
+export interface PlatformBillingSettingsInput {
+  trial_days?: number;
+  default_plan_id?: string;
+  checkout_success_url?: string;
+  checkout_cancel_url?: string;
+  portal_return_url?: string;
+}
+
+export interface PlatformModuleCatalogEntry {
+  id: string;
+  name: string;
+  description?: string;
+  core: boolean;
+  industry_packs?: string[];
+}
+
+export interface PlatformModuleSettings {
+  catalog: PlatformModuleCatalogEntry[];
+  globally_enabled: Record<string, boolean>;
+  pack_defaults: Record<string, Record<string, boolean>>;
+  industry_packs: { id: string; name: string; description: string; modules: string[] }[];
+  updated_at: string;
+}
+
+export interface PlatformModuleSettingsPatch {
+  globally_enabled?: Record<string, boolean>;
+  pack_defaults?: Record<string, Record<string, boolean>>;
+}
+
+export interface PlatformAnnouncement {
+  id: string;
+  message: string;
+  severity: "info" | "warning" | "critical" | string;
+  active: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  created_at: string;
+}
+
+export interface PlatformAnnouncementInput {
+  message: string;
+  severity?: string;
+  active?: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
 }
 
 export interface PlatformAuditEntry {
@@ -234,12 +376,45 @@ export class PlatformAdminClient {
     return this.request<{ data: PlatformTenant[] }>("GET", "/platform/tenants");
   }
 
+  getTenant(id: string) {
+    return this.request<PlatformTenant>("GET", `/platform/tenants/${id}`);
+  }
+
+  createTenant(input: PlatformTenantCreateInput) {
+    return this.request<PlatformTenant>("POST", "/platform/tenants", input);
+  }
+
   updateTenant(id: string, patch: PlatformTenantPatch) {
     return this.request<PlatformTenant>("PATCH", `/platform/tenants/${id}`, patch);
   }
 
+  listUsers(params?: { tenant_id?: string }) {
+    const q = params?.tenant_id ? `?tenant_id=${encodeURIComponent(params.tenant_id)}` : "";
+    return this.request<{ data: PlatformUser[] }>("GET", `/platform/users${q}`);
+  }
+
+  getUser(id: string) {
+    return this.request<PlatformUser>("GET", `/platform/users/${id}`);
+  }
+
+  createUser(input: PlatformUserCreateInput) {
+    return this.request<PlatformUser>("POST", "/platform/users", input);
+  }
+
+  updateUser(id: string, input: PlatformUserUpdateInput) {
+    return this.request<PlatformUser>("PATCH", `/platform/users/${id}`, input);
+  }
+
+  deleteUser(id: string) {
+    return this.request<void>("DELETE", `/platform/users/${id}`);
+  }
+
   getStats() {
     return this.request<PlatformStats>("GET", "/platform/stats");
+  }
+
+  getMetrics() {
+    return this.request<PlatformMetrics>("GET", "/platform/metrics");
   }
 
   getConfig() {
@@ -248,6 +423,46 @@ export class PlatformAdminClient {
 
   updateConfig(input: PlatformConfigInput) {
     return this.request<PlatformConfig>("PATCH", "/platform/config", input);
+  }
+
+  getBillingSettings() {
+    return this.request<PlatformBillingSettings>("GET", "/platform/billing-settings");
+  }
+
+  updateBillingSettings(input: PlatformBillingSettingsInput) {
+    return this.request<PlatformBillingSettings>("PATCH", "/platform/billing-settings", input);
+  }
+
+  getIntegrationsSettings() {
+    return this.request<PlatformIntegrationsSettings>("GET", "/platform/integrations/settings");
+  }
+
+  updateIntegrationsSettings(input: PlatformIntegrationsSettingsInput) {
+    return this.request<PlatformIntegrationsSettings>("PATCH", "/platform/integrations/settings", input);
+  }
+
+  getModuleSettings() {
+    return this.request<PlatformModuleSettings>("GET", "/platform/modules");
+  }
+
+  updateModuleSettings(input: PlatformModuleSettingsPatch) {
+    return this.request<PlatformModuleSettings>("PATCH", "/platform/modules", input);
+  }
+
+  listAnnouncements() {
+    return this.request<{ data: PlatformAnnouncement[] }>("GET", "/platform/announcements");
+  }
+
+  createAnnouncement(input: PlatformAnnouncementInput) {
+    return this.request<PlatformAnnouncement>("POST", "/platform/announcements", input);
+  }
+
+  updateAnnouncement(id: string, input: Partial<PlatformAnnouncementInput>) {
+    return this.request<PlatformAnnouncement>("PATCH", `/platform/announcements/${id}`, input);
+  }
+
+  deleteAnnouncement(id: string) {
+    return this.request<void>("DELETE", `/platform/announcements/${id}`);
   }
 
   listAuditLog(params?: { limit?: number; offset?: number }) {

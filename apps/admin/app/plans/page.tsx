@@ -39,6 +39,29 @@ const emptyForm = (): PlatformPlanInput => ({
   sort_order: 0,
 });
 
+function validatePlanForm(
+  form: PlatformPlanInput,
+  editing: PlatformPlan | null,
+  priceDollars: string,
+): string | null {
+  if (!editing) {
+    const id = form.id.trim();
+    if (!id) return "Plan ID is required.";
+    if (!/^[a-z][a-z0-9_-]*$/.test(id)) {
+      return "Plan ID must start with a lowercase letter and contain only lowercase letters, digits, hyphens, or underscores.";
+    }
+  }
+  if (!form.name.trim()) return "Name is required.";
+  if (form.stripe_price_id?.trim() && !form.stripe_price_id.startsWith("price_")) {
+    return "Stripe price ID must start with price_ (paste from Stripe dashboard).";
+  }
+  if (priceDollars) {
+    const amount = parseFloat(priceDollars);
+    if (Number.isNaN(amount) || amount < 0) return "Price must be a non-negative number.";
+  }
+  return null;
+}
+
 export default function PlansPage() {
   const { client } = useAdminPage();
   const [plans, setPlans] = useState<PlatformPlan[]>([]);
@@ -96,6 +119,11 @@ export default function PlansPage() {
   }
 
   async function handleSave() {
+    const validationError = validatePlanForm(form, editing, priceDollars);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     setSaving(true);
     setError("");
     const cents = priceDollars ? Math.round(parseFloat(priceDollars) * 100) : null;

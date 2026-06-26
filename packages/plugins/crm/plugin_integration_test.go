@@ -313,6 +313,112 @@ func contractTemplateIDs(rows []contractTemplateRow) []string {
 	return ids
 }
 
+func TestCRM_CustomerProperty_BedsBathsSqft_Integration(t *testing.T) {
+	ctx := context.Background()
+
+	pg, err := tcpostgres.RunContainer(ctx,
+		testcontainers.WithImage("postgres:16-alpine"),
+		tcpostgres.WithDatabase("fieldforge"),
+		tcpostgres.WithUsername("fieldforge"),
+		tcpostgres.WithPassword("fieldforge"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").WithOccurrence(2),
+		),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = pg.Terminate(ctx) })
+
+	connStr, err := pg.ConnectionString(ctx, "sslmode=disable")
+	require.NoError(t, err)
+
+	pool, err := db.Connect(ctx, connStr)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+
+	require.NoError(t, runMigrations(ctx, pool))
+
+	tenantA := uuid.New().String()
+	seedTenant(t, ctx, pool, tenantA, "tenant-a")
+
+	authSvc := auth.NewService("integration-test-secret-32-chars!!", 24)
+	tokenA, err := authSvc.IssueToken(uuid.New().String(), tenantA, "a@example.com", "owner")
+	require.NoError(t, err)
+
+	app := newCRMApp(pool, authSvc)
+
+	createCustomer := postJSON(t, app, "/crm/customers", tokenA, map[string]string{
+		"name": "Property Test Co",
+	})
+	require.Equal(t, http.StatusCreated, createCustomer.StatusCode)
+	defer createCustomer.Body.Close()
+	var customer map[string]any
+	require.NoError(t, json.NewDecoder(createCustomer.Body).Decode(&customer))
+	customerID, _ := customer["id"].(string)
+	require.NotEmpty(t, customerID)
+
+	bedrooms := 3
+	bathrooms := 2.5
+	sqft := 1800
+	createProp := postJSON(t, app, "/crm/customers/"+customerID+"/properties", tokenA, map[string]any{
+		"label":     "Main residence",
+		"street":    "1200 Oak St",
+		"city":      "Austin",
+		"state":     "TX",
+		"zip":       "78701",
+		"is_primary": true,
+		"bedrooms":  bedrooms,
+		"bathrooms": bathrooms,
+		"sqft":      sqft,
+	})
+	require.Equal(t, http.StatusCreated, createProp.StatusCode)
+	defer createProp.Body.Close()
+	var createdProp map[string]any
+	require.NoError(t, json.NewDecoder(createProp.Body).Decode(&createdProp))
+	propertyID, _ := createdProp["id"].(string)
+	require.NotEmpty(t, propertyID)
+	assert.Equal(t, float64(bedrooms), createdProp["bedrooms"])
+	assert.Equal(t, bathrooms, createdProp["bathrooms"])
+	assert.Equal(t, float64(sqft), createdProp["sqft"])
+
+	listRes := getJSON(t, app, "/crm/customers/"+customerID+"/properties", tokenA)
+	require.Equal(t, http.StatusOK, listRes.StatusCode)
+	defer listRes.Body.Close()
+	var listBody struct {
+		Data []map[string]any `json:"data"`
+	}
+	require.NoError(t, json.NewDecoder(listRes.Body).Decode(&listBody))
+	require.Len(t, listBody.Data, 1)
+	assert.Equal(t, float64(bedrooms), listBody.Data[0]["bedrooms"])
+	assert.Equal(t, bathrooms, listBody.Data[0]["bathrooms"])
+	assert.Equal(t, float64(sqft), listBody.Data[0]["sqft"])
+
+	updatedBeds := 4
+	updatedSqft := 2100
+	patchRes := patchJSON(t, app, "/crm/customers/"+customerID+"/properties/"+propertyID, tokenA, map[string]any{
+		"bedrooms": updatedBeds,
+		"sqft":     updatedSqft,
+	})
+	require.Equal(t, http.StatusOK, patchRes.StatusCode)
+	defer patchRes.Body.Close()
+	var patched map[string]any
+	require.NoError(t, json.NewDecoder(patchRes.Body).Decode(&patched))
+	assert.Equal(t, float64(updatedBeds), patched["bedrooms"])
+	assert.Equal(t, bathrooms, patched["bathrooms"])
+	assert.Equal(t, float64(updatedSqft), patched["sqft"])
+}
+
+func patchJSON(t *testing.T, app *fiber.App, path, token string, body any) *http.Response {
+	t.Helper()
+	payload, err := json.Marshal(body)
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1"+path, bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := app.Test(req, -1)
+	require.NoError(t, err)
+	return resp
+}
+
 func runMigrations(ctx context.Context, pool *db.Pool) error {
 	var all []struct {
 		Version int

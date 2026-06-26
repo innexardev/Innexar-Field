@@ -22,11 +22,13 @@ import (
 	"github.com/fieldforge/fieldforge/apps/api/internal/reports"
 	"github.com/fieldforge/fieldforge/packages/core/onboarding"
 	"github.com/fieldforge/fieldforge/packages/core/platform"
+	"github.com/fieldforge/fieldforge/packages/core/platformsettings"
 	"github.com/fieldforge/fieldforge/packages/core/plugin"
 	"github.com/fieldforge/fieldforge/packages/core/storage"
 	"github.com/fieldforge/fieldforge/packages/integrations"
 	"github.com/fieldforge/fieldforge/packages/core/tenantplugins"
 	"github.com/fieldforge/fieldforge/packages/plugins/estimating"
+	"github.com/fieldforge/fieldforge/packages/plugins/portal"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
@@ -146,10 +148,15 @@ func New(cfg Config) (*Server, error) {
 	api.Post("/public/contact", publicRL, public.ContactHandler(appCfg))
 	api.Get("/public/marketing-content", publicRL, public.MarketingContentHandler(cfg.Root))
 
-	billingSvc := billing.NewService(cfg.Pool.Pool, appCfg, billing.NewClient(appCfg))
+	settingsStore, err := platformsettings.NewStore(cfg.Pool.Pool)
+	if err != nil {
+		return nil, fmt.Errorf("platform settings store: %w", err)
+	}
+
+	billingSvc := billing.NewService(cfg.Pool.Pool, appCfg, billing.NewClient(appCfg, settingsStore))
 	api.Post("/billing/webhook", billing.WebhookHandler(billingSvc))
 
-	platformSvc := platform.NewService(cfg.Pool.Pool, authSvc, appCfg)
+	platformSvc := platform.NewService(cfg.Pool.Pool, authSvc, appCfg, settingsStore)
 	platform.RegisterRoutes(api, platformSvc, authSvc, publicRL)
 
 	if est, ok := cfg.Registry.Get("estimating"); ok {
@@ -157,6 +164,16 @@ func New(cfg Config) (*Server, error) {
 			pub.RegisterPublicRoutes(api.Group("/public"), publicRL)
 		}
 	}
+
+	portalPlugin := portal.New(cfg.Pool.Pool, authSvc, appCfg, cfg.EventBus)
+	portalPlugin.RegisterPublicRoutes(api.Group("/public"), publicRL)
+
+	portalProtected := api.Group("/portal",
+		middleware.CustomerAuth(authSvc),
+		middleware.RejectSuspendedTenant(cfg.Pool.Pool),
+		middleware.TenantRateLimit(appCfg.TenantRateLimit()),
+	)
+	portalPlugin.RegisterCustomerRoutes(portalProtected)
 
 	if appCfg.Debug.Enabled {
 		api.Get("/debug/routes", func(c *fiber.Ctx) error {

@@ -29,44 +29,13 @@ func TestMockClient_VerifyWebhook(t *testing.T) {
 	assert.Equal(t, "checkout.session.completed", event.Type)
 }
 
-func TestPlanFromConfig(t *testing.T) {
-	cfg := &config.AppConfig{
-		Pricing: map[string]interface{}{
-			"trial_days": 14,
-			"plans": map[string]interface{}{
-				"starter": map[string]interface{}{
-					"id":              "starter",
-					"name":            "Starter",
-					"price_monthly":   25,
-					"stripe_price_id": "price_starter",
-				},
-				"enterprise": map[string]interface{}{
-					"id":            "enterprise",
-					"name":          "Enterprise",
-					"price_monthly": nil,
-				},
-			},
-		},
-	}
-
-	plan, err := PlanFromConfig(cfg, "starter")
-	require.NoError(t, err)
-	assert.Equal(t, "price_starter", plan.StripePriceID)
-	assert.False(t, plan.CustomPricing)
-
-	ent, err := PlanFromConfig(cfg, "enterprise")
-	require.NoError(t, err)
-	assert.True(t, ent.CustomPricing)
-	assert.Equal(t, 14, TrialDays(cfg))
-}
-
 func TestNewClient_MockMode(t *testing.T) {
 	cfg := &config.AppConfig{
 		Debug: config.DebugConfig{
 			Features: map[string]interface{}{"mock_stripe": true},
 		},
 	}
-	client := NewClient(cfg)
+	client := NewClient(cfg, nil)
 	res, err := client.CreateCheckoutSession(context.Background(), CheckoutParams{
 		TenantID: "tenant-1",
 		PlanID:   "starter",

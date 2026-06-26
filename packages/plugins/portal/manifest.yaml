@@ -1,0 +1,12 @@
+id: portal
+name: Client Portal
+version: 1.0.0
+dependencies:
+  - crm
+  - invoicing
+industry_packs:
+  - cleaning
+  - construction
+  - field-services
+permissions:
+  - portal.read

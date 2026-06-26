@@ -7,6 +7,8 @@ import { useParams } from "next/navigation";
 import type { Employee, Job, WorkOrder, WorkOrderAssignment } from "@fieldforge/sdk";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@fieldforge/ui";
 import { ModulePage } from "@/components/module-page";
+import { NavigateButton } from "@/components/maps/navigate-button";
+import { buildDirectionsUrl, resolveJobDirectionsUrl } from "@/lib/maps";
 import { useAppPage } from "@/lib/use-app-page";
 
 const STATUS_ORDER = ["open", "assigned", "in_progress", "completed", "cancelled"];
@@ -48,6 +50,7 @@ export default function WorkOrderDetailPage() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [technicianId, setTechnicianId] = useState("");
   const [assigning, setAssigning] = useState(false);
+  const [directionsUrl, setDirectionsUrl] = useState("");
 
   const employeeById = useMemo(() => {
     const map = new Map<string, Employee>();
@@ -82,6 +85,19 @@ export default function WorkOrderDetailPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [load]);
+
+  useEffect(() => {
+    if (!workOrder) {
+      setDirectionsUrl("");
+      return;
+    }
+    if (linkedJob) {
+      setDirectionsUrl(buildDirectionsUrl({ address: linkedJob.title }));
+      void resolveJobDirectionsUrl(client, linkedJob).then(setDirectionsUrl);
+      return;
+    }
+    setDirectionsUrl(buildDirectionsUrl({ address: workOrder.title }));
+  }, [workOrder, linkedJob, client]);
 
   async function onStatusChange(status: string) {
     if (!workOrder || status === workOrder.status) return;
@@ -138,6 +154,7 @@ export default function WorkOrderDetailPage() {
           {tc("allWorkOrders")}
         </Link>
         <div className="flex flex-wrap items-center gap-2">
+          <NavigateButton href={directionsUrl} />
           <Badge tone={priorityTone(workOrder.priority)}>{workOrder.priority}</Badge>
           <Badge tone={statusTone(workOrder.status)}>{statusLabel(workOrder.status)}</Badge>
         </div>

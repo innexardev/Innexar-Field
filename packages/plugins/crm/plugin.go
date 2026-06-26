@@ -35,6 +35,7 @@ func (p *Plugin) RegisterRoutes(router fiber.Router, deps plugin.Deps) {
 	router.Post("/customers", p.createCustomer)
 	router.Get("/customers/:id/properties", p.listCustomerProperties)
 	router.Post("/customers/:id/properties", p.createCustomerProperty)
+	router.Patch("/customers/:id/properties/:propertyId", p.updateCustomerProperty)
 	router.Get("/customers/:id", p.getCustomer)
 	router.Patch("/customers/:id", p.updateCustomer)
 	router.Get("/leads", p.listLeads)
@@ -54,6 +55,7 @@ func (p *Plugin) Migrations() []plugin.Migration {
 		{Version: 102, Name: "crm_properties", UpSQL: propertiesSQL},
 		{Version: 103, Name: "crm_contracts", UpSQL: contractsSQL},
 		{Version: 104, Name: "crm_contract_templates", UpSQL: contractTemplatesSQL},
+		{Version: 105, Name: "crm_property_beds_baths_sqft", UpSQL: propertyBedsBathsSqftSQL},
 	}
 }
 
@@ -114,6 +116,12 @@ ALTER TABLE customer_properties FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS customer_properties_tenant ON customer_properties;
 CREATE POLICY customer_properties_tenant ON customer_properties
 	USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
+`
+
+const propertyBedsBathsSqftSQL = `
+ALTER TABLE customer_properties ADD COLUMN IF NOT EXISTS bedrooms INT;
+ALTER TABLE customer_properties ADD COLUMN IF NOT EXISTS bathrooms NUMERIC;
+ALTER TABLE customer_properties ADD COLUMN IF NOT EXISTS sqft INT;
 `
 
 const contractsSQL = `
@@ -505,14 +513,32 @@ func (p *Plugin) getLeadsBoard(c *fiber.Ctx) error {
 }
 
 type Property struct {
-	ID         string `json:"id"`
-	CustomerID string `json:"customer_id"`
-	Label      string `json:"label"`
-	Street     string `json:"street"`
-	City       string `json:"city"`
-	State      string `json:"state"`
-	Zip        string `json:"zip"`
-	IsPrimary  bool   `json:"is_primary"`
+	ID         string   `json:"id"`
+	CustomerID string   `json:"customer_id"`
+	Label      string   `json:"label"`
+	Street     string   `json:"street"`
+	City       string   `json:"city"`
+	State      string   `json:"state"`
+	Zip        string   `json:"zip"`
+	IsPrimary  bool     `json:"is_primary"`
+	Bedrooms   *int     `json:"bedrooms,omitempty"`
+	Bathrooms  *float64 `json:"bathrooms,omitempty"`
+	Sqft       *int     `json:"sqft,omitempty"`
+}
+
+const propertySelectCols = `
+	id, customer_id::text, label, street, city, state, zip, is_primary, bedrooms, bathrooms, sqft
+`
+
+func scanProperty(row interface {
+	Scan(dest ...any) error
+}) (Property, error) {
+	var prop Property
+	err := row.Scan(
+		&prop.ID, &prop.CustomerID, &prop.Label, &prop.Street, &prop.City, &prop.State, &prop.Zip,
+		&prop.IsPrimary, &prop.Bedrooms, &prop.Bathrooms, &prop.Sqft,
+	)
+	return prop, err
 }
 
 func (p *Plugin) listCustomerProperties(c *fiber.Ctx) error {
@@ -528,7 +554,7 @@ func (p *Plugin) listCustomerProperties(c *fiber.Ctx) error {
 	}
 
 	rows, err := p.pool.Query(c.UserContext(), `
-		SELECT id, customer_id::text, label, street, city, state, zip, is_primary
+		SELECT `+propertySelectCols+`
 		FROM customer_properties
 		WHERE tenant_id = $1 AND customer_id = $2
 		ORDER BY is_primary DESC, label
@@ -540,8 +566,8 @@ func (p *Plugin) listCustomerProperties(c *fiber.Ctx) error {
 
 	var list []Property
 	for rows.Next() {
-		var prop Property
-		if err := rows.Scan(&prop.ID, &prop.CustomerID, &prop.Label, &prop.Street, &prop.City, &prop.State, &prop.Zip, &prop.IsPrimary); err != nil {
+		prop, err := scanProperty(rows)
+		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "failed to list properties")
 		}
 		list = append(list, prop)
@@ -562,12 +588,15 @@ func (p *Plugin) createCustomerProperty(c *fiber.Ctx) error {
 	}
 
 	var body struct {
-		Label     string `json:"label"`
-		Street    string `json:"street"`
-		City      string `json:"city"`
-		State     string `json:"state"`
-		Zip       string `json:"zip"`
-		IsPrimary bool   `json:"is_primary"`
+		Label     string   `json:"label"`
+		Street    string   `json:"street"`
+		City      string   `json:"city"`
+		State     string   `json:"state"`
+		Zip       string   `json:"zip"`
+		IsPrimary bool     `json:"is_primary"`
+		Bedrooms  *int     `json:"bedrooms"`
+		Bathrooms *float64 `json:"bathrooms"`
+		Sqft      *int     `json:"sqft"`
 	}
 	if err := c.BodyParser(&body); err != nil || body.Label == "" {
 		return fiber.NewError(400, "label required")
@@ -582,9 +611,12 @@ func (p *Plugin) createCustomerProperty(c *fiber.Ctx) error {
 	}
 
 	_, err = p.pool.Exec(c.UserContext(), `
-		INSERT INTO customer_properties (id, tenant_id, customer_id, label, street, city, state, zip, is_primary)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-	`, id, tid, customerID, body.Label, body.Street, body.City, body.State, body.Zip, body.IsPrimary)
+		INSERT INTO customer_properties (
+			id, tenant_id, customer_id, label, street, city, state, zip, is_primary, bedrooms, bathrooms, sqft
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	`, id, tid, customerID, body.Label, body.Street, body.City, body.State, body.Zip, body.IsPrimary,
+		body.Bedrooms, body.Bathrooms, body.Sqft)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to create property")
 	}
@@ -592,6 +624,64 @@ func (p *Plugin) createCustomerProperty(c *fiber.Ctx) error {
 	return c.Status(201).JSON(Property{
 		ID: id, CustomerID: customerID, Label: body.Label,
 		Street: body.Street, City: body.City, State: body.State, Zip: body.Zip, IsPrimary: body.IsPrimary,
+		Bedrooms: body.Bedrooms, Bathrooms: body.Bathrooms, Sqft: body.Sqft,
 	})
+}
+
+func (p *Plugin) updateCustomerProperty(c *fiber.Ctx) error {
+	tid, _ := tenant.ID(c.UserContext())
+	customerID := c.Params("id")
+	propertyID := c.Params("propertyId")
+
+	var body struct {
+		Label     *string  `json:"label"`
+		Street    *string  `json:"street"`
+		City      *string  `json:"city"`
+		State     *string  `json:"state"`
+		Zip       *string  `json:"zip"`
+		IsPrimary *bool    `json:"is_primary"`
+		Bedrooms  *int     `json:"bedrooms"`
+		Bathrooms *float64 `json:"bathrooms"`
+		Sqft      *int     `json:"sqft"`
+	}
+	if err := c.BodyParser(&body); err != nil {
+		return fiber.NewError(400, "invalid body")
+	}
+
+	if body.IsPrimary != nil && *body.IsPrimary {
+		_, _ = p.pool.Exec(c.UserContext(), `
+			UPDATE customer_properties SET is_primary = false
+			WHERE tenant_id = $1 AND customer_id = $2
+		`, tid, customerID)
+	}
+
+	tag, err := p.pool.Exec(c.UserContext(), `
+		UPDATE customer_properties SET
+			label = COALESCE($4, label),
+			street = COALESCE($5, street),
+			city = COALESCE($6, city),
+			state = COALESCE($7, state),
+			zip = COALESCE($8, zip),
+			is_primary = COALESCE($9, is_primary),
+			bedrooms = COALESCE($10, bedrooms),
+			bathrooms = COALESCE($11, bathrooms),
+			sqft = COALESCE($12, sqft)
+		WHERE id = $1 AND tenant_id = $2 AND customer_id = $3
+	`, propertyID, tid, customerID, body.Label, body.Street, body.City, body.State, body.Zip,
+		body.IsPrimary, body.Bedrooms, body.Bathrooms, body.Sqft)
+	if err != nil || tag.RowsAffected() == 0 {
+		return fiber.NewError(404, "property not found")
+	}
+
+	row := p.pool.QueryRow(c.UserContext(), `
+		SELECT `+propertySelectCols+`
+		FROM customer_properties
+		WHERE id = $1 AND tenant_id = $2 AND customer_id = $3
+	`, propertyID, tid, customerID)
+	prop, err := scanProperty(row)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "failed to load property")
+	}
+	return c.JSON(prop)
 }
 

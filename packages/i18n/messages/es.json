@@ -22,16 +22,16 @@
     "signingIn": "Iniciando sesión…",
     "noAccount": "¿No tienes cuenta?",
     "startFreeTrial": "Prueba gratis",
-    "signupTitle": "Comienza tu prueba de {days} días",
-    "signupSubtitle": "Configura tu espacio de {brand} en minutos. Sin tarjeta de crédito.",
-    "signupStep": "Paso 1 de 5 · Crea tu cuenta",
+    "signupTitle": "Crea tu espacio de trabajo",
+    "signupSubtitle": "Configura tu espacio de {brand} en minutos. Suscríbete para comenzar.",
+    "signupStep": "Paso 1 de 6 · Crea tu cuenta",
     "companyDetails": "Datos de la empresa",
     "companyName": "Nombre de la empresa",
     "workEmail": "Correo de trabajo",
     "passwordHint": "Mín. 8 caracteres",
     "createWorkspace": "Crear tu espacio de trabajo",
     "creatingWorkspace": "Creando tu espacio…",
-    "signupFootnote": "Gratis por {days} días · Cancela cuando quieras · Seguro y cifrado",
+    "signupFootnote": "Pago seguro · Cancela cuando quieras · Cifrado",
     "alreadyHaveAccount": "¿Ya tienes cuenta?"
   },
   "shell": {
@@ -60,11 +60,69 @@
     "completeTitle": "¡Todo listo!",
     "continue": "Continuar",
     "coreBadge": "Principal",
+    "stepBilling": "Facturación",
     "stepIndustry": "Industria",
     "stepProfile": "Empresa",
     "stepModules": "Módulos",
     "stepSetup": "Config",
     "stepComplete": "Listo"
+  },
+  "billing": {
+    "onboarding": {
+      "title": "Suscríbete para continuar",
+      "subtitle": "Elige tu plan y agrega un método de pago para activar tu espacio.",
+      "checking": "Verificando suscripción…",
+      "pricePerMonth": "${price}/mes",
+      "customPricing": "Contacta ventas para precios",
+      "secureCheckout": "Pago seguro con Stripe. Apple Pay aparece automáticamente si está habilitado en tu panel de Stripe.",
+      "redirecting": "Redirigiendo…",
+      "subscribe": "Suscribirse y continuar",
+      "applePayNote": "Apple Pay está disponible en Stripe Checkout cuando lo habilitas en el panel de Stripe (sin código adicional)."
+    },
+    "success": {
+      "title": "Pago exitoso",
+      "subtitle": "Tu suscripción está activa. Continuando con la configuración…",
+      "processing": "Confirmando pago…",
+      "wait": "Espera mientras activamos tu suscripción.",
+      "continue": "Continuar"
+    },
+    "dunning": {
+      "title": "Pago fallido",
+      "subtitle": "Actualiza tu método de pago para restaurar el acceso a tu espacio.",
+      "updatePayment": "Actualizar método de pago",
+      "redirecting": "Redirigiendo…",
+      "signOut": "Cerrar sesión"
+    },
+    "cancel": {
+      "title": "Pago cancelado",
+      "subtitle": "No se realizó ningún cargo. Puedes intentarlo de nuevo cuando quieras.",
+      "tryAgain": "Intentar de nuevo",
+      "manageBilling": "Ir a facturación"
+    },
+    "manage": {
+      "title": "Facturación",
+      "subtitle": "Administra tu suscripción, método de pago e facturas.",
+      "currentPlan": "Plan actual",
+      "loading": "Cargando suscripción…",
+      "pricePerMonth": "${price}/mes",
+      "updatePaymentMethod": "Actualizar método de pago",
+      "planConfig": "Configuración de planes",
+      "changePlan": "Cambiar plan",
+      "current": "Plan actual",
+      "selectPlan": "Seleccionar plan",
+      "invoices": "Facturas",
+      "loadingInvoices": "Cargando facturas…",
+      "noInvoices": "Aún no hay facturas."
+    },
+    "settings": {
+      "title": "Configuración de planes",
+      "subtitle": "Los IDs de precio de Stripe se leen de la configuración. Define stripe_price_id por plan en el YAML o variables de entorno.",
+      "plansTitle": "Planes SaaS",
+      "plansHint": "Asocia cada plan con un Stripe Price ID (price_…) para checkout en vivo.",
+      "notConfigured": "sin configurar",
+      "envHint": "En producción, define stripe_price_id en config/app.config.yaml o mediante variables de despliegue.",
+      "backToBilling": "Volver a facturación"
+    }
   },
   "dashboard": {
     "goodMorning": "Buenos días",
@@ -129,10 +187,15 @@
     "loading": "Cargando…",
     "dashboard": "Panel",
     "plans": "Planes",
+    "billing": "Facturación",
     "promotions": "Promociones",
     "landingContent": "Contenido de landing",
     "tenants": "Inquilinos",
+    "users": "Usuarios",
     "globalConfig": "Config global",
+    "integrations": "Integraciones",
+    "modules": "Módulos",
+    "announcements": "Anuncios",
     "auditLog": "Registro de auditoría",
     "lightMode": "☀ Modo claro",
     "darkMode": "☾ Modo oscuro"
@@ -416,7 +479,8 @@
       "scheduled": "Programado",
       "scheduleButton": "Programar",
       "emptyTitle": "Sin trabajos programados",
-      "emptyDescription": "Programa tu primer trabajo arriba o convierte un presupuesto aceptado."
+      "emptyDescription": "Programa tu primer trabajo arriba o convierte un presupuesto aceptado.",
+      "assignedTech": "Técnico asignado"
     },
     "estimates": {
       "title": "Presupuestos",
@@ -693,6 +757,7 @@
       "companyNotes": "Empresa / notas",
       "addressHint": "Agrega ubicaciones de servicio y direcciones de obra en Propiedades.",
       "manageProperties": "Gestionar propiedades",
+      "propertyDetails": "{beds, plural, =0 {} other {# hab · }}{baths, plural, =0 {} other {# baño · }}{sqft, plural, =0 {} other {# pies²}}",
       "saveContact": "Guardar datos de contacto",
       "contactSaved": "Datos de contacto guardados.",
       "phonePlaceholder": "(555) 123-4567",
@@ -719,7 +784,8 @@
     "customerProperties": {
       "loadingSubtitle": "Cargando ubicaciones de servicio…",
       "subtitle": "Ubicaciones de servicio y sitios de trabajo de este cliente.",
-      "suffix": "Propiedades"
+      "suffix": "Propiedades",
+      "propertyDetails": "{beds, plural, =0 {} other {# hab · }}{baths, plural, =0 {} other {# baño · }}{sqft, plural, =0 {} other {# pies²}}"
     },
     "leadDetail": {
       "subtitle": "Perfil del prospecto y etapa del pipeline.",
@@ -773,7 +839,29 @@
     },
     "portal": {
       "title": "Portal del cliente",
-      "subtitle": "Autoservicio con marca para clientes de {brand} — configure enlaces y previsualice la experiencia."
+      "subtitle": "Autoservicio con marca para clientes de {brand} — configure enlaces y previsualice la experiencia.",
+      "login": {
+        "title": "Acceso de cliente",
+        "subtitle": "Acceda a sus facturas y cuenta con {brand}.",
+        "companySlug": "Código de empresa",
+        "companySlugHint": "El código corto que le dio su proveedor (igual que la URL de su espacio de trabajo).",
+        "sendLink": "Enviarme un enlace de acceso",
+        "sending": "Enviando enlace…",
+        "linkSent": "Si existe una cuenta con este correo, enviamos un enlace de acceso. Revise su bandeja.",
+        "devLink": "Desarrollo:",
+        "devLinkAction": "Abrir enlace de acceso",
+        "tryAgain": "Usar otro correo"
+      },
+      "invoices": {
+        "title": "Sus facturas",
+        "subtitle": "Facturas de {name} en {company}",
+        "loadingSubtitle": "Cargando su cuenta…",
+        "backToLogin": "← Iniciar sesión",
+        "signOut": "Cerrar sesión",
+        "emptyTitle": "Aún no hay facturas",
+        "emptyDescription": "Cuando su proveedor envíe una factura, aparecerá aquí.",
+        "due": "Vence {date}"
+      }
     },
     "priceBookImport": {
       "title": "Importar lista de precios",
@@ -795,6 +883,14 @@
     "mobileExpenses": {
       "title": "Gastos",
       "subtitle": "Registra gastos de trabajo con fotos de recibos."
+    },
+    "mobileJobs": {
+      "title": "Trabajos de hoy",
+      "subtitle": "{count, plural, =0 {Sin trabajos programados} one {# trabajo programado} other {# trabajos programados}}",
+      "subtitleCached": " · en caché",
+      "emptyTitle": "Sin trabajos hoy",
+      "emptyDescription": "Vuelve más tarde o sincroniza cuando estés en línea.",
+      "openDesktop": "Abrir app de escritorio"
     },
     "mobileTime": {
       "title": "Tiempo",

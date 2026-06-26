@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import type { Job } from "@fieldforge/sdk";
+import type { Employee, Job } from "@fieldforge/sdk";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, IconCalendar } from "@fieldforge/ui";
 import { ModulePage } from "@/components/module-page";
 import { useAppPage } from "@/lib/use-app-page";
+
+function employeeName(emp: Employee) {
+  return `${emp.first_name} ${emp.last_name}`.trim() || emp.email || emp.id.slice(0, 8);
+}
 
 export default function JobsPage() {
   const { client, token } = useAppPage();
@@ -13,12 +17,31 @@ export default function JobsPage() {
   const tc = useTranslations("modules.common");
   const locale = useLocale();
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [title, setTitle] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
 
   useEffect(() => {
-    if (token) client.listJobs().then((r) => setJobs(r.data ?? [])).catch(console.error);
+    if (!token) return;
+    Promise.all([client.listJobs(), client.listEmployees()])
+      .then(([jobRes, employeeRes]) => {
+        setJobs(jobRes.data ?? []);
+        setEmployees(employeeRes.data ?? []);
+      })
+      .catch(console.error);
   }, [token, client]);
+
+  const employeeById = useMemo(() => {
+    const map = new Map<string, Employee>();
+    for (const emp of employees) map.set(emp.id, emp);
+    return map;
+  }, [employees]);
+
+  function assignedLabel(job: Job) {
+    if (!job.assigned_to) return tc("unassigned");
+    const emp = employeeById.get(job.assigned_to);
+    return emp ? employeeName(emp) : job.assigned_to.slice(0, 8);
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -87,6 +110,9 @@ export default function JobsPage() {
                       })}
                     </div>
                   )}
+                  <div className="mt-1 text-sm text-[var(--brand-text-muted)]">
+                    {t("assignedTech")}: {assignedLabel(job)}
+                  </div>
                 </div>
                 <Badge tone={job.status === "completed" ? "success" : "default"}>{job.status}</Badge>
               </CardContent>

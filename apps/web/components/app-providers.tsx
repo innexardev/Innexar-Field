@@ -3,6 +3,7 @@
 import type { BrandConfig, PricingConfig } from "@fieldforge/config";
 import { ConfigProvider } from "@/components/brand-provider";
 import { AuthProvider } from "@/lib/auth-context";
+import { SubscriptionGuard } from "@/components/subscription-guard";
 
 export function AppProviders({
   brand,
@@ -15,7 +16,9 @@ export function AppProviders({
 }) {
   return (
     <ConfigProvider brand={brand} pricing={pricing}>
-      <AuthProvider>{children}</AuthProvider>
+      <AuthProvider>
+        <SubscriptionGuard>{children}</SubscriptionGuard>
+      </AuthProvider>
     </ConfigProvider>
   );
 }

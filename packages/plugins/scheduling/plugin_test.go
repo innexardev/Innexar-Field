@@ -64,16 +64,19 @@ func TestPlugin_Migrations(t *testing.T) {
 	p := New(nil, nil)
 	migs := p.Migrations()
 
-	assert.Len(t, migs, 3)
+	assert.Len(t, migs, 4)
 	assert.Equal(t, 120, migs[0].Version)
 	assert.Equal(t, "jobs", migs[0].Name)
 	assert.Equal(t, 121, migs[1].Version)
 	assert.Equal(t, "scheduling_crews", migs[1].Name)
 	assert.Equal(t, 122, migs[2].Version)
 	assert.Equal(t, "scheduling_recurring_jobs", migs[2].Name)
+	assert.Equal(t, 123, migs[3].Version)
+	assert.Equal(t, "jobs_assigned_to", migs[3].Name)
 	assert.Contains(t, migs[0].UpSQL, "CREATE TABLE IF NOT EXISTS jobs")
 	assert.Contains(t, migs[1].UpSQL, "CREATE TABLE IF NOT EXISTS crews")
 	assert.Contains(t, migs[2].UpSQL, "CREATE TABLE IF NOT EXISTS recurring_jobs")
+	assert.Contains(t, migs[3].UpSQL, "assigned_to")
 }
 
 func TestJob_DefaultStatus(t *testing.T) {

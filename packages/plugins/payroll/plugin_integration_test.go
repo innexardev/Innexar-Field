@@ -3,6 +3,7 @@
 package payroll_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -298,6 +299,89 @@ func TestPayroll_CreateEmployee(t *testing.T) {
 	invalid.Body.Close()
 }
 
+func TestPayroll_EmployeeUserLink(t *testing.T) {
+	ctx := context.Background()
+
+	pg, err := tcpostgres.RunContainer(ctx,
+		testcontainers.WithImage("postgres:16-alpine"),
+		tcpostgres.WithDatabase("fieldforge"),
+		tcpostgres.WithUsername("fieldforge"),
+		tcpostgres.WithPassword("fieldforge"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").WithOccurrence(2),
+		),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = pg.Terminate(ctx) })
+
+	connStr, err := pg.ConnectionString(ctx, "sslmode=disable")
+	require.NoError(t, err)
+
+	pool, err := db.Connect(ctx, connStr)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+
+	require.NoError(t, runMigrations(ctx, pool))
+
+	tenantID := uuid.New().String()
+	userID := uuid.New().String()
+	seedTenant(t, ctx, pool, tenantID, "user-link-tenant")
+	seedUser(t, ctx, pool, tenantID, userID, "worker@example.com")
+
+	authSvc := auth.NewService("integration-test-secret-32-chars!!", 24)
+	token, err := authSvc.IssueToken(userID, tenantID, "worker@example.com", "owner")
+	require.NoError(t, err)
+
+	app := newPayrollApp(pool, authSvc)
+
+	create := postJSON(t, app, "/payroll/employees", token, map[string]any{
+		"first_name":        "Sam",
+		"last_name":         "Worker",
+		"email":             "worker@example.com",
+		"employment_type":   "w2",
+		"hourly_rate_cents": 2000,
+	})
+	require.Equal(t, http.StatusCreated, create.StatusCode)
+	defer create.Body.Close()
+	var employee struct {
+		ID string `json:"id"`
+	}
+	require.NoError(t, json.NewDecoder(create.Body).Decode(&employee))
+
+	patch := patchJSON(t, app, "/payroll/employees/"+employee.ID, token, map[string]any{
+		"user_id": userID,
+	})
+	require.Equal(t, http.StatusOK, patch.StatusCode)
+	defer patch.Body.Close()
+	var linked struct {
+		UserID string `json:"user_id"`
+	}
+	require.NoError(t, json.NewDecoder(patch.Body).Decode(&linked))
+	assert.Equal(t, userID, linked.UserID)
+
+	me := getJSON(t, app, "/payroll/employees/me", token)
+	require.Equal(t, http.StatusOK, me.StatusCode)
+	defer me.Body.Close()
+	var myEmployee struct {
+		ID string `json:"id"`
+	}
+	require.NoError(t, json.NewDecoder(me.Body).Decode(&myEmployee))
+	assert.Equal(t, employee.ID, myEmployee.ID)
+
+	clockIn := postJSON(t, app, "/payroll/timesheets", token, map[string]any{
+		"action": "clock_in",
+	})
+	require.Equal(t, http.StatusCreated, clockIn.StatusCode)
+	defer clockIn.Body.Close()
+	var timesheet struct {
+		EmployeeID string `json:"employee_id"`
+		Status     string `json:"status"`
+	}
+	require.NoError(t, json.NewDecoder(clockIn.Body).Decode(&timesheet))
+	assert.Equal(t, employee.ID, timesheet.EmployeeID)
+	assert.Equal(t, "open", timesheet.Status)
+}
+
 func seedPayrollData(t *testing.T, ctx context.Context, pool *db.Pool, tenantID string) {
 	t.Helper()
 	seedCtx := tenant.WithID(ctx, tenantID)
@@ -362,6 +446,15 @@ func seedTenant(t *testing.T, ctx context.Context, pool *db.Pool, tenantID, slug
 	require.NoError(t, err)
 }
 
+func seedUser(t *testing.T, ctx context.Context, pool *db.Pool, tenantID, userID, email string) {
+	t.Helper()
+	_, err := pool.Exec(ctx, `
+		INSERT INTO users (id, tenant_id, email, password_hash, role, first_name, last_name)
+		VALUES ($1, $2, $3, 'hash', 'owner', 'Test', 'User')
+	`, userID, tenantID, email)
+	require.NoError(t, err)
+}
+
 func newPayrollApp(pool *db.Pool, authSvc *auth.Service) *fiber.App {
 	app := fiber.New()
 	api := app.Group("/api/v1")
@@ -392,6 +485,18 @@ func postJSON(t *testing.T, app *fiber.App, path, token string, body any) *http.
 		reader = strings.NewReader("{}")
 	}
 	req := httptest.NewRequest(http.MethodPost, "/api/v1"+path, reader)
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Test(req, -1)
+	require.NoError(t, err)
+	return resp
+}
+
+func patchJSON(t *testing.T, app *fiber.App, path, token string, body any) *http.Response {
+	t.Helper()
+	payload, err := json.Marshal(body)
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1"+path, bytes.NewReader(payload))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := app.Test(req, -1)

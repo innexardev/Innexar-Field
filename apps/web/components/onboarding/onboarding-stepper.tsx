@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { ONBOARDING_STEPS, type OnboardingStepId } from "@/lib/onboarding/steps";
 
 const STEP_KEYS: Record<OnboardingStepId, string> = {
+  billing: "stepBilling",
   industry: "stepIndustry",
   profile: "stepProfile",
   modules: "stepModules",

@@ -35,6 +35,13 @@ export default function EstimateCalculatePage() {
       .finally(() => setLoading(false));
   }, [load]);
 
+  const property = estimate?.property;
+  const hasRoomCounts =
+    property?.bedrooms != null &&
+    property?.bathrooms != null &&
+    property.bedrooms > 0 &&
+    property.bathrooms > 0;
+
   async function onCalculate() {
     if (!estimate) return;
     setCalculating(true);
@@ -103,6 +110,17 @@ export default function EstimateCalculatePage() {
             <p className="text-sm text-[var(--brand-text-secondary)]">{t("pricingInputsDescription")}</p>
           </CardHeader>
           <CardContent className="space-y-4">
+            {estimate.property_id && (
+              <p className="rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface-elevated)] px-3 py-2 text-sm text-[var(--brand-text-secondary)]">
+                {hasRoomCounts
+                  ? t("roomTierHint", {
+                      label: property?.label ?? "",
+                      beds: property?.bedrooms ?? 0,
+                      baths: property?.bathrooms ?? 0,
+                    })
+                  : t("roomTierMissingHint")}
+              </p>
+            )}
             <div className="form-field">
               <label className="form-label" htmlFor="markup">
                 {t("markupPercent")}
@@ -133,6 +151,11 @@ export default function EstimateCalculatePage() {
             <Button onClick={() => void onCalculate()} disabled={calculating}>
               {calculating ? tc("calculating") : t("recalculateTotals")}
             </Button>
+            {result?.room_tiers_applied && result.tier_lines_updated != null && result.tier_lines_updated > 0 && (
+              <p className="text-sm text-[var(--brand-text-secondary)]">
+                {t("roomTiersApplied", { count: result.tier_lines_updated })}
+              </p>
+            )}
           </CardContent>
         </Card>
 

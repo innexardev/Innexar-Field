@@ -361,6 +361,14 @@ func (p *Plugin) createAssignment(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to create assignment")
 	}
+	_, _ = p.pool.Exec(c.UserContext(), `
+		UPDATE jobs j
+		SET assigned_to = $3, updated_at = NOW()
+		FROM work_orders wo
+		WHERE wo.id = $1 AND wo.tenant_id = $2
+		  AND wo.job_id IS NOT NULL
+		  AND j.id = wo.job_id AND j.tenant_id = wo.tenant_id
+	`, woID, tid, body.TechnicianID)
 	_ = p.bus.Publish(c.UserContext(), tid, "operations.work_order.assigned", map[string]string{
 		"work_order_id": woID, "technician_id": body.TechnicianID,
 	})

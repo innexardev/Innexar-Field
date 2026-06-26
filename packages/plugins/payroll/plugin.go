@@ -39,7 +39,9 @@ func (p *Plugin) Manifest() plugin.Manifest {
 
 func (p *Plugin) RegisterRoutes(router fiber.Router, deps plugin.Deps) {
 	router.Get("/employees", p.listEmployees)
+	router.Get("/employees/me", p.getMyEmployee)
 	router.Post("/employees", p.createEmployee)
+	router.Patch("/employees/:id", p.updateEmployee)
 	router.Get("/timesheets", p.listTimesheets)
 	router.Post("/timesheets", p.createTimesheet)
 	router.Post("/timesheets/:id/submit", p.submitTimesheet)
@@ -52,8 +54,17 @@ func (p *Plugin) RegisterRoutes(router fiber.Router, deps plugin.Deps) {
 }
 
 func (p *Plugin) Migrations() []plugin.Migration {
-	return []plugin.Migration{{Version: 200, Name: "payroll", UpSQL: payrollSQL}}
+	return []plugin.Migration{
+		{Version: 200, Name: "payroll", UpSQL: payrollSQL},
+		{Version: 201, Name: "employees_user_id", UpSQL: employeesUserIDSQL},
+	}
 }
+
+const employeesUserIDSQL = `
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE SET NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_tenant_user ON employees (tenant_id, user_id) WHERE user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_employees_user ON employees (tenant_id, user_id) WHERE user_id IS NOT NULL;
+`
 
 const payrollSQL = `
 CREATE TABLE IF NOT EXISTS employees (
@@ -133,6 +144,7 @@ CREATE POLICY payroll_tax_profiles_tenant ON payroll_tax_profiles
 
 type Employee struct {
 	ID              string    `json:"id"`
+	UserID          string    `json:"user_id,omitempty"`
 	FirstName       string    `json:"first_name"`
 	LastName        string    `json:"last_name"`
 	Email           string    `json:"email"`
@@ -177,7 +189,7 @@ type PayrollRun struct {
 func (p *Plugin) listEmployees(c *fiber.Ctx) error {
 	tid, _ := tenant.ID(c.UserContext())
 	rows, err := p.pool.Query(c.UserContext(), `
-		SELECT id, first_name, last_name, email, employment_type, hourly_rate_cents, status, created_at, updated_at
+		SELECT id, COALESCE(user_id::text, ''), first_name, last_name, email, employment_type, hourly_rate_cents, status, created_at, updated_at
 		FROM employees WHERE tenant_id = $1
 		ORDER BY last_name, first_name, created_at DESC LIMIT 100
 	`, tid)
@@ -189,7 +201,7 @@ func (p *Plugin) listEmployees(c *fiber.Ctx) error {
 	var list []Employee
 	for rows.Next() {
 		var item Employee
-		if err := rows.Scan(&item.ID, &item.FirstName, &item.LastName, &item.Email, &item.EmploymentType, &item.HourlyRateCents, &item.Status, &item.CreatedAt, &item.UpdatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.UserID, &item.FirstName, &item.LastName, &item.Email, &item.EmploymentType, &item.HourlyRateCents, &item.Status, &item.CreatedAt, &item.UpdatedAt); err != nil {
 			return err
 		}
 		list = append(list, item)
@@ -250,6 +262,79 @@ func (p *Plugin) createEmployee(c *fiber.Ctx) error {
 	})
 }
 
+func (p *Plugin) getMyEmployee(c *fiber.Ctx) error {
+	tid, _ := tenant.ID(c.UserContext())
+	uid, ok := tenant.UserID(c.UserContext())
+	if !ok {
+		return fiber.NewError(401, "authentication required")
+	}
+
+	var item Employee
+	err := p.pool.QueryRow(c.UserContext(), `
+		SELECT id, COALESCE(user_id::text, ''), first_name, last_name, email, employment_type, hourly_rate_cents, status, created_at, updated_at
+		FROM employees WHERE tenant_id = $1 AND user_id = $2
+	`, tid, uid).Scan(
+		&item.ID, &item.UserID, &item.FirstName, &item.LastName, &item.Email,
+		&item.EmploymentType, &item.HourlyRateCents, &item.Status, &item.CreatedAt, &item.UpdatedAt,
+	)
+	if err != nil {
+		return fiber.NewError(404, "no employee profile linked to this user")
+	}
+	return c.JSON(item)
+}
+
+func (p *Plugin) updateEmployee(c *fiber.Ctx) error {
+	tid, _ := tenant.ID(c.UserContext())
+	id := c.Params("id")
+
+	var body struct {
+		UserID *string `json:"user_id"`
+	}
+	if err := c.BodyParser(&body); err != nil {
+		return fiber.NewError(400, "invalid body")
+	}
+	if body.UserID == nil {
+		return fiber.NewError(400, "user_id required in body (use null to unlink)")
+	}
+
+	if *body.UserID != "" {
+		var userExists bool
+		err := p.pool.QueryRow(c.UserContext(), `
+			SELECT EXISTS(SELECT 1 FROM users WHERE id = $1 AND tenant_id = $2)
+		`, *body.UserID, tid).Scan(&userExists)
+		if err != nil || !userExists {
+			return fiber.NewError(400, "user not found in workspace")
+		}
+
+		var alreadyLinked bool
+		err = p.pool.QueryRow(c.UserContext(), `
+			SELECT EXISTS(
+				SELECT 1 FROM employees WHERE tenant_id = $1 AND user_id = $2::uuid AND id != $3::uuid
+			)
+		`, tid, *body.UserID, id).Scan(&alreadyLinked)
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "failed to validate user link")
+		}
+		if alreadyLinked {
+			return fiber.NewError(409, "user already linked to another employee")
+		}
+	}
+
+	var item Employee
+	err := p.pool.QueryRow(c.UserContext(), `
+		UPDATE employees SET user_id = NULLIF($3, '')::uuid, updated_at = NOW()
+		WHERE id = $1 AND tenant_id = $2
+		RETURNING id, COALESCE(user_id::text, ''), first_name, last_name, email, employment_type, hourly_rate_cents, status, created_at, updated_at
+	`, id, tid, *body.UserID).Scan(
+		&item.ID, &item.UserID, &item.FirstName, &item.LastName, &item.Email,
+		&item.EmploymentType, &item.HourlyRateCents, &item.Status, &item.CreatedAt, &item.UpdatedAt,
+	)
+	if err != nil {
+		return fiber.NewError(404, "employee not found")
+	}
+	return c.JSON(item)
+}
+
 func (p *Plugin) createTimesheet(c *fiber.Ctx) error {
 	tid, _ := tenant.ID(c.UserContext())
 	var body struct {
@@ -278,13 +363,17 @@ func (p *Plugin) createTimesheet(c *fiber.Ctx) error {
 		status = "submitted"
 	}
 
+	uid, ok := tenant.UserID(c.UserContext())
+	if !ok {
+		return fiber.NewError(401, "authentication required")
+	}
+
 	var employeeID string
 	err := p.pool.QueryRow(c.UserContext(), `
-		SELECT id FROM employees WHERE tenant_id = $1 AND status = 'active'
-		ORDER BY created_at ASC LIMIT 1
-	`, tid).Scan(&employeeID)
+		SELECT id FROM employees WHERE tenant_id = $1 AND user_id = $2 AND status = 'active'
+	`, tid, uid).Scan(&employeeID)
 	if err != nil {
-		return fiber.NewError(400, "no active employee profile for timesheet")
+		return fiber.NewError(400, "no active employee profile linked to this user")
 	}
 
 	id := uuid.New().String()

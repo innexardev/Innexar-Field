@@ -244,4 +244,16 @@ CREATE POLICY processed_events_isolation ON processed_events
 	);
 `,
 	},
+	{
+		Version: 17,
+		Name:    "users_worker_policy",
+		UpSQL: `
+DROP POLICY IF EXISTS users_tenant_isolation ON users;
+CREATE POLICY users_tenant_isolation ON users
+	USING (
+		current_setting('app.worker', true) = 'true'
+		OR tenant_id = current_setting('app.tenant_id', true)::uuid
+	);
+`,
+	},
 }

@@ -8,6 +8,10 @@ func Migrations() []plugin.Migration {
 	return []plugin.Migration{
 		{Version: 13, Name: "platform_admin", UpSQL: platformAdminSQL},
 		{Version: 14, Name: "platform_admin_role", UpSQL: platformAdminRoleSQL},
+		{Version: 15, Name: "platform_billing_settings", UpSQL: platformBillingSettingsSQL},
+		{Version: 16, Name: "platform_user_admin", UpSQL: platformUserAdminSQL},
+		{Version: 17, Name: "platform_settings", UpSQL: platformSettingsSQL},
+		{Version: 18, Name: "platform_modules_announcements", UpSQL: platformModulesAnnouncementsSQL},
 	}
 }
 
@@ -129,4 +133,52 @@ AS $$
 	WHERE pa.email = p_email AND pa.disabled = false
 	LIMIT 1;
 $$;
+`
+
+const platformBillingSettingsSQL = `
+ALTER TABLE platform_config
+	ADD COLUMN IF NOT EXISTS billing_settings JSONB NOT NULL DEFAULT '{}';
+`
+
+const platformUserAdminSQL = `
+CREATE OR REPLACE FUNCTION platform_list_users(p_tenant_id UUID DEFAULT NULL)
+RETURNS TABLE (
+	id UUID,
+	tenant_id UUID,
+	tenant_name TEXT,
+	tenant_slug TEXT,
+	email TEXT,
+	role TEXT,
+	first_name TEXT,
+	last_name TEXT,
+	created_at TIMESTAMPTZ
+)
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+	SELECT u.id, u.tenant_id, t.name, t.slug, u.email, u.role, u.first_name, u.last_name, u.created_at
+	FROM users u
+	JOIN tenants t ON t.id = u.tenant_id
+	WHERE (p_tenant_id IS NULL OR u.tenant_id = p_tenant_id)
+	ORDER BY u.created_at DESC
+	LIMIT 1000;
+$$;
+`
+
+const platformModulesAnnouncementsSQL = `
+ALTER TABLE platform_config
+	ADD COLUMN IF NOT EXISTS module_settings JSONB NOT NULL DEFAULT '{}',
+	ADD COLUMN IF NOT EXISTS announcements JSONB NOT NULL DEFAULT '[]';
+`
+
+const platformSettingsSQL = `
+CREATE TABLE IF NOT EXISTS platform_settings (
+	key TEXT PRIMARY KEY,
+	value_encrypted TEXT NOT NULL,
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	updated_by UUID REFERENCES platform_admins(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_platform_settings_updated ON platform_settings (updated_at DESC);
 `

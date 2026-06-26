@@ -38,7 +38,7 @@ func (f *fakeStore) get(tenantID string) *stateRow {
 		return &cp
 	}
 	row := &stateRow{
-		CurrentStep:    StepIndustry,
+		CurrentStep:    StepBilling,
 		CompletedSteps: []string{StepSignup},
 		IndustryPacks:  []string{"field-services"},
 	}
@@ -68,6 +68,14 @@ func newTestService(store *fakeStore, reg *plugin.Registry) *testService {
 
 func (s *testService) GetStatus(_ context.Context, tenantID string) (*StatusResponse, error) {
 	return s.store.get(tenantID).toStatus(), nil
+}
+
+func (s *testService) CompleteBilling(_ context.Context, tenantID string) (*StatusResponse, error) {
+	row := s.store.get(tenantID)
+	row.CompletedSteps = markCompleted(row.CompletedSteps, StepBilling)
+	row.CurrentStep = StepIndustry
+	s.store.save(tenantID, row)
+	return row.toStatus(), nil
 }
 
 func (s *testService) SaveIndustry(_ context.Context, tenantID string, packIDs []string) (*StatusResponse, error) {
@@ -137,6 +145,9 @@ type handlerService struct {
 	*testService
 }
 
+func (h *handlerService) CompleteBilling(ctx context.Context, tenantID string) (*StatusResponse, error) {
+	return h.testService.CompleteBilling(ctx, tenantID)
+}
 func (h *handlerService) GetStatus(ctx context.Context, tenantID string) (*StatusResponse, error) {
 	return h.testService.GetStatus(ctx, tenantID)
 }
@@ -246,6 +257,14 @@ func newFakeOnboardingApp(t *testing.T) (*fiber.App, string) {
 		}
 		return c.JSON(fiber.Map{"onboarding": status, "nav": fiber.Map{"data": nav}})
 	})
+	protected.Post("/onboarding/billing/complete", func(c *fiber.Ctx) error {
+		tid, _ := tenantIDFromLocals(c)
+		status, err := hs.CompleteBilling(c.UserContext(), tid)
+		if err != nil {
+			return fiber.NewError(400, err.Error())
+		}
+		return c.JSON(status)
+	})
 	protected.Post("/onboarding/skip-setup", func(c *fiber.Ctx) error {
 		tid, _ := tenantIDFromLocals(c)
 		status, err := hs.SkipSetup(c.UserContext(), tid)
@@ -282,8 +301,11 @@ func TestHandlers_StatusAndIndustryFlow(t *testing.T) {
 	require.Equal(t, http.StatusOK, statusRes.StatusCode)
 	var status StatusResponse
 	decodeJSON(t, statusRes, &status)
-	assert.Equal(t, StepIndustry, status.Step)
+	assert.Equal(t, StepBilling, status.Step)
 	assert.Contains(t, status.CompletedSteps, StepSignup)
+
+	billingRes := doRequest(t, app, http.MethodPost, "/api/v1/onboarding/billing/complete", token, nil)
+	require.Equal(t, http.StatusOK, billingRes.StatusCode)
 
 	industryRes := doRequest(t, app, http.MethodPost, "/api/v1/onboarding/industry", token, map[string]any{
 		"industry_packs": []string{"cleaning"},

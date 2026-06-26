@@ -27,6 +27,17 @@ function formatAddress(p: Property) {
   return parts.length > 0 ? parts.join(", ") : "";
 }
 
+function formatPropertyDetails(
+  p: Property,
+  t: (key: "propertyDetails", values: { beds: number; baths: number; sqft: number }) => string,
+) {
+  const beds = p.bedrooms ?? 0;
+  const baths = p.bathrooms ?? 0;
+  const sqft = p.sqft ?? 0;
+  if (beds === 0 && baths === 0 && sqft === 0) return "";
+  return t("propertyDetails", { beds, baths, sqft });
+}
+
 export default function CustomerDetailPage() {
   const params = useParams<{ id: string }>();
   const { client, token } = useAppPage();
@@ -99,6 +110,7 @@ export default function CustomerDetailPage() {
   }
 
   const addressLine = primaryProperty ? formatAddress(primaryProperty) : "";
+  const propertyDetails = primaryProperty ? formatPropertyDetails(primaryProperty, t) : "";
 
   return (
     <ModulePage title={customer.name} subtitle={t("subtitle")}>
@@ -167,6 +179,9 @@ export default function CustomerDetailPage() {
                     <p className="text-sm font-medium text-[var(--brand-text-primary)]">{addressLine}</p>
                   ) : (
                     <p className="text-sm text-[var(--brand-text-muted)]">{t("addressHint")}</p>
+                  )}
+                  {propertyDetails && (
+                    <p className="mt-1 text-sm text-[var(--brand-text-secondary)]">{propertyDetails}</p>
                   )}
                   <Link
                     href={`/customers/${customer.id}/properties`}

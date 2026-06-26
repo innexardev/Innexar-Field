@@ -1,4 +1,5 @@
 export const ONBOARDING_STEPS = [
+  { id: "billing", path: "/onboarding/billing", label: "Billing", shortLabel: "Billing" },
   { id: "industry", path: "/onboarding/industry", label: "Industry", shortLabel: "Industry" },
   { id: "profile", path: "/onboarding/profile", label: "Company profile", shortLabel: "Company" },
   { id: "modules", path: "/onboarding/modules", label: "Modules", shortLabel: "Modules" },

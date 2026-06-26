@@ -120,6 +120,18 @@ func RegisterRoutes(protected fiber.Router, svc *Service) {
 		}
 		return c.JSON(status)
 	})
+
+	g.Post("/billing/complete", func(c *fiber.Ctx) error {
+		tenantID, err := tenantID(c)
+		if err != nil {
+			return fiber.NewError(401, err.Error())
+		}
+		status, err := svc.CompleteBilling(c.UserContext(), tenantID)
+		if err != nil {
+			return fiber.NewError(400, err.Error())
+		}
+		return c.JSON(status)
+	})
 }
 
 func tenantID(c *fiber.Ctx) (string, error) {

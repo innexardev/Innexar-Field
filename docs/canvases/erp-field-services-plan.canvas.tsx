@@ -86,14 +86,14 @@ const MVP_TASKS = [
   { id: "eng5", content: "Eng — Implementar resilience + outbox + idempotency (codigo)", status: "completed" as const },
   { id: "land", content: "Landing/GTM — marketing site parcial; contact API stub; analytics GTM pendente", status: "pending" as const },
   { id: "p0", content: "Dev Fase 0 — Onboarding wizard + industry packs (marketplace stub)", status: "completed" as const },
-  { id: "p1", content: "Fase 1 — Core + CRM + Auth multitenant (portal cliente = stubs)", status: "pending" as const },
-  { id: "p2", content: "Fase 2 — Estimating + Price Book + Quotes (sem UI beds/baths)", status: "pending" as const },
-  { id: "p3", content: "Fase 3 — Scheduling + Dispatch (board read-only; sem UI assign)", status: "pending" as const },
-  { id: "p4", content: "Fase 4 — Expenses + Invoicing + Payments (sem PDF invoice)", status: "pending" as const },
+  { id: "p1", content: "Fase 1 — Core + CRM + Auth (portal API ok; paginas cliente = stubs)", status: "pending" as const },
+  { id: "p2", content: "Fase 2 — Estimating + Price Book (calculate room tiers ok)", status: "pending" as const },
+  { id: "p3", content: "Fase 3 — Scheduling + Dispatch (assign UI + maps ok)", status: "pending" as const },
+  { id: "p4", content: "Fase 4 — Expenses + Invoicing (invoice print preview ok; sem server PDF)", status: "pending" as const },
   { id: "p5", content: "Fase 5 — House Cleaning parcial (QC/supplies API; photo upload stub)", status: "pending" as const },
   { id: "p6", content: "Fase 6 — Construction parcial (CO ok; daily-log photos stub)", status: "pending" as const },
-  { id: "p7", content: "Fase 7 — PWA campo parcial (offline ok; /m/jobs sem filtro employee; maps stub)", status: "pending" as const },
-  { id: "p8", content: "Fase 8 — Accounting + Payroll parcial (sem employee↔user link)", status: "pending" as const },
+  { id: "p7", content: "Fase 7 — PWA campo parcial (offline ok; /m/jobs mine filter; maps navigate)", status: "pending" as const },
+  { id: "p8", content: "Fase 8 — Accounting + Payroll parcial (employee↔user link ok)", status: "pending" as const },
 ];
 
 function TabBar({

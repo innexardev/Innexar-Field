@@ -123,3 +123,23 @@ func TestIsDangerousHref(t *testing.T) {
 	assert.False(t, isDangerousHref("/pricing"))
 	assert.False(t, isDangerousHref("https://example.com"))
 }
+
+func TestValidatePlanID(t *testing.T) {
+	assert.NoError(t, validatePlanID("starter"))
+	assert.NoError(t, validatePlanID("pro_plus"))
+	assert.Error(t, validatePlanID("Starter"))
+	assert.Error(t, validatePlanID(""))
+}
+
+func TestValidateStripePriceID(t *testing.T) {
+	assert.NoError(t, validateStripePriceID("price_abc123"))
+	assert.Error(t, validateStripePriceID("prod_abc"))
+}
+
+func TestValidateBillingSettingsPatch(t *testing.T) {
+	zero := 0
+	assert.NoError(t, validateBillingSettingsPatch(billingSettingsFields{TrialDays: &zero}))
+	assert.Error(t, validateBillingSettingsPatch(billingSettingsFields{
+		CheckoutSuccessURL: "javascript:alert(1)",
+	}))
+}

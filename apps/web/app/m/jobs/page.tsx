@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { Job } from "@fieldforge/sdk";
 import { Badge, Card, CardContent } from "@fieldforge/ui";
 import { useAuth } from "@/lib/auth-context";
@@ -14,6 +15,8 @@ export default function MobileJobsPage() {
   const { token, client } = useAuth();
   const { isOnline } = usePlatform();
   const router = useRouter();
+  const t = useTranslations("modules.mobileJobs");
+  const tc = useTranslations("modules.common");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [fromCache, setFromCache] = useState(false);
@@ -28,7 +31,7 @@ export default function MobileJobsPage() {
       setLoading(true);
       try {
         if (isOnline) {
-          const res = await client.listJobs();
+          const res = await client.listJobs({ mine: true });
           const todays = filterTodaysJobs(res.data);
           setJobs(todays);
           cacheJobs(res.data);
@@ -52,14 +55,15 @@ export default function MobileJobsPage() {
     void load();
   }, [token, client, router, isOnline]);
 
+  const subtitle = loading
+    ? tc("loading")
+    : `${t("subtitle", { count: jobs.length })}${fromCache ? t("subtitleCached") : ""}`;
+
   return (
     <div className="mobile-page">
       <div className="mobile-page__header">
-        <h1 className="mobile-page__title">Today&apos;s Jobs</h1>
-        <p className="mobile-page__subtitle">
-          {loading ? "Loading…" : `${jobs.length} scheduled`}
-          {fromCache && !loading && " · cached"}
-        </p>
+        <h1 className="mobile-page__title">{t("title")}</h1>
+        <p className="mobile-page__subtitle">{subtitle}</p>
       </div>
 
       <div className="mobile-list">
@@ -79,14 +83,14 @@ export default function MobileJobsPage() {
 
         {!loading && jobs.length === 0 && (
           <div className="mobile-empty">
-            <p className="mobile-empty__title">No jobs today</p>
-            <p className="mobile-empty__text">Check back later or sync when online.</p>
+            <p className="mobile-empty__title">{t("emptyTitle")}</p>
+            <p className="mobile-empty__text">{t("emptyDescription")}</p>
           </div>
         )}
       </div>
 
       <Link href="/dashboard" className="mobile-desktop-link">
-        Open desktop app
+        {t("openDesktop")}
       </Link>
     </div>
   );

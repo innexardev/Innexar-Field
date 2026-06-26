@@ -3,8 +3,10 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import type { ScheduleMapPin } from "@fieldforge/sdk";
-import { Badge, Card, CardContent, IconTruck } from "@fieldforge/ui";
+import { Badge, Card, CardContent, CardHeader, CardTitle, IconTruck } from "@fieldforge/ui";
 import { ModulePage } from "@/components/module-page";
+import { NavigateButton } from "@/components/maps/navigate-button";
+import { buildDirectionsUrl, formatCoordinates } from "@/lib/maps";
 import { useAppPage } from "@/lib/use-app-page";
 
 function pinTone(type: ScheduleMapPin["type"]) {
@@ -14,7 +16,6 @@ function pinTone(type: ScheduleMapPin["type"]) {
 export default function ScheduleMapPage() {
   const { client, token } = useAppPage();
   const t = useTranslations("modules.scheduleMap");
-  const tc = useTranslations("modules.common");
   const [pins, setPins] = useState<ScheduleMapPin[]>([]);
 
   useEffect(() => {
@@ -28,44 +29,39 @@ export default function ScheduleMapPage() {
   return (
     <ModulePage title={t("title")} subtitle={t("subtitle")}>
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <Card className="overflow-hidden">
-          <CardContent className="relative min-h-[420px] bg-gradient-to-br from-[var(--brand-surface-elevated)] to-[var(--brand-surface)] p-0">
-            <div className="absolute inset-0 opacity-30" style={{
-              backgroundImage:
-                "linear-gradient(var(--brand-border) 1px, transparent 1px), linear-gradient(90deg, var(--brand-border) 1px, transparent 1px)",
-              backgroundSize: "48px 48px",
-            }} />
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("locationsTitle")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
             {pins.length === 0 ? (
-              <div className="relative flex h-[420px] items-center justify-center">
-                <p className="text-sm text-[var(--brand-text-muted)]">No pins for this range</p>
+              <div className="empty-state py-8">
+                <div className="empty-state-icon">
+                  <IconTruck size={28} className="text-[var(--brand-text-muted)]" />
+                </div>
+                <h3 className="text-lg font-semibold">{t("emptyTitle")}</h3>
+                <p className="mt-2 text-sm text-[var(--brand-text-secondary)]">{t("emptyDescription")}</p>
               </div>
             ) : (
-              <div className="relative h-[420px]">
-                {pins.map((pin, i) => (
-                  <div
-                    key={`${pin.type}-${pin.id}`}
-                    className="absolute flex flex-col items-center"
-                    style={{
-                      left: `${12 + ((pin.lng + 122.5) * 520) % 78}%`,
-                      top: `${10 + ((pin.lat - 37.7) * 900) % 72}%`,
-                      animationDelay: `${i * 40}ms`,
-                    }}
-                  >
-                    <div
-                      className={`flex h-9 w-9 items-center justify-center rounded-full border-2 shadow-sm ${
-                        pin.type === "crew"
-                          ? "border-[var(--brand-success)] bg-[var(--brand-success-subtle)] text-[var(--brand-success)]"
-                          : "border-[var(--brand-accent)] bg-[var(--brand-info-subtle)] text-[var(--brand-accent)]"
-                      }`}
-                    >
-                      <IconTruck size={16} />
+              pins.map((pin, i) => (
+                <Card key={`${pin.type}-${pin.id}`} className="list-item-card stagger-item" style={{ animationDelay: `${i * 40}ms` }}>
+                  <CardContent className="flex items-center justify-between gap-4 py-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{pin.title}</span>
+                        <Badge tone={pinTone(pin.type)}>{pin.type}</Badge>
+                      </div>
+                      <p className="mt-1 text-sm text-[var(--brand-text-secondary)]">
+                        {t("coordinates")}: {formatCoordinates(pin.lat, pin.lng)}
+                      </p>
+                      {pin.status && (
+                        <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">{pin.status}</p>
+                      )}
                     </div>
-                    <span className="mt-1 max-w-[7rem] truncate rounded-md bg-[var(--brand-surface)]/90 px-2 py-0.5 text-xs font-medium shadow-sm">
-                      {pin.title}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                    <NavigateButton href={buildDirectionsUrl({ lat: pin.lat, lng: pin.lng })} />
+                  </CardContent>
+                </Card>
+              ))
             )}
           </CardContent>
         </Card>
@@ -73,17 +69,25 @@ export default function ScheduleMapPage() {
         <div className="space-y-4">
           <section>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--brand-text-muted)]">
-              Jobs ({jobs.length})
+              {t("jobsSection", { count: jobs.length })}
             </h2>
             <div className="mt-3 space-y-2">
               {jobs.length === 0 ? (
-                <p className="text-sm text-[var(--brand-text-muted)]">No scheduled jobs on the map.</p>
+                <p className="text-sm text-[var(--brand-text-muted)]">{t("noJobs")}</p>
               ) : (
                 jobs.map((job) => (
                   <Card key={job.id} className="list-item-card">
-                    <CardContent className="flex items-center justify-between py-3">
-                      <span className="font-medium">{job.title}</span>
-                      <Badge tone={pinTone(job.type)}>{job.status ?? "scheduled"}</Badge>
+                    <CardContent className="flex items-center justify-between gap-3 py-3">
+                      <div className="min-w-0">
+                        <span className="font-medium">{job.title}</span>
+                        <p className="text-xs text-[var(--brand-text-muted)]">
+                          {formatCoordinates(job.lat, job.lng)}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Badge tone={pinTone(job.type)}>{job.status ?? "scheduled"}</Badge>
+                        <NavigateButton href={buildDirectionsUrl({ lat: job.lat, lng: job.lng })} />
+                      </div>
                     </CardContent>
                   </Card>
                 ))
@@ -93,17 +97,25 @@ export default function ScheduleMapPage() {
 
           <section>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--brand-text-muted)]">
-              Active crews ({crews.length})
+              {t("crewsSection", { count: crews.length })}
             </h2>
             <div className="mt-3 space-y-2">
               {crews.length === 0 ? (
-                <p className="text-sm text-[var(--brand-text-muted)]">Add crews to see them on the map.</p>
+                <p className="text-sm text-[var(--brand-text-muted)]">{t("noCrews")}</p>
               ) : (
                 crews.map((crew) => (
                   <Card key={crew.id} className="list-item-card">
-                    <CardContent className="flex items-center justify-between py-3">
-                      <span className="font-medium">{crew.title}</span>
-                      <Badge tone="success">{crew.status ?? "active"}</Badge>
+                    <CardContent className="flex items-center justify-between gap-3 py-3">
+                      <div className="min-w-0">
+                        <span className="font-medium">{crew.title}</span>
+                        <p className="text-xs text-[var(--brand-text-muted)]">
+                          {formatCoordinates(crew.lat, crew.lng)}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Badge tone="success">{crew.status ?? "active"}</Badge>
+                        <NavigateButton href={buildDirectionsUrl({ lat: crew.lat, lng: crew.lng })} />
+                      </div>
                     </CardContent>
                   </Card>
                 ))

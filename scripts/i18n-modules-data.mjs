@@ -367,6 +367,7 @@ export const modules = {
       scheduleButton: "Schedule",
       emptyTitle: "No jobs scheduled",
       emptyDescription: "Schedule your first job above or convert an accepted estimate.",
+      assignedTech: "Assigned tech",
     },
     estimates: {
       title: "Estimates",
@@ -644,6 +645,8 @@ export const modules = {
       companyNotes: "Company / notes",
       addressHint: "Add service locations and job-site addresses under Properties.",
       manageProperties: "Manage properties",
+      propertyDetails:
+        "{beds, plural, =0 {} other {# bed · }}{baths, plural, =0 {} other {# bath · }}{sqft, plural, =0 {} other {# sqft}}",
       saveContact: "Save contact details",
       contactSaved: "Contact details saved.",
       phonePlaceholder: "(555) 123-4567",
@@ -671,6 +674,8 @@ export const modules = {
       loadingSubtitle: "Loading service locations…",
       subtitle: "Service locations and job sites for this customer.",
       suffix: "Properties",
+      propertyDetails:
+        "{beds, plural, =0 {} other {# bed · }}{baths, plural, =0 {} other {# bath · }}{sqft, plural, =0 {} other {# sqft}}",
     },
     leadDetail: {
       subtitle: "Lead profile and pipeline stage.",
@@ -725,6 +730,28 @@ export const modules = {
     portal: {
       title: "Client portal",
       subtitle: "Branded self-service for {brand} customers — configure links and preview the experience.",
+      login: {
+        title: "Customer sign-in",
+        subtitle: "Access your invoices and account with {brand}.",
+        companySlug: "Company code",
+        companySlugHint: "The short code your service provider gave you (same as their workspace URL).",
+        sendLink: "Email me a sign-in link",
+        sending: "Sending link…",
+        linkSent: "If an account exists for this email, we sent a sign-in link. Check your inbox.",
+        devLink: "Development:",
+        devLinkAction: "Open sign-in link",
+        tryAgain: "Use a different email",
+      },
+      invoices: {
+        title: "Your invoices",
+        subtitle: "Invoices for {name} at {company}",
+        loadingSubtitle: "Loading your account…",
+        backToLogin: "← Sign in",
+        signOut: "Sign out",
+        emptyTitle: "No invoices yet",
+        emptyDescription: "When your provider sends an invoice, it will appear here.",
+        due: "Due {date}",
+      },
     },
     priceBookImport: {
       title: "Import price book",
@@ -746,6 +773,14 @@ export const modules = {
     mobileExpenses: {
       title: "Expenses",
       subtitle: "Log job expenses with receipt photos.",
+    },
+    mobileJobs: {
+      title: "Today's jobs",
+      subtitle: "{count, plural, =0 {No jobs scheduled} one {# job scheduled} other {# jobs scheduled}}",
+      subtitleCached: " · cached",
+      emptyTitle: "No jobs today",
+      emptyDescription: "Check back later or sync when online.",
+      openDesktop: "Open desktop app",
     },
     mobileTime: {
       title: "Time",
@@ -1006,6 +1041,7 @@ export const modules = {
       scheduleButton: "Programar",
       emptyTitle: "Sin trabajos programados",
       emptyDescription: "Programa tu primer trabajo arriba o convierte un presupuesto aceptado.",
+      assignedTech: "Técnico asignado",
     },
     estimates: {
       title: "Presupuestos",
@@ -1283,6 +1319,8 @@ export const modules = {
       companyNotes: "Empresa / notas",
       addressHint: "Agrega ubicaciones de servicio y direcciones de obra en Propiedades.",
       manageProperties: "Gestionar propiedades",
+      propertyDetails:
+        "{beds, plural, =0 {} other {# hab · }}{baths, plural, =0 {} other {# baño · }}{sqft, plural, =0 {} other {# pies²}}",
       saveContact: "Guardar datos de contacto",
       contactSaved: "Datos de contacto guardados.",
       phonePlaceholder: "(555) 123-4567",
@@ -1310,6 +1348,8 @@ export const modules = {
       loadingSubtitle: "Cargando ubicaciones de servicio…",
       subtitle: "Ubicaciones de servicio y sitios de trabajo de este cliente.",
       suffix: "Propiedades",
+      propertyDetails:
+        "{beds, plural, =0 {} other {# hab · }}{baths, plural, =0 {} other {# baño · }}{sqft, plural, =0 {} other {# pies²}}",
     },
     leadDetail: {
       subtitle: "Perfil del prospecto y etapa del pipeline.",
@@ -1364,6 +1404,28 @@ export const modules = {
     portal: {
       title: "Portal del cliente",
       subtitle: "Autoservicio con marca para clientes de {brand} — configure enlaces y previsualice la experiencia.",
+      login: {
+        title: "Acceso de cliente",
+        subtitle: "Acceda a sus facturas y cuenta con {brand}.",
+        companySlug: "Código de empresa",
+        companySlugHint: "El código corto que le dio su proveedor (igual que la URL de su espacio de trabajo).",
+        sendLink: "Enviarme un enlace de acceso",
+        sending: "Enviando enlace…",
+        linkSent: "Si existe una cuenta con este correo, enviamos un enlace de acceso. Revise su bandeja.",
+        devLink: "Desarrollo:",
+        devLinkAction: "Abrir enlace de acceso",
+        tryAgain: "Usar otro correo",
+      },
+      invoices: {
+        title: "Sus facturas",
+        subtitle: "Facturas de {name} en {company}",
+        loadingSubtitle: "Cargando su cuenta…",
+        backToLogin: "← Iniciar sesión",
+        signOut: "Cerrar sesión",
+        emptyTitle: "Aún no hay facturas",
+        emptyDescription: "Cuando su proveedor envíe una factura, aparecerá aquí.",
+        due: "Vence {date}",
+      },
     },
     priceBookImport: {
       title: "Importar lista de precios",
@@ -1385,6 +1447,14 @@ export const modules = {
     mobileExpenses: {
       title: "Gastos",
       subtitle: "Registra gastos de trabajo con fotos de recibos.",
+    },
+    mobileJobs: {
+      title: "Trabajos de hoy",
+      subtitle: "{count, plural, =0 {Sin trabajos programados} one {# trabajo programado} other {# trabajos programados}}",
+      subtitleCached: " · en caché",
+      emptyTitle: "Sin trabajos hoy",
+      emptyDescription: "Vuelve más tarde o sincroniza cuando estés en línea.",
+      openDesktop: "Abrir app de escritorio",
     },
     mobileTime: {
       title: "Tiempo",
@@ -1645,6 +1715,7 @@ export const modules = {
       scheduleButton: "Agendar",
       emptyTitle: "Nenhum serviço agendado",
       emptyDescription: "Agende seu primeiro serviço acima ou converta um orçamento aceito.",
+      assignedTech: "Técnico atribuído",
     },
     estimates: {
       title: "Orçamentos",
@@ -1922,6 +1993,8 @@ export const modules = {
       companyNotes: "Empresa / notas",
       addressHint: "Adicione locais de serviço e endereços de obra em Propriedades.",
       manageProperties: "Gerenciar propriedades",
+      propertyDetails:
+        "{beds, plural, =0 {} other {# quarto · }}{baths, plural, =0 {} other {# banh. · }}{sqft, plural, =0 {} other {# pés²}}",
       saveContact: "Salvar dados de contato",
       contactSaved: "Dados de contato salvos.",
       phonePlaceholder: "(555) 123-4567",
@@ -1949,6 +2022,8 @@ export const modules = {
       loadingSubtitle: "Carregando locais de serviço…",
       subtitle: "Locais de serviço e canteiros de obra deste cliente.",
       suffix: "Propriedades",
+      propertyDetails:
+        "{beds, plural, =0 {} other {# quarto · }}{baths, plural, =0 {} other {# banh. · }}{sqft, plural, =0 {} other {# pés²}}",
     },
     leadDetail: {
       subtitle: "Perfil do lead e estágio do pipeline.",
@@ -2003,6 +2078,28 @@ export const modules = {
     portal: {
       title: "Portal do cliente",
       subtitle: "Autoatendimento com marca para clientes da {brand} — configure links e visualize a experiência.",
+      login: {
+        title: "Entrada do cliente",
+        subtitle: "Acesse suas faturas e conta com a {brand}.",
+        companySlug: "Código da empresa",
+        companySlugHint: "O código curto que seu prestador informou (igual à URL do workspace deles).",
+        sendLink: "Enviar link de acesso por e-mail",
+        sending: "Enviando link…",
+        linkSent: "Se existir uma conta com este e-mail, enviamos um link de acesso. Verifique sua caixa de entrada.",
+        devLink: "Desenvolvimento:",
+        devLinkAction: "Abrir link de acesso",
+        tryAgain: "Usar outro e-mail",
+      },
+      invoices: {
+        title: "Suas faturas",
+        subtitle: "Faturas de {name} em {company}",
+        loadingSubtitle: "Carregando sua conta…",
+        backToLogin: "← Entrar",
+        signOut: "Sair",
+        emptyTitle: "Nenhuma fatura ainda",
+        emptyDescription: "Quando seu prestador enviar uma fatura, ela aparecerá aqui.",
+        due: "Vence em {date}",
+      },
     },
     priceBookImport: {
       title: "Importar tabela de preços",
@@ -2024,6 +2121,14 @@ export const modules = {
     mobileExpenses: {
       title: "Despesas",
       subtitle: "Registre despesas de serviço com fotos de recibos.",
+    },
+    mobileJobs: {
+      title: "Serviços de hoje",
+      subtitle: "{count, plural, =0 {Nenhum serviço agendado} one {# serviço agendado} other {# serviços agendados}}",
+      subtitleCached: " · em cache",
+      emptyTitle: "Nenhum serviço hoje",
+      emptyDescription: "Volte mais tarde ou sincronize quando estiver online.",
+      openDesktop: "Abrir app desktop",
     },
     mobileTime: {
       title: "Ponto",

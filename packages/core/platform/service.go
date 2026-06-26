@@ -11,6 +11,8 @@ import (
 	"github.com/fieldforge/fieldforge/packages/core/auth"
 	"github.com/fieldforge/fieldforge/packages/core/billing"
 	"github.com/fieldforge/fieldforge/packages/core/config"
+	"github.com/fieldforge/fieldforge/packages/core/platformsettings"
+	"github.com/fieldforge/fieldforge/packages/core/tenant"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,13 +27,14 @@ var (
 
 // Service implements platform administration operations.
 type Service struct {
-	pool   *pgxpool.Pool
-	auth   *auth.Service
-	appCfg *config.AppConfig
+	pool     *pgxpool.Pool
+	auth     *auth.Service
+	appCfg   *config.AppConfig
+	settings *platformsettings.Store
 }
 
-func NewService(pool *pgxpool.Pool, authSvc *auth.Service, appCfg *config.AppConfig) *Service {
-	return &Service{pool: pool, auth: authSvc, appCfg: appCfg}
+func NewService(pool *pgxpool.Pool, authSvc *auth.Service, appCfg *config.AppConfig, settings *platformsettings.Store) *Service {
+	return &Service{pool: pool, auth: authSvc, appCfg: appCfg, settings: settings}
 }
 
 type LoginRequest struct {
@@ -146,8 +149,8 @@ type PlanInput struct {
 }
 
 func (s *Service) CreatePlan(ctx context.Context, adminID string, in PlanInput) (*Plan, error) {
-	if in.ID == "" || in.Name == "" {
-		return nil, fmt.Errorf("id and name are required")
+	if err := validatePlanInput(in, true); err != nil {
+		return nil, err
 	}
 	features := in.Features
 	if len(features) == 0 {
@@ -173,6 +176,9 @@ func (s *Service) CreatePlan(ctx context.Context, adminID string, in PlanInput) 
 }
 
 func (s *Service) UpdatePlan(ctx context.Context, adminID, id string, in PlanInput) (*Plan, error) {
+	if err := validatePlanInput(in, false); err != nil {
+		return nil, err
+	}
 	existing, err := s.GetPlan(ctx, id)
 	if err != nil {
 		return nil, err
@@ -666,6 +672,46 @@ func (s *Service) UpdateConfig(ctx context.Context, adminID string, in ConfigInp
 	return s.GetConfig(ctx)
 }
 
+func (s *Service) GetBillingSettings(ctx context.Context) (*billing.BillingSettings, error) {
+	settings, err := billing.LoadBillingSettings(ctx, s.pool, s.appCfg)
+	if err != nil {
+		return nil, fmt.Errorf("get billing settings: %w", err)
+	}
+	return &settings, nil
+}
+
+func (s *Service) UpdateBillingSettings(ctx context.Context, adminID string, in billing.BillingSettingsPatch) (*billing.BillingSettings, error) {
+	fields := billingSettingsFields{
+		TrialDays:          in.TrialDays,
+		DefaultPlanID:      in.DefaultPlanID,
+		CheckoutSuccessURL: in.CheckoutSuccessURL,
+		CheckoutCancelURL:  in.CheckoutCancelURL,
+		PortalReturnURL:    in.PortalReturnURL,
+	}
+	if err := validateBillingSettingsPatch(fields); err != nil {
+		return nil, err
+	}
+	if in.DefaultPlanID != "" {
+		exists, err := s.planExists(ctx, in.DefaultPlanID)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			return nil, fmt.Errorf("%w: %s", ErrUnknownPlan, in.DefaultPlanID)
+		}
+	}
+	settings, err := billing.SaveBillingSettings(ctx, s.pool, in)
+	if err != nil {
+		return nil, err
+	}
+	_ = s.audit(ctx, adminID, "update", "platform_billing_settings", "1", nil)
+	reloaded, err := billing.LoadBillingSettings(ctx, s.pool, s.appCfg)
+	if err != nil {
+		return &settings, nil
+	}
+	return &reloaded, nil
+}
+
 type TenantSummary struct {
 	ID                 string     `json:"id"`
 	Slug               string     `json:"slug"`
@@ -698,19 +744,28 @@ func (s *Service) ListTenants(ctx context.Context) ([]TenantSummary, error) {
 }
 
 type TenantPatch struct {
-	Suspended *bool  `json:"suspended"`
-	PlanID    string `json:"plan_id"`
+	Suspended          *bool  `json:"suspended"`
+	PlanID             string `json:"plan_id"`
+	Name               string `json:"name"`
+	IndustryPack       string `json:"industry_pack"`
+	SubscriptionStatus string `json:"subscription_status"`
 }
 
 func (s *Service) planExists(ctx context.Context, planID string) (bool, error) {
+	var exists bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM platform_plans WHERE id = $1)`, planID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	if exists {
+		return true, nil
+	}
 	if s.appCfg != nil {
 		if _, err := billing.PlanFromConfig(s.appCfg, planID); err == nil {
 			return true, nil
 		}
 	}
-	var exists bool
-	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM platform_plans WHERE id = $1)`, planID).Scan(&exists)
-	return exists, err
+	return false, nil
 }
 
 func (s *Service) UpdateTenant(ctx context.Context, adminID, tenantID string, in TenantPatch) (*TenantSummary, error) {
@@ -745,9 +800,33 @@ func (s *Service) UpdateTenant(ctx context.Context, adminID, tenantID string, in
 			return nil, fmt.Errorf("update tenant plan: %w", err)
 		}
 	}
+	if in.Name != "" {
+		_, err = s.pool.Exec(ctx, `UPDATE tenants SET name = $2, updated_at = NOW() WHERE id = $1`, tenantID, strings.TrimSpace(in.Name))
+		if err != nil {
+			return nil, fmt.Errorf("update tenant name: %w", err)
+		}
+	}
+	if in.IndustryPack != "" {
+		_, err = s.pool.Exec(ctx, `UPDATE tenants SET industry_pack = $2, updated_at = NOW() WHERE id = $1`, tenantID, strings.TrimSpace(in.IndustryPack))
+		if err != nil {
+			return nil, fmt.Errorf("update tenant industry: %w", err)
+		}
+	}
+	if in.SubscriptionStatus != "" {
+		if err := validateSubscriptionStatus(in.SubscriptionStatus); err != nil {
+			return nil, err
+		}
+		_, err = s.pool.Exec(ctx, `UPDATE tenants SET subscription_status = $2, updated_at = NOW() WHERE id = $1`, tenantID, in.SubscriptionStatus)
+		if err != nil {
+			return nil, fmt.Errorf("update tenant subscription: %w", err)
+		}
+	}
 	_ = s.audit(ctx, adminID, "update", "tenant", tenantID, map[string]interface{}{
-		"suspended": in.Suspended,
-		"plan_id":   in.PlanID,
+		"suspended":           in.Suspended,
+		"plan_id":             in.PlanID,
+		"name":                in.Name,
+		"industry_pack":       in.IndustryPack,
+		"subscription_status": in.SubscriptionStatus,
 	})
 	return s.getTenant(ctx, tenantID)
 }
@@ -772,6 +851,159 @@ type Stats struct {
 	TenantsByPlan     map[string]int `json:"tenants_by_plan"`
 	TotalPlans        int            `json:"total_plans"`
 	ActivePromotions  int            `json:"active_promotions"`
+}
+
+// Metrics aggregates platform-wide SaaS KPIs for the admin dashboard.
+type Metrics struct {
+	TotalTenants            int              `json:"total_tenants"`
+	ActiveSubscriptions     int              `json:"active_subscriptions"`
+	Trialing                int              `json:"trialing"`
+	PastDue                 int              `json:"past_due"`
+	Churned                 int              `json:"churned"`
+	SuspendedTenants        int              `json:"suspended_tenants"`
+	MrrEstimateCents        int64            `json:"mrr_estimate_cents"`
+	SignupsLast7Days        int              `json:"signups_last_7_days"`
+	SignupsLast30Days       int              `json:"signups_last_30_days"`
+	TotalUsers              int              `json:"total_users"`
+	TenantsByPlan           map[string]int   `json:"tenants_by_plan"`
+	SubscriptionByStatus    map[string]int   `json:"subscription_by_status"`
+	RecentTenants           []TenantSummary  `json:"recent_tenants"`
+	TenantsNeedingAttention []TenantSummary  `json:"tenants_needing_attention"`
+}
+
+func (s *Service) Metrics(ctx context.Context) (*Metrics, error) {
+	m := &Metrics{
+		TenantsByPlan:        map[string]int{},
+		SubscriptionByStatus: map[string]int{},
+	}
+
+	err := s.pool.QueryRow(ctx, `SELECT COUNT(*) FROM tenants`).Scan(&m.TotalTenants)
+	if err != nil {
+		return nil, fmt.Errorf("count tenants: %w", err)
+	}
+	err = s.pool.QueryRow(ctx, `SELECT COUNT(*) FROM tenants WHERE suspended_at IS NOT NULL`).Scan(&m.SuspendedTenants)
+	if err != nil {
+		return nil, fmt.Errorf("count suspended tenants: %w", err)
+	}
+	err = s.pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM tenants WHERE created_at >= NOW() - INTERVAL '7 days'
+	`).Scan(&m.SignupsLast7Days)
+	if err != nil {
+		return nil, fmt.Errorf("count signups 7d: %w", err)
+	}
+	err = s.pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM tenants WHERE created_at >= NOW() - INTERVAL '30 days'
+	`).Scan(&m.SignupsLast30Days)
+	if err != nil {
+		return nil, fmt.Errorf("count signups 30d: %w", err)
+	}
+
+	rows, err := s.pool.Query(ctx, `SELECT subscription_status, COUNT(*) FROM tenants GROUP BY subscription_status`)
+	if err != nil {
+		return nil, fmt.Errorf("count by subscription status: %w", err)
+	}
+	for rows.Next() {
+		var status string
+		var count int
+		if err := rows.Scan(&status, &count); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		m.SubscriptionByStatus[status] = count
+		switch status {
+		case "active":
+			m.ActiveSubscriptions = count
+		case "trialing":
+			m.Trialing = count
+		case "past_due":
+			m.PastDue = count
+		case "canceled":
+			m.Churned = count
+		}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+
+	planRows, err := s.pool.Query(ctx, `SELECT plan_id, COUNT(*) FROM tenants GROUP BY plan_id`)
+	if err != nil {
+		return nil, fmt.Errorf("count by plan: %w", err)
+	}
+	for planRows.Next() {
+		var plan string
+		var count int
+		if err := planRows.Scan(&plan, &count); err != nil {
+			planRows.Close()
+			return nil, err
+		}
+		m.TenantsByPlan[plan] = count
+	}
+	if err := planRows.Err(); err != nil {
+		planRows.Close()
+		return nil, err
+	}
+	planRows.Close()
+
+	err = s.pool.QueryRow(ctx, `
+		SELECT COALESCE(SUM(pp.price_monthly_cents), 0)
+		FROM tenants t
+		JOIN platform_plans pp ON pp.id = t.plan_id
+		WHERE t.subscription_status = 'active'
+		  AND t.suspended_at IS NULL
+		  AND pp.price_monthly_cents IS NOT NULL
+	`).Scan(&m.MrrEstimateCents)
+	if err != nil {
+		return nil, fmt.Errorf("estimate mrr: %w", err)
+	}
+
+	workerCtx := tenant.WithWorker(ctx)
+	err = s.pool.QueryRow(workerCtx, `SELECT COUNT(*) FROM users`).Scan(&m.TotalUsers)
+	if err != nil {
+		return nil, fmt.Errorf("count users: %w", err)
+	}
+
+	m.RecentTenants, err = s.listTenantsWhere(ctx, "", "created_at DESC", 10)
+	if err != nil {
+		return nil, err
+	}
+	m.TenantsNeedingAttention, err = s.listTenantsWhere(ctx,
+		`subscription_status IN ('past_due', 'unpaid') OR suspended_at IS NOT NULL`,
+		"COALESCE(suspended_at, created_at) DESC",
+		20,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
+}
+
+func (s *Service) listTenantsWhere(ctx context.Context, where, order string, limit int) ([]TenantSummary, error) {
+	q := `
+		SELECT id, slug, name, industry_pack, plan_id, subscription_status, suspended_at, created_at
+		FROM tenants`
+	if where != "" {
+		q += ` WHERE ` + where
+	}
+	q += fmt.Sprintf(` ORDER BY %s LIMIT %d`, order, limit)
+
+	rows, err := s.pool.Query(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("list tenants: %w", err)
+	}
+	defer rows.Close()
+
+	var list []TenantSummary
+	for rows.Next() {
+		var t TenantSummary
+		if err := rows.Scan(&t.ID, &t.Slug, &t.Name, &t.IndustryPack, &t.PlanID, &t.SubscriptionStatus, &t.SuspendedAt, &t.CreatedAt); err != nil {
+			return nil, err
+		}
+		list = append(list, t)
+	}
+	return list, rows.Err()
 }
 
 func (s *Service) Stats(ctx context.Context) (*Stats, error) {

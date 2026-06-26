@@ -52,10 +52,10 @@ func (s *Service) Signup(ctx context.Context, req SignupRequest) (*SignupRespons
 		req.IndustryPack = "field-services"
 	}
 	if req.PlanID == "" {
-		req.PlanID = "starter"
+		req.PlanID = billing.DefaultPlanID(ctx, s.pool, s.appCfg)
 	}
-	if _, err := billing.PlanFromConfig(s.appCfg, req.PlanID); err != nil {
-		req.PlanID = "starter"
+	if _, err := billing.ActivePlanFromStore(ctx, s.pool, s.appCfg, req.PlanID); err != nil {
+		req.PlanID = billing.DefaultPlanID(ctx, s.pool, s.appCfg)
 	}
 
 	slug := slugify(req.CompanyName)
@@ -87,7 +87,7 @@ func (s *Service) Signup(ctx context.Context, req SignupRequest) (*SignupRespons
 
 	_, err = tx.Exec(ctx, `
 		INSERT INTO tenants (id, slug, name, industry_pack, plan_id, subscription_status, feature_flags, signup_attribution)
-		VALUES ($1, $2, $3, $4, $5, 'trialing', $6, $7)
+		VALUES ($1, $2, $3, $4, $5, 'incomplete', $6, $7)
 	`, tenantID, slug, req.CompanyName, req.IndustryPack, req.PlanID, flagsJSON, attributionJSON)
 	if err != nil {
 		return nil, mapSignupErr(fmt.Errorf("create tenant: %w", err))
@@ -134,7 +134,7 @@ func (s *Service) Signup(ctx context.Context, req SignupRequest) (*SignupRespons
 	}
 
 	obStatus := &onboarding.StatusResponse{
-		Step:           onboarding.StepIndustry,
+		Step:           onboarding.StepBilling,
 		CompletedSteps: []string{onboarding.StepSignup},
 		IndustryPacks:  []string{req.IndustryPack},
 		Completed:      false,

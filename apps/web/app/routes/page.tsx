@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import type { Route } from "@fieldforge/sdk";
 import { Badge, Card, CardContent, IconTruck } from "@fieldforge/ui";
 import { ModulePage } from "@/components/module-page";
+import { NavigateButton } from "@/components/maps/navigate-button";
+import { buildDirectionsUrl } from "@/lib/maps";
 import { useAppPage } from "@/lib/use-app-page";
 
 function formatStopTime(iso?: string) {
@@ -79,6 +81,7 @@ export default function RoutesPage() {
                     Arrive by {formatStopTime(stop.scheduled_at)}
                   </div>
                 </div>
+                <NavigateButton href={buildDirectionsUrl({ address: stop.title })} />
               </CardContent>
             </Card>
           ))}

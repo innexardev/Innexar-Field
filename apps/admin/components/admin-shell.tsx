@@ -10,14 +10,16 @@ import { BRAND_NAME, DEFAULT_LOGO_WORDMARK } from "@/lib/defaults";
 import { useAdminAuth } from "@/lib/auth-context";
 import { useAdminPage } from "@/lib/use-admin-page";
 
-const NAV_KEYS = [
-  { href: "/dashboard", key: "dashboard" },
-  { href: "/plans", key: "plans" },
-  { href: "/promotions", key: "promotions" },
-  { href: "/landing", key: "landingContent" },
-  { href: "/tenants", key: "tenants" },
-  { href: "/config", key: "globalConfig" },
-  { href: "/audit", key: "auditLog" },
+export const ADMIN_NAV = [
+  { href: "/admin/dashboard", key: "dashboard" },
+  { href: "/admin/tenants", key: "tenants" },
+  { href: "/admin/users", key: "users" },
+  { href: "/admin/plans", key: "plans" },
+  { href: "/admin/billing", key: "billing" },
+  { href: "/admin/integrations", key: "integrations" },
+  { href: "/admin/modules", key: "modules" },
+  { href: "/admin/announcements", key: "announcements" },
+  { href: "/admin/audit", key: "auditLog" },
 ] as const;
 
 function useDarkMode() {
@@ -44,45 +46,8 @@ function useDarkMode() {
   return { dark, toggle };
 }
 
-export function AdminShell({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
-  const { admin, logout } = useAdminAuth();
-  const t = useTranslations("admin");
-
-  return (
-    <div className="min-h-screen">
-      <header className="border-b border-[var(--brand-border)] bg-[var(--brand-surface)]">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-[var(--brand-accent)]">
-              {t("platformAdmin")}
-            </p>
-            <h1 className="text-lg font-semibold text-[var(--brand-text-primary)]">{title}</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <LanguageSwitcher variant="compact" />
-            {admin && (
-              <span className="hidden text-sm text-[var(--brand-text-secondary)] sm:inline">
-                {admin.email}
-              </span>
-            )}
-            <Button variant="secondary" size="sm" onClick={logout}>
-              {t("signOut")}
-            </Button>
-          </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
-    </div>
-  );
-}
-
-export function AdminPage({ children }: { children: ReactNode }) {
+/** Protected shell with sidebar — use via `app/admin/layout.tsx`. */
+export function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { admin, loading, logout } = useAdminPage();
   const { dark, toggle } = useDarkMode();
@@ -105,7 +70,7 @@ export function AdminPage({ children }: { children: ReactNode }) {
           <p className="mt-2 truncate text-sm text-[var(--brand-text-secondary)]">{admin.email}</p>
         </div>
         <nav className="space-y-1 px-2 pb-4">
-          {NAV_KEYS.map((item) => {
+          {ADMIN_NAV.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
@@ -122,7 +87,7 @@ export function AdminPage({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <div className="border-t border-[var(--brand-border)] px-2 py-4 space-y-2">
+        <div className="space-y-2 border-t border-[var(--brand-border)] px-2 py-4">
           <div className="px-1">
             <LanguageSwitcher variant="compact" />
           </div>
@@ -133,6 +98,9 @@ export function AdminPage({ children }: { children: ReactNode }) {
           >
             {dark ? t("lightMode") : t("darkMode")}
           </button>
+          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={logout}>
+            {t("signOut")}
+          </Button>
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
@@ -149,4 +117,9 @@ export function AdminPage({ children }: { children: ReactNode }) {
       </div>
     </div>
   );
+}
+
+/** @deprecated Use AdminLayout via admin route group. Kept for login-free pages. */
+export function AdminPage({ children }: { children: ReactNode }) {
+  return <AdminLayout>{children}</AdminLayout>;
 }

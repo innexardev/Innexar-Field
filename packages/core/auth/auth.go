@@ -21,6 +21,7 @@ type Claims struct {
 	TenantID        string `json:"tenant_id"`
 	Email           string `json:"email"`
 	Role            string `json:"role"`
+	CustomerID      string `json:"customer_id,omitempty"`
 	IsPlatformAdmin bool   `json:"is_platform_admin,omitempty"`
 	jwt.RegisteredClaims
 }
@@ -53,6 +54,17 @@ func (s *Service) IssueToken(userID, tenantID, email, role string) (string, erro
 		TenantID: tenantID,
 		Email:    email,
 		Role:     role,
+	})
+}
+
+// IssueCustomerToken issues a JWT for a customer portal session.
+func (s *Service) IssueCustomerToken(customerID, tenantID, email string) (string, error) {
+	return s.issueClaims(Claims{
+		UserID:     customerID,
+		TenantID:   tenantID,
+		Email:      email,
+		Role:       "customer",
+		CustomerID: customerID,
 	})
 }
 

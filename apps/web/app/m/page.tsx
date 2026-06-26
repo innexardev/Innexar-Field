@@ -31,7 +31,7 @@ export default function MobileHomePage() {
       setLoading(true);
       try {
         if (isOnline) {
-          const res = await client.listJobs();
+          const res = await client.listJobs({ mine: true });
           cacheJobs(res.data);
           setJobCount(filterTodaysJobs(res.data).length);
         } else {

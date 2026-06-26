@@ -22,7 +22,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && admin) {
-      router.replace("/");
+      router.replace("/admin/dashboard");
     }
   }, [admin, loading, router]);
 

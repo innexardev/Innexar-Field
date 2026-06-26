@@ -1,6 +1,7 @@
 package scheduling
 
 import (
+	"context"
 	"github.com/fieldforge/fieldforge/packages/core/response"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/fieldforge/fieldforge/packages/core/tenant"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -65,8 +67,14 @@ func (p *Plugin) Migrations() []plugin.Migration {
 		{Version: 120, Name: "jobs", UpSQL: jobsSQL},
 		{Version: 121, Name: "scheduling_crews", UpSQL: crewsSQL},
 		{Version: 122, Name: "scheduling_recurring_jobs", UpSQL: recurringJobsSQL},
+		{Version: 123, Name: "jobs_assigned_to", UpSQL: jobsAssignedToSQL},
 	}
 }
+
+const jobsAssignedToSQL = `
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS assigned_to UUID;
+CREATE INDEX IF NOT EXISTS idx_jobs_assigned_to ON jobs (tenant_id, assigned_to);
+`
 
 const jobsSQL = `
 CREATE TABLE IF NOT EXISTS jobs (
@@ -142,6 +150,34 @@ type Job struct {
 	ScheduledAt *time.Time `json:"scheduled_at,omitempty"`
 	CompletedAt *time.Time `json:"completed_at,omitempty"`
 	Notes       string     `json:"notes,omitempty"`
+	AssignedTo  string     `json:"assigned_to,omitempty"`
+}
+
+const jobSelectCols = `
+	id, COALESCE(customer_id::text,''), COALESCE(estimate_id::text,''), title, status,
+	scheduled_at, completed_at, notes, COALESCE(assigned_to::text,'')
+`
+
+func scanJob(scanner interface {
+	Scan(dest ...any) error
+}) (Job, error) {
+	var j Job
+	err := scanner.Scan(
+		&j.ID, &j.CustomerID, &j.EstimateID, &j.Title, &j.Status,
+		&j.ScheduledAt, &j.CompletedAt, &j.Notes, &j.AssignedTo,
+	)
+	return j, err
+}
+
+// employeeIDForUser resolves the payroll employee linked to an auth user.
+func (p *Plugin) employeeIDForUser(ctx context.Context, tenantID, userID string) (string, error) {
+	var employeeID string
+	err := p.pool.QueryRow(ctx, `
+		SELECT id::text FROM employees
+		WHERE tenant_id = $1 AND user_id = $2::uuid AND status = 'active'
+		LIMIT 1
+	`, tenantID, userID).Scan(&employeeID)
+	return employeeID, err
 }
 
 type ScheduleDay struct {
@@ -154,7 +190,7 @@ func (p *Plugin) getSchedule(c *fiber.Ctx) error {
 	from, to := parseScheduleRange(c.Query("from"), c.Query("to"))
 
 	rows, err := p.pool.Query(c.UserContext(), `
-		SELECT id, COALESCE(customer_id::text,''), COALESCE(estimate_id::text,''), title, status, scheduled_at, completed_at, notes
+		SELECT `+jobSelectCols+`
 		FROM jobs
 		WHERE tenant_id = $1
 		  AND scheduled_at IS NOT NULL
@@ -170,8 +206,8 @@ func (p *Plugin) getSchedule(c *fiber.Ctx) error {
 	byDate := make(map[string][]Job)
 	list := make([]Job, 0)
 	for rows.Next() {
-		var j Job
-		if err := rows.Scan(&j.ID, &j.CustomerID, &j.EstimateID, &j.Title, &j.Status, &j.ScheduledAt, &j.CompletedAt, &j.Notes); err != nil {
+		j, err := scanJob(rows)
+		if err != nil {
 			return fiber.NewError(fiber.StatusInternalServerError, "failed to load schedule")
 		}
 		list = append(list, j)
@@ -220,18 +256,43 @@ func parseScheduleRange(fromStr, toStr string) (time.Time, time.Time) {
 
 func (p *Plugin) listJobs(c *fiber.Ctx) error {
 	tid, _ := tenant.ID(c.UserContext())
-	rows, err := p.pool.Query(c.UserContext(), `
-		SELECT id, COALESCE(customer_id::text,''), COALESCE(estimate_id::text,''), title, status, scheduled_at, completed_at, notes
-		FROM jobs WHERE tenant_id = $1 ORDER BY scheduled_at NULLS LAST
-	`, tid)
+	mine := c.Query("mine") == "true"
+
+	var rows pgx.Rows
+	var err error
+
+	if mine {
+		userID, ok := tenant.UserID(c.UserContext())
+		if !ok {
+			return response.DataList(c, []Job{})
+		}
+		employeeID, empErr := p.employeeIDForUser(c.UserContext(), tid, userID)
+		if empErr != nil {
+			return response.DataList(c, []Job{})
+		}
+		rows, err = p.pool.Query(c.UserContext(), `
+			SELECT `+jobSelectCols+`
+			FROM jobs
+			WHERE tenant_id = $1
+			  AND (assigned_to = $2::uuid OR assigned_to = $3::uuid)
+			ORDER BY scheduled_at NULLS LAST
+		`, tid, employeeID, userID)
+	} else {
+		rows, err = p.pool.Query(c.UserContext(), `
+			SELECT `+jobSelectCols+`
+			FROM jobs WHERE tenant_id = $1 ORDER BY scheduled_at NULLS LAST
+		`, tid)
+	}
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to list jobs")
 	}
 	defer rows.Close()
 	var list []Job
 	for rows.Next() {
-		var j Job
-		_ = rows.Scan(&j.ID, &j.CustomerID, &j.EstimateID, &j.Title, &j.Status, &j.ScheduledAt, &j.CompletedAt, &j.Notes)
+		j, scanErr := scanJob(rows)
+		if scanErr != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, "failed to list jobs")
+		}
 		list = append(list, j)
 	}
 	return response.DataList(c, list)
@@ -245,6 +306,7 @@ func (p *Plugin) createJob(c *fiber.Ctx) error {
 		EstimateID  string `json:"estimate_id"`
 		ScheduledAt string `json:"scheduled_at"`
 		Notes       string `json:"notes"`
+		AssignedTo  string `json:"assigned_to"`
 	}
 	if err := c.BodyParser(&body); err != nil || body.Title == "" {
 		return fiber.NewError(400, "title required")
@@ -258,23 +320,22 @@ func (p *Plugin) createJob(c *fiber.Ctx) error {
 		}
 	}
 	_, err := p.pool.Exec(c.UserContext(), `
-		INSERT INTO jobs (id, tenant_id, customer_id, estimate_id, title, scheduled_at, notes)
-		VALUES ($1, $2, NULLIF($3,'')::uuid, NULLIF($4,'')::uuid, $5, $6, $7)
-	`, id, tid, body.CustomerID, body.EstimateID, body.Title, sched, body.Notes)
+		INSERT INTO jobs (id, tenant_id, customer_id, estimate_id, title, scheduled_at, notes, assigned_to)
+		VALUES ($1, $2, NULLIF($3,'')::uuid, NULLIF($4,'')::uuid, $5, $6, $7, NULLIF($8,'')::uuid)
+	`, id, tid, body.CustomerID, body.EstimateID, body.Title, sched, body.Notes, body.AssignedTo)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to create job")
 	}
 	_ = p.bus.Publish(c.UserContext(), tid, "operations.job.scheduled", map[string]string{"job_id": id})
-	return c.Status(201).JSON(Job{ID: id, Title: body.Title, Status: "scheduled", ScheduledAt: sched, Notes: body.Notes})
+	return c.Status(201).JSON(Job{ID: id, Title: body.Title, Status: "scheduled", ScheduledAt: sched, Notes: body.Notes, AssignedTo: body.AssignedTo})
 }
 
 func (p *Plugin) getJob(c *fiber.Ctx) error {
 	tid, _ := tenant.ID(c.UserContext())
-	var j Job
-	err := p.pool.QueryRow(c.UserContext(), `
-		SELECT id, COALESCE(customer_id::text,''), COALESCE(estimate_id::text,''), title, status, scheduled_at, completed_at, notes
+	j, err := scanJob(p.pool.QueryRow(c.UserContext(), `
+		SELECT `+jobSelectCols+`
 		FROM jobs WHERE id = $1 AND tenant_id = $2
-	`, c.Params("id"), tid).Scan(&j.ID, &j.CustomerID, &j.EstimateID, &j.Title, &j.Status, &j.ScheduledAt, &j.CompletedAt, &j.Notes)
+	`, c.Params("id"), tid))
 	if err != nil {
 		return fiber.NewError(404, "not found")
 	}
@@ -284,17 +345,23 @@ func (p *Plugin) getJob(c *fiber.Ctx) error {
 func (p *Plugin) updateJob(c *fiber.Ctx) error {
 	tid, _ := tenant.ID(c.UserContext())
 	var body struct {
-		Title  *string `json:"title"`
-		Status *string `json:"status"`
-		Notes  *string `json:"notes"`
+		Title      *string `json:"title"`
+		Status     *string `json:"status"`
+		Notes      *string `json:"notes"`
+		AssignedTo *string `json:"assigned_to"`
 	}
 	if err := c.BodyParser(&body); err != nil {
 		return fiber.NewError(400, "invalid body")
 	}
 	_, err := p.pool.Exec(c.UserContext(), `
-		UPDATE jobs SET title = COALESCE($3, title), status = COALESCE($4, status), notes = COALESCE($5, notes), updated_at = NOW()
+		UPDATE jobs SET
+			title = COALESCE($3, title),
+			status = COALESCE($4, status),
+			notes = COALESCE($5, notes),
+			assigned_to = COALESCE(NULLIF($6,'')::uuid, assigned_to),
+			updated_at = NOW()
 		WHERE id = $1 AND tenant_id = $2
-	`, c.Params("id"), tid, body.Title, body.Status, body.Notes)
+	`, c.Params("id"), tid, body.Title, body.Status, body.Notes, body.AssignedTo)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to update job")
 	}

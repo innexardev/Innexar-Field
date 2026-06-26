@@ -22,23 +22,31 @@ Canvas `MVP_TASKS` only supports `completed` \| `pending`. Items marked **partia
 
 ## Executive summary — top 15 gaps (ranked)
 
+> **Innexar Field Sprint (2026-06-26):** 7 of 8 feature agents shipped. See [sprint-status.md](./sprint-status.md).
+
 | Rank | Gap | Canvas says | Reality | Severity |
 |------|-----|-------------|---------|----------|
-| 1 | **Customer portal (`portal cliente`)** | F1 “Client Portal” = completed | `/portal/*` customer routes are `PortalStubPage` (“Coming soon”); hub links to admin `/estimates`, `/invoices`, `/customers` | **P0** |
-| 2 | **Employee portal — “my jobs”** | F7 PWA = completed | `/m/jobs` lists **all tenant jobs** for today; no `user_id` / `technician_id` on `jobs` table | **P0** |
-| 3 | **Work order assignment UI** | F3 Dispatch = completed | API: `POST /dispatch/work-orders/:id/assignments`; SDK has `createWorkOrderAssignment`; **no web UI**; no `/work-orders/[id]` | **P0** |
-| 4 | **Google Maps navigation** | OPS-002/003 in backlog | Zero `maps.google` / directions links; `/schedule/map` is CSS grid fake map | **P0** |
-| 5 | **Branded invoice PDF** | F4 Invoicing = completed | `/invoices/[id]` — send/pay only; no PDF export or print layout | **P0** |
-| 6 | **Property beds/baths/sqft (CRM)** | CRM-001 | `customer_properties` has address only; SDK `Property` has no beds/baths/sqft | **P0** |
-| 7 | **Price book beds/baths pricing** | F2 Price Book = completed | API has `pricing_model` + `pricing_tiers` (beds/baths); UI is flat `unit_price_cents` only | **P0** |
-| 8 | **Employee ↔ user account link** | F8 Payroll = completed | `employees` has no `user_id`; timesheets pick first active employee | **P0** |
-| 9 | **Production Stripe / QuickBooks** | Integrations in catalog | Mock by default (`MockStripe`, `MockQuickBooks`); settings page shows “dev stub” | **P1** |
-| 10 | **Crews ↔ payroll employees** | F3 Scheduling | `crews` = name, `lead_name`, `member_count`; no employee FKs | **P1** |
-| 11 | **Estimate PDF (beyond print)** | SAL-002 | `/estimates/[id]/preview` + `window.print()`; no server PDF / email attachment | **P1** |
-| 12 | **Communications module** | Catalog = `new` | No SMS/email templates, `/portal/messages` stub, no Twilio | **P1** |
-| 13 | **SDLC Figma / design system** | `sdlc3` = pending | Still pending — accurate | **P1** |
-| 14 | **Capacitor native shell** | Mobile tab describes `apps/native` | **`apps/native` does not exist** | **P2** |
-| 15 | **Super-admin `/admin/tenants`** | WEB_SCREENS | Route not implemented; ADR-0005 docs only | **P2** |
+| 1 | **Customer portal (`portal cliente`)** | F1 “Client Portal” = completed | Backend: magic-link auth + `GET /portal/me`, `/portal/invoices` (`packages/plugins/portal/`). **Web routes still `PortalStubPage`**; `PortalAuthProvider` wired in layout only | **P0** |
+| 2 | **Production Stripe / QuickBooks** | Integrations in catalog | Mock by default (`MockStripe`, `MockQuickBooks`); settings page shows “dev stub” | **P1** |
+| 3 | **Server invoice PDF / email** | F4 Invoicing = completed | Branded **print preview** at `/invoices/[id]/preview`; no server-rendered PDF or email attachment | **P1** |
+| 4 | **Crews ↔ payroll employees** | F3 Scheduling | `crews` = name, `lead_name`, `member_count`; no employee FKs | **P1** |
+| 5 | **Estimate PDF (beyond print)** | SAL-002 | `/estimates/[id]/preview` + `window.print()`; no server PDF / email attachment | **P1** |
+| 6 | **Communications module** | Catalog = `new` | No SMS/email templates, `/portal/messages` stub, no Twilio | **P1** |
+| 7 | **SDLC Figma / design system** | `sdlc3` = pending | Still pending — accurate | **P1** |
+| 8 | **Capacitor native shell** | Mobile tab describes `apps/native` | **`apps/native` does not exist** | **P2** |
+| 9 | **Super-admin `/admin/tenants`** | WEB_SCREENS | Route not implemented; ADR-0005 docs only | **P2** |
+
+### Closed in Innexar Field Sprint (was P0)
+
+| Gap | Delivered |
+|-----|-----------|
+| Employee portal — “my jobs” | `jobs.assigned_to` migration; `GET /jobs?mine=true`; `/m/jobs` filters by linked employee |
+| Work order assignment UI | Assign technician on dispatch board + `/work-orders/[id]` |
+| Google Maps navigation | `apps/web/lib/maps.ts`, `NavigateButton`; deep links on job cards, routes, schedule map, work orders |
+| Property beds/baths/sqft | CRM migration + CRUD; properties UI with bedrooms/bathrooms/sqft |
+| Price book + estimate room tiers | `POST /estimates/:id/calculate` applies `pricing_tiers` from linked property; price-book tier editor UI |
+| Employee ↔ user link | `employees.user_id` migration; `PATCH /employees/:id`; `/payroll/employees` link UI; timesheets auto-resolve employee |
+| Invoice print preview | `/invoices/[id]/preview` branded layout + print from detail page |
 
 ---
 
@@ -54,14 +62,14 @@ Canvas `MVP_TASKS` only supports `completed` \| `pending`. Items marked **partia
 | **eng5** | completed | **done** | `packages/core/resilience/`, `packages/core/events/outbox.go`, `packages/core/middleware/idempotency.go`, poller in `apps/api/cmd/server/main.go` |
 | **land** | pending | **partial** | `apps/marketing/app/` (~15 pages); `POST /public/contact` stub (`handlers.go`: “no email send yet”) |
 | **p0** F0 Onboarding | completed | **partial** | Wizard: `apps/web/app/onboarding/*`, `packages/core/onboarding/`; `/marketplace` = “Coming soon” |
-| **p1** F1 Core + CRM + Portal | pending | **partial** | Auth/CRM done; **portal cliente = stubs** (`apps/web/components/portal-stub-page.tsx`) |
-| **p2** F2 Estimates + Price Book | pending | **partial** | Estimates/takeoff/price-book CRUD; **no beds/baths tier UI**; calculate = markup/tax only |
-| **p3** F3 Scheduling + Dispatch | pending | **partial** | Schedule, crews, routes API; dispatch board **read-only**; assignment API **no UI** |
-| **p4** F4 Expenses + Invoicing | pending | **partial** | CRUD + payments; **no invoice PDF**; expenses basic (no OCR) |
+| **p1** F1 Core + CRM + Portal | pending | **partial** | Auth/CRM done; portal **API** (magic-link, customer invoices); **portal web pages = stubs** |
+| **p2** F2 Estimates + Price Book | pending | **partial** | Estimates/takeoff/price-book CRUD; **room-tier calculate** from property; price-book tier editor |
+| **p3** F3 Scheduling + Dispatch | pending | **partial** | Schedule, crews, routes; **dispatch assign UI**; **Google Maps deep links** on map/routes/jobs |
+| **p4** F4 Expenses + Invoicing | pending | **partial** | CRUD + payments; **invoice print preview**; no server PDF; expenses basic (no OCR) |
 | **p5** F5 Cleaning | pending | **partial** | QC/supplies API (`packages/plugins/cleaning/`); web badges “Stub”; `PhotoUploadStub` |
 | **p6** F6 Construction | pending | **partial** | CO workflow API+UI solid; `DailyLogPhotoStub`; permit alerts in plugin |
-| **p7** F7 PWA campo | pending | **partial** | Offline queue (`apps/web/lib/mobile/offline-queue.ts`), SW v3 (`public/sw.js`); signature/vehicle/profile stubs |
-| **p8** F8 Accounting + Payroll | pending | **partial** | GL/AP/AR list endpoints; payroll runs + W-4; **no employee-user link** |
+| **p7** F7 PWA campo | pending | **partial** | Offline queue, SW v3; **`/m/jobs?mine` filter**; maps navigate on job detail; signature/vehicle/profile stubs |
+| **p8** F8 Accounting + Payroll | pending | **partial** | GL/AP/AR list endpoints; payroll runs + W-4; **`employees.user_id` link + `/payroll/employees` UI** |
 
 ### `eng5` (resilience + outbox + idempotency)
 
@@ -88,15 +96,15 @@ Canvas `MVP_TASKS` only supports `completed` \| `pending`. Items marked **partia
 | Marketing | home, pricing, industries, blog, legal | contact (no backend email) | — | — |
 | Onboarding | 5-step wizard | setup/complete | marketplace | — |
 | Dashboard | owner/dispatcher/accountant pages | KPIs may be seeded | — | role widgets depth |
-| CRM | customers, leads, properties (address) | contracts + templates | — | beds/baths on properties |
-| Estimates | list, builder, calculate, preview/print | send flow | — | beds/baths calc |
-| Finance | invoices list, expenses, job-costing | invoice detail | accounting lists | invoice PDF, expenses OCR |
-| Payroll | employees, runs, tax, timesheets | — | — | employee↔user |
-| Schedule/Dispatch | schedule, recurring, routes, crews | map (fake), dispatch (read-only) | — | assign UI, Google Maps |
+| CRM | customers, leads, properties (beds/baths/sqft) | contracts + templates | — | — |
+| Estimates | list, builder, calculate (room tiers), preview/print | send flow | — | server PDF |
+| Finance | invoices list, expenses, job-costing, invoice print preview | invoice detail | accounting lists | server PDF, expenses OCR |
+| Payroll | employees, runs, tax, timesheets, employee↔user link | — | — | — |
+| Schedule/Dispatch | schedule, recurring, routes, crews, dispatch assign, maps links | schedule map (grid + navigate) | — | live map embed |
 | Cleaning | jobs, phases | supplies, QC (API ok, UI “Stub”) | photo upload | — |
 | Construction | projects, CO, permits, RFIs, subs | daily-log photos | — | — |
-| PWA `/m/*` | jobs list/detail, time, expenses, sync | offline queue | signature, vehicle, profile | maps link |
-| **Portal cliente** | hub preview cards | — | **login, bookings, payments, documents, messages, profile, support** | self-service auth |
+| PWA `/m/*` | jobs list/detail (mine filter), time, expenses, sync, maps navigate | offline queue | signature, vehicle, profile | — |
+| **Portal cliente** | hub preview cards; portal API (magic-link) | — | **login, bookings, payments, documents, messages, profile, support** (web stubs) | customer-facing pages |
 | Settings | users, modules, integrations UI | integrations mock | templates route | `/settings/templates` |
 | Admin SaaS | — | — | — | `/admin/tenants` |
 
@@ -128,12 +136,12 @@ Vision gap analysis lives in the canvas (not a separate constant):
 
 | Vision item | Status | Notes |
 |-------------|--------|-------|
-| **Employee portal** | **partial** | `/m/jobs`, `/m/time`, offline sync work; not filtered per employee; no maps |
+| **Employee portal** | **partial** | `/m/jobs?mine`, maps navigate, offline sync; signature/vehicle stubs remain |
 | **Contract templates** | **partial** | 3 US templates seeded (`packages/plugins/crm/templates.go`); UI at `/contracts` with template picker |
-| **PDF invoices** | **missing** | No PDF generation; estimate has HTML print preview only |
-| **Room pricing** | **partial** | Takeoff sqft-by-room (`/takeoff`); price book tiers in API not exposed in UI |
+| **PDF invoices** | **partial** | Branded print preview at `/invoices/[id]/preview`; no server PDF or email attachment |
+| **Room pricing** | **partial** | Property beds/baths + price-book tiers + calculate applies room pricing; estimate builder property picker TBD |
 | **Integrations** | **stub** | QB/Stripe/Avalara routes; mock without env keys |
-| **Portal cliente** | **stub** | All 7 customer routes use `PortalStubPage`; public quote at `/p/[token]` is the only real client-facing flow |
+| **Portal cliente** | **partial** | API + auth context shipped; web routes still `PortalStubPage`; public quote at `/p/[token]` works |
 
 ---
 
@@ -155,34 +163,30 @@ Applied in `erp-field-services-plan.canvas.tsx` (2026-06-26):
 
 ## Recommended implementation order (waves 1–4)
 
-### Wave 1 — Daily ops & revenue
+### Wave 1 — Daily ops & revenue ✅ (sprint 2026-06-26)
 
-Aligns with backlog Sprints 1–2.
+1. ~~Work order detail page + assignment UI~~ → dispatch board + `/work-orders/[id]`
+2. ~~`jobs.assigned_to` / filter `/m/jobs` by logged-in user~~
+3. ~~Google Maps deep links on job cards, routes, schedule map~~
+4. ~~Dispatch board: assign technician from board~~
 
-1. Work order detail page + assignment UI → wire `createWorkOrderAssignment`
-2. `jobs.assigned_to` / filter `/m/jobs` by logged-in user
-3. Google Maps deep links on job cards, routes, schedule map
-4. Dispatch board: assign technician from board
+### Wave 2 — Sales & CRM ✅ (sprint 2026-06-26)
 
-### Wave 2 — Sales & CRM
-
-Sprint 3 + CRM-001/002.
-
-5. Property fields: beds, baths, sqft on `customer_properties` + UI
-6. Price book tier editor (beds/baths) + calculate from property
+5. ~~Property fields: beds, baths, sqft on `customer_properties` + UI~~
+6. ~~Price book tier editor + calculate from property~~
 7. Branded estimate print/PDF polish (extend existing preview)
 8. Customer UX guided flows (expand hints on `/customers`)
 
-### Wave 3 — Finance & client portal
+### Wave 3 — Finance & client portal (in progress)
 
-9. Branded invoice PDF (server render or print CSS)
-10. Customer portal v1: magic-link auth, view/pay invoices, accept quotes
+9. ~~Branded invoice print preview~~ → server PDF + email attachment remains
+10. Customer portal v1: **API done**; wire web pages (login, invoices, pay) to `PortalAuthProvider`
 11. Stripe Connect production path (real keys, webhooks)
 
 ### Wave 4 — Integrations & platform depth
 
 12. QuickBooks OAuth production + sync
-13. Employee ↔ user link + crew membership
+13. ~~Employee ↔ user link~~ → crew membership FKs remain
 14. Communications (email/SMS templates)
 15. Capacitor shell + native signature/camera
 16. Super-admin tenant management
@@ -195,6 +199,14 @@ Sprint 3 + CRM-001/002.
 | Feature | Routes / files |
 |---------|----------------|
 | Portal stubs | `apps/web/app/portal/*/page.tsx`, `apps/web/components/portal-stub-page.tsx` |
+| Portal API | `packages/plugins/portal/`, `apps/web/lib/portal-auth-context.tsx` |
+| Maps deep links | `apps/web/lib/maps.ts`, `apps/web/components/maps/navigate-button.tsx` |
+| Employee link | `packages/plugins/payroll/plugin.go` (migration 201), `apps/web/app/payroll/employees/page.tsx` |
+| Jobs mine filter | `packages/plugins/scheduling/plugin.go` (`mine`, `assigned_to`), `apps/web/app/m/jobs/page.tsx` |
+| Room pricing calc | `packages/plugins/estimating/pricing.go`, `plugin.go` calculate |
+| Invoice preview | `apps/web/app/invoices/[id]/preview/page.tsx` |
+| Dispatch assign | `apps/web/app/dispatch/page.tsx`, `apps/web/app/work-orders/[id]/page.tsx` |
+| Property beds/baths | `packages/plugins/crm/plugin.go` (migration 105), properties UI |
 | Public quote (works) | `apps/web/app/p/[token]/page.tsx`, `packages/plugins/estimating/public.go` |
 | Assignment API | `packages/plugins/dispatch/plugin.go` (assignments routes) |
 | Outbox/idempotency | `packages/core/events/`, `packages/core/middleware/idempotency.go` |

@@ -26,13 +26,16 @@ func TestPlugin_Migrations(t *testing.T) {
 	p := New(nil)
 	migs := p.Migrations()
 
-	assert.Len(t, migs, 1)
+	assert.Len(t, migs, 2)
 	assert.Equal(t, 200, migs[0].Version)
 	assert.Equal(t, "payroll", migs[0].Name)
 	assert.Contains(t, migs[0].UpSQL, "CREATE TABLE IF NOT EXISTS employees")
 	assert.Contains(t, migs[0].UpSQL, "CREATE TABLE IF NOT EXISTS timesheets")
 	assert.Contains(t, migs[0].UpSQL, "CREATE TABLE IF NOT EXISTS payroll_runs")
 	assert.Contains(t, migs[0].UpSQL, "CREATE TABLE IF NOT EXISTS payroll_tax_profiles")
+	assert.Equal(t, 201, migs[1].Version)
+	assert.Equal(t, "employees_user_id", migs[1].Name)
+	assert.Contains(t, migs[1].UpSQL, "user_id")
 }
 
 func TestValidEmploymentTypes(t *testing.T) {

@@ -52,7 +52,7 @@ func (s *Service) CreateCheckout(ctx context.Context, req CheckoutRequest) (*Che
 		planID = tb.PlanID
 	}
 
-	plan, err := PlanFromConfig(s.cfg, planID)
+	plan, err := PlanFromStore(ctx, s.pool, s.cfg, planID)
 	if err != nil {
 		return nil, err
 	}
@@ -69,11 +69,19 @@ func (s *Service) CreateCheckout(ctx context.Context, req CheckoutRequest) (*Che
 	}
 
 	appURL := env("WEB_APP_URL", "http://localhost:3000")
+	settings, _ := LoadBillingSettings(ctx, s.pool, s.cfg)
+
 	successURL := req.SuccessURL
+	if successURL == "" && settings.CheckoutSuccessURL != "" {
+		successURL = settings.CheckoutSuccessURL
+	}
 	if successURL == "" {
 		successURL = appURL + "/billing/success"
 	}
 	cancelURL := req.CancelURL
+	if cancelURL == "" && settings.CheckoutCancelURL != "" {
+		cancelURL = settings.CheckoutCancelURL
+	}
 	if cancelURL == "" {
 		cancelURL = appURL + "/billing/cancel"
 	}
@@ -91,7 +99,7 @@ func (s *Service) CreateCheckout(ctx context.Context, req CheckoutRequest) (*Che
 		CustomerEmail: tb.OwnerEmail,
 		SuccessURL:    successURL,
 		CancelURL:     cancelURL,
-		TrialDays:     TrialDays(s.cfg),
+		TrialDays:     trialDaysForCheckout(ctx, s.pool, tb.SubscriptionStatus, s.cfg),
 	})
 	if err != nil {
 		return nil, err
@@ -109,6 +117,8 @@ func (s *Service) HandleWebhook(ctx context.Context, payload []byte, sigHeader s
 	switch event.Type {
 	case "checkout.session.completed":
 		return s.onCheckoutCompleted(ctx, event)
+	case "invoice.payment_failed":
+		return s.onInvoicePaymentFailed(ctx, event)
 	case "customer.subscription.updated":
 		return s.onSubscriptionUpdated(ctx, event)
 	case "customer.subscription.deleted":
@@ -116,6 +126,127 @@ func (s *Service) HandleWebhook(ctx context.Context, payload []byte, sigHeader s
 	default:
 		return nil
 	}
+}
+
+func trialDaysForCheckout(ctx context.Context, pool *pgxpool.Pool, subscriptionStatus string, cfg *config.AppConfig) int {
+	if RequiresPayment(subscriptionStatus) {
+		return 0
+	}
+	if subscriptionStatus == "trialing" {
+		return TrialDaysFromStore(ctx, pool, cfg)
+	}
+	return 0
+}
+
+// GetStatus returns the tenant subscription and plan summary.
+func (s *Service) GetStatus(ctx context.Context) (*BillingStatusResponse, error) {
+	tenantID, ok := tenant.ID(ctx)
+	if !ok {
+		return nil, fmt.Errorf("tenant context required")
+	}
+
+	tb, err := s.loadTenant(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	plan, err := PlanFromStore(ctx, s.pool, s.cfg, tb.PlanID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &BillingStatusResponse{
+		PlanID:             tb.PlanID,
+		PlanName:           plan.Name,
+		PriceMonthly:       plan.PriceMonthly,
+		SubscriptionStatus: tb.SubscriptionStatus,
+		StripeCustomerID:   tb.StripeCustomerID,
+		RequiresPayment:    RequiresPayment(tb.SubscriptionStatus),
+		RequiresDunning:    RequiresDunning(tb.SubscriptionStatus),
+	}, nil
+}
+
+type PortalRequest struct {
+	ReturnURL string `json:"return_url"`
+}
+
+func (s *Service) CreatePortal(ctx context.Context, req PortalRequest) (*PortalResult, error) {
+	tenantID, ok := tenant.ID(ctx)
+	if !ok {
+		return nil, fmt.Errorf("tenant context required")
+	}
+
+	tb, err := s.loadTenant(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	if tb.StripeCustomerID == nil || *tb.StripeCustomerID == "" {
+		return nil, fmt.Errorf("no stripe customer on file")
+	}
+
+	appURL := env("WEB_APP_URL", "http://localhost:3000")
+	settings, _ := LoadBillingSettings(ctx, s.pool, s.cfg)
+	returnURL := req.ReturnURL
+	if returnURL == "" && settings.PortalReturnURL != "" {
+		returnURL = settings.PortalReturnURL
+	}
+	if returnURL == "" {
+		returnURL = appURL + "/billing"
+	}
+
+	return s.stripe.CreatePortalSession(ctx, *tb.StripeCustomerID, returnURL)
+}
+
+func (s *Service) ListInvoices(ctx context.Context) ([]Invoice, error) {
+	tenantID, ok := tenant.ID(ctx)
+	if !ok {
+		return nil, fmt.Errorf("tenant context required")
+	}
+
+	tb, err := s.loadTenant(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	if tb.StripeCustomerID == nil || *tb.StripeCustomerID == "" {
+		return []Invoice{}, nil
+	}
+
+	return s.stripe.ListInvoices(ctx, *tb.StripeCustomerID)
+}
+
+// MockCompleteCheckout simulates checkout.session.completed in mock Stripe mode.
+func (s *Service) MockCompleteCheckout(ctx context.Context, planID string) error {
+	if !s.cfg.MockStripe() {
+		return fmt.Errorf("mock checkout only available when mock_stripe is enabled")
+	}
+	tenantID, ok := tenant.ID(ctx)
+	if !ok {
+		return fmt.Errorf("tenant context required")
+	}
+	if planID == "" {
+		tb, err := s.loadTenant(ctx, tenantID)
+		if err != nil {
+			return err
+		}
+		planID = tb.PlanID
+	}
+	return s.HandleWebhook(ctx, MockWebhookPayload(tenantID, planID), "mock")
+}
+
+func (s *Service) onInvoicePaymentFailed(ctx context.Context, event *WebhookEvent) error {
+	obj, ok := event.Data["object"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("invoice.payment_failed: missing object")
+	}
+	customerID, _ := obj["customer"].(string)
+	if customerID == "" {
+		return nil
+	}
+	_, err := s.pool.Exec(ctx, `
+		UPDATE tenants SET subscription_status = 'past_due', updated_at = NOW()
+		WHERE stripe_customer_id = $1
+	`, customerID)
+	return err
 }
 
 func (s *Service) onCheckoutCompleted(ctx context.Context, event *WebhookEvent) error {

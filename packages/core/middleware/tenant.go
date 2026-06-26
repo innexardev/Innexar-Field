@@ -37,6 +37,7 @@ var nonPluginRoutes = map[string]bool{
 	"feature-flags": true,
 	"public":        true,
 	"platform":      true,
+	"portal":        true,
 }
 
 // PluginGate returns 403 when the request targets a disabled plugin.

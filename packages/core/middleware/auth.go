@@ -31,6 +31,32 @@ func Auth(authSvc *auth.Service) fiber.Handler {
 	}
 }
 
+// CustomerAuth validates customer portal JWTs and scopes context to one customer.
+func CustomerAuth(authSvc *auth.Service) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		header := c.Get("Authorization")
+		if header == "" || !strings.HasPrefix(header, "Bearer ") {
+			return fiber.NewError(fiber.StatusUnauthorized, "missing bearer token")
+		}
+		token := strings.TrimPrefix(header, "Bearer ")
+		claims, err := authSvc.ParseToken(token)
+		if err != nil {
+			return fiber.NewError(fiber.StatusUnauthorized, "invalid token")
+		}
+		if claims.Role != "customer" || claims.CustomerID == "" {
+			return fiber.NewError(fiber.StatusForbidden, "customer session required")
+		}
+		c.Locals("claims", claims)
+		c.Locals("tenant_id", claims.TenantID)
+		c.Locals("customer_id", claims.CustomerID)
+
+		ctx := tenant.WithID(c.UserContext(), claims.TenantID)
+		ctx = tenant.WithCustomerID(ctx, claims.CustomerID)
+		c.SetUserContext(ctx)
+		return c.Next()
+	}
+}
+
 // OptionalAuth attaches claims when present but does not fail.
 func OptionalAuth(authSvc *auth.Service) fiber.Handler {
 	return func(c *fiber.Ctx) error {

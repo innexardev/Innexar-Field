@@ -28,6 +28,13 @@ export const PORTAL_CUSTOMER_ROUTES: PortalCustomerRoute[] = [
     icon: IconShield,
   },
   {
+    slug: "invoices",
+    title: "Invoices",
+    description: "View sent invoices and payment status.",
+    hint: "Read-only invoice list scoped to the signed-in customer.",
+    icon: IconFileText,
+  },
+  {
     slug: "bookings",
     title: "Bookings & reschedules",
     description: "Self-service calendar for recurring cleans and service windows.",

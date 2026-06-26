@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/fieldforge/fieldforge/packages/core/auth"
 	"github.com/fieldforge/fieldforge/packages/core/db"
@@ -18,6 +19,7 @@ import (
 	"github.com/fieldforge/fieldforge/packages/core/plugin"
 	"github.com/fieldforge/fieldforge/packages/core/tenant"
 	"github.com/fieldforge/fieldforge/packages/plugins/estimating"
+	"github.com/fieldforge/fieldforge/packages/plugins/payroll"
 	"github.com/fieldforge/fieldforge/packages/plugins/scheduling"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -27,6 +29,117 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 )
+
+func TestScheduling_ListJobs_MineFilter(t *testing.T) {
+	ctx := context.Background()
+
+	pg, err := tcpostgres.RunContainer(ctx,
+		testcontainers.WithImage("postgres:16-alpine"),
+		tcpostgres.WithDatabase("fieldforge"),
+		tcpostgres.WithUsername("fieldforge"),
+		tcpostgres.WithPassword("fieldforge"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").WithOccurrence(2),
+		),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = pg.Terminate(ctx) })
+
+	connStr, err := pg.ConnectionString(ctx, "sslmode=disable")
+	require.NoError(t, err)
+
+	pool, err := db.Connect(ctx, connStr)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+
+	require.NoError(t, runMineFilterMigrations(ctx, pool))
+
+	tenantID := uuid.New().String()
+	userID := uuid.New().String()
+	employeeID := uuid.New().String()
+	otherEmployeeID := uuid.New().String()
+	seedTenant(t, ctx, pool, tenantID, "mine-filter")
+
+	tenantCtx := tenant.WithID(ctx, tenantID)
+	_, err = pool.Exec(tenantCtx, `
+		INSERT INTO users (id, tenant_id, email, password_hash, role)
+		VALUES ($1, $2, 'alex@example.com', 'hash', 'technician')
+	`, userID, tenantID)
+	require.NoError(t, err)
+	_, err = pool.Exec(tenantCtx, `
+		INSERT INTO employees (id, tenant_id, first_name, last_name, email, user_id, status)
+		VALUES ($1, $2, 'Alex', 'Tech', 'alex@example.com', $3, 'active')
+	`, employeeID, tenantID, userID)
+	require.NoError(t, err)
+
+	now := time.Now().UTC()
+	mineJobID := uuid.New().String()
+	otherJobID := uuid.New().String()
+	_, err = pool.Exec(tenantCtx, `
+		INSERT INTO jobs (id, tenant_id, title, status, scheduled_at, assigned_to)
+		VALUES
+			($1, $2, 'My job', 'scheduled', $3, $4),
+			($5, $2, 'Other job', 'scheduled', $3, $6)
+	`, mineJobID, tenantID, now, employeeID, otherJobID, otherEmployeeID)
+	require.NoError(t, err)
+
+	authSvc := auth.NewService("integration-test-secret-32-chars!!", 24)
+	token, err := authSvc.IssueToken(userID, tenantID, "alex@example.com", "technician")
+	require.NoError(t, err)
+
+	app := newSchedulingApp(pool, authSvc)
+
+	mineRes := getJSON(t, app, "/scheduling/jobs?mine=true", token)
+	require.Equal(t, http.StatusOK, mineRes.StatusCode)
+	defer mineRes.Body.Close()
+	var mineBody struct {
+		Data []map[string]any `json:"data"`
+	}
+	require.NoError(t, json.NewDecoder(mineRes.Body).Decode(&mineBody))
+	require.Len(t, mineBody.Data, 1)
+	assert.Equal(t, mineJobID, mineBody.Data[0]["id"])
+
+	allRes := getJSON(t, app, "/scheduling/jobs", token)
+	require.Equal(t, http.StatusOK, allRes.StatusCode)
+	defer allRes.Body.Close()
+	var allBody struct {
+		Data []map[string]any `json:"data"`
+	}
+	require.NoError(t, json.NewDecoder(allRes.Body).Decode(&allBody))
+	assert.Len(t, allBody.Data, 2)
+}
+
+func runMineFilterMigrations(ctx context.Context, pool *db.Pool) error {
+	var all []struct {
+		Version int
+		Name    string
+		UpSQL   string
+	}
+	for _, m := range coremigrate.Core {
+		all = append(all, struct {
+			Version int
+			Name    string
+			UpSQL   string
+		}{m.Version, m.Name, m.UpSQL})
+	}
+	bus := events.NewBus(pool.Pool)
+	for _, m := range scheduling.New(pool.Pool, bus).Migrations() {
+		all = append(all, struct {
+			Version int
+			Name    string
+			UpSQL   string
+		}{m.Version, m.Name, m.UpSQL})
+	}
+	payrollPlugin := payroll.New(pool.Pool)
+	for _, m := range payrollPlugin.Migrations() {
+		all = append(all, struct {
+			Version int
+			Name    string
+			UpSQL   string
+		}{m.Version, m.Name, m.UpSQL})
+	}
+	return pool.RunMigrations(ctx, all)
+}
 
 func TestScheduling_CreateJob_TenantIsolation(t *testing.T) {
 	ctx := context.Background()

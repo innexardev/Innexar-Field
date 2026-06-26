@@ -13,6 +13,30 @@ export {
   type ApiErrorBody,
 } from "./errors";
 
+import {
+  PortalClient,
+  createPortalClient,
+  type PortalAuthResponse,
+  type PortalCustomer,
+  type PortalDocument,
+  type PortalInvoice,
+  type PortalMagicLinkResponse,
+  type PortalPayment,
+  type PortalPaymentIntent,
+} from "./portal";
+
+export {
+  PortalClient,
+  createPortalClient,
+  type PortalAuthResponse,
+  type PortalCustomer,
+  type PortalDocument,
+  type PortalInvoice,
+  type PortalMagicLinkResponse,
+  type PortalPayment,
+  type PortalPaymentIntent,
+};
+
 export {
   PlatformAdminClient,
   createPlatformAdminClient,
@@ -27,9 +51,25 @@ export {
   type PlatformPromotionInput,
   type PlatformConfig,
   type PlatformConfigInput,
+  type PlatformIntegrationsSettings,
+  type PlatformIntegrationsSettingsInput,
+  type MaskedSecret,
+  type IntegrationBlock,
+  type PlatformBillingSettings,
+  type PlatformBillingSettingsInput,
+  type PlatformMetrics,
   type PlatformStats,
   type PlatformTenant,
   type PlatformTenantPatch,
+  type PlatformTenantCreateInput,
+  type PlatformUser,
+  type PlatformUserCreateInput,
+  type PlatformUserUpdateInput,
+  type PlatformAnnouncement,
+  type PlatformAnnouncementInput,
+  type PlatformModuleSettings,
+  type PlatformModuleSettingsPatch,
+  type PlatformModuleCatalogEntry,
   type PublicPlan,
 } from "./platform-admin";
 
@@ -184,17 +224,28 @@ export interface Property {
   state: string;
   zip: string;
   is_primary: boolean;
+  bedrooms?: number;
+  bathrooms?: number;
+  sqft?: number;
 }
 
 export interface Estimate {
   id: string;
   customer_id?: string;
+  property_id?: string;
   title: string;
   status: string;
   subtotal_cents: number;
   total_cents: number;
   public_token?: string;
   created_at?: string;
+}
+
+export interface EstimatePropertySummary {
+  id: string;
+  label: string;
+  bedrooms?: number;
+  bathrooms?: number;
 }
 
 export interface EstimateLineItem {
@@ -206,6 +257,7 @@ export interface EstimateLineItem {
 
 export interface EstimateDetail extends Estimate {
   lines: EstimateLineItem[];
+  property?: EstimatePropertySummary;
 }
 
 export interface PublicQuote {
@@ -257,6 +309,10 @@ export interface EstimateCalculateResult {
   total_cents: number;
   markup_percent: number;
   tax_percent: number;
+  tier_lines_updated?: number;
+  property_bedrooms?: number;
+  property_bathrooms?: number;
+  room_tiers_applied?: boolean;
 }
 
 export interface TakeoffRoom {
@@ -280,6 +336,7 @@ export interface Job {
   status: string;
   scheduled_at?: string;
   notes?: string;
+  assigned_to?: string;
 }
 
 export interface Invoice {
@@ -540,6 +597,7 @@ export interface PurchaseOrder {
 
 export interface Employee {
   id: string;
+  user_id?: string;
   first_name: string;
   last_name: string;
   email: string;
@@ -815,6 +873,37 @@ export interface CheckoutSession {
   mock?: boolean;
 }
 
+export interface BillingStatus {
+  plan_id: string;
+  plan_name: string;
+  price_monthly?: number;
+  subscription_status: string;
+  stripe_customer_id?: string;
+  requires_payment: boolean;
+  requires_dunning: boolean;
+}
+
+export interface BillingPortalSession {
+  portal_url: string;
+  mock?: boolean;
+}
+
+export interface BillingInvoice {
+  id: string;
+  number: string;
+  status: string;
+  amount_cents: number;
+  currency: string;
+  created_at: string;
+  pdf_url?: string;
+}
+
+export interface CheckoutOptions {
+  plan_id?: string;
+  success_url?: string;
+  cancel_url?: string;
+}
+
 export interface IntegrationCatalogItem {
   id: string;
   name: string;
@@ -1048,9 +1137,29 @@ export class FieldForgeClient {
       state?: string;
       zip?: string;
       is_primary?: boolean;
+      bedrooms?: number;
+      bathrooms?: number;
+      sqft?: number;
     },
   ) {
     return this.request<Property>("POST", `/crm/customers/${customerId}/properties`, data);
+  }
+
+  updateCustomerProperty(
+    customerId: string,
+    propertyId: string,
+    data: Partial<
+      Pick<
+        Property,
+        "label" | "street" | "city" | "state" | "zip" | "is_primary" | "bedrooms" | "bathrooms" | "sqft"
+      >
+    >,
+  ) {
+    return this.request<Property>(
+      "PATCH",
+      `/crm/customers/${customerId}/properties/${propertyId}`,
+      data,
+    );
   }
 
   listLeads() {
@@ -1087,6 +1196,7 @@ export class FieldForgeClient {
   createEstimate(data: {
     title: string;
     customer_id?: string;
+    property_id?: string;
     lines?: { description: string; quantity: number; unit_price_cents: number }[];
   }) {
     return this.request<Estimate>("POST", "/estimating/estimates", data);
@@ -1097,6 +1207,7 @@ export class FieldForgeClient {
     data: {
       title?: string;
       customer_id?: string;
+      property_id?: string;
       lines?: { description: string; quantity: number; unit_price_cents: number }[];
     },
   ) {
@@ -1129,6 +1240,50 @@ export class FieldForgeClient {
 
   acceptPublicQuote(token: string) {
     return this.request<{ status: string }>("POST", `/public/quotes/${token}/accept`, {});
+  }
+
+  requestPortalMagicLink(data: { email: string; tenant_slug: string }) {
+    return this.request<PortalMagicLinkResponse>("POST", "/public/portal/login", data);
+  }
+
+  verifyPortalMagicLink(token: string) {
+    return this.request<PortalAuthResponse>("POST", "/public/portal/verify", { token });
+  }
+
+  portalMe() {
+    return this.request<PortalCustomer>("GET", "/portal/me");
+  }
+
+  listPortalInvoices() {
+    return this.request<{ data: Invoice[] }>("GET", "/portal/invoices");
+  }
+
+  getPortalInvoice(id: string) {
+    return this.request<Invoice>("GET", `/portal/invoices/${id}`);
+  }
+
+  listPortalPayments() {
+    return this.request<{ data: Payment[] }>("GET", "/portal/payments");
+  }
+
+  createPortalPaymentIntent(invoiceId: string) {
+    return this.request<PortalPaymentIntent>("POST", `/portal/invoices/${invoiceId}/payment-intent`, {});
+  }
+
+  confirmPortalPayment(invoiceId: string) {
+    return this.request<{ status: string; invoice_id: string }>(
+      "POST",
+      `/portal/invoices/${invoiceId}/confirm-payment`,
+      {},
+    );
+  }
+
+  listPortalDocuments() {
+    return this.request<{ data: PortalDocument[] }>("GET", "/portal/documents");
+  }
+
+  updatePortalProfile(data: Partial<Pick<PortalCustomer, "name" | "email" | "phone">>) {
+    return this.request<PortalCustomer>("PATCH", "/portal/me", data);
   }
 
   listMarketplacePlugins() {
@@ -1185,8 +1340,11 @@ export class FieldForgeClient {
     return this.request<TakeoffMeasurement>("GET", `/estimating/takeoff/${id}`);
   }
 
-  listJobs() {
-    return this.request<{ data: Job[] }>("GET", "/scheduling/jobs");
+  listJobs(opts?: { mine?: boolean }) {
+    const params = new URLSearchParams();
+    if (opts?.mine) params.set("mine", "true");
+    const q = params.toString();
+    return this.request<{ data: Job[] }>("GET", `/scheduling/jobs${q ? `?${q}` : ""}`);
   }
 
   getJob(id: string) {
@@ -1458,6 +1616,14 @@ export class FieldForgeClient {
     hourly_rate_cents?: number;
   }) {
     return this.request<Employee>("POST", "/payroll/employees", data);
+  }
+
+  getMyEmployee() {
+    return this.request<Employee>("GET", "/payroll/employees/me");
+  }
+
+  updateEmployee(id: string, data: { user_id: string | null }) {
+    return this.request<Employee>("PATCH", `/payroll/employees/${id}`, data);
   }
 
   listTimesheets() {
@@ -1757,8 +1923,36 @@ export class FieldForgeClient {
     return this.request<CleaningSupply>("PATCH", `/cleaning/supplies/${id}`, data);
   }
 
-  createCheckout(planId?: string) {
-    return this.request<CheckoutSession>("POST", "/billing/checkout", planId ? { plan_id: planId } : {});
+  createCheckout(options?: string | CheckoutOptions) {
+    const body =
+      typeof options === "string"
+        ? { plan_id: options }
+        : options ?? {};
+    return this.request<CheckoutSession>("POST", "/billing/checkout", body);
+  }
+
+  getBillingStatus() {
+    return this.request<BillingStatus>("GET", "/billing/status");
+  }
+
+  listBillingInvoices() {
+    return this.request<{ data: BillingInvoice[] }>("GET", "/billing/invoices");
+  }
+
+  createBillingPortal(returnUrl?: string) {
+    return this.request<BillingPortalSession>("POST", "/billing/portal", {
+      return_url: returnUrl,
+    });
+  }
+
+  completeMockCheckout(planId?: string) {
+    return this.request<{ ok: boolean }>("POST", "/billing/mock-complete", {
+      plan_id: planId,
+    });
+  }
+
+  completeOnboardingBilling() {
+    return this.request<OnboardingStatus>("POST", "/onboarding/billing/complete", {});
   }
 
   listIntegrations() {

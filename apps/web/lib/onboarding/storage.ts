@@ -23,13 +23,13 @@ const DEFAULT_SETUP = {
   inviteEmails: [] as string[],
 };
 
-const UI_STEPS: OnboardingStepId[] = ["industry", "profile", "modules", "setup", "complete"];
+const UI_STEPS: OnboardingStepId[] = ["billing", "industry", "profile", "modules", "setup", "complete"];
 
 function defaultState(seed?: SignupSeed | null): OnboardingState {
   const industryPacks = seed?.industry_pack ? [seed.industry_pack] : ["field-services"];
   return {
     version: 1,
-    currentStep: "industry",
+    currentStep: "billing",
     completed: false,
     industryPacks,
     profile: { ...DEFAULT_PROFILE },
@@ -39,8 +39,8 @@ function defaultState(seed?: SignupSeed | null): OnboardingState {
 }
 
 export function apiStepToLocal(step: string): OnboardingStepId {
-  if (step === "signup") return "industry";
-  return UI_STEPS.includes(step as OnboardingStepId) ? (step as OnboardingStepId) : "industry";
+  if (step === "signup") return "billing";
+  return UI_STEPS.includes(step as OnboardingStepId) ? (step as OnboardingStepId) : "billing";
 }
 
 export function modulesArrayToRecord(modules: string[]): Record<string, boolean> {

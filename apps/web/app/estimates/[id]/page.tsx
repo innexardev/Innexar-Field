@@ -48,6 +48,12 @@ export default function EstimateDetailPage() {
   }, [token, client]);
 
   const isDraft = estimate?.status === "draft";
+  const property = estimate?.property;
+  const hasRoomCounts =
+    property?.bedrooms != null &&
+    property?.bathrooms != null &&
+    property.bedrooms > 0 &&
+    property.bathrooms > 0;
 
   async function saveLines() {
     if (!estimate) return;
@@ -154,6 +160,22 @@ export default function EstimateDetailPage() {
           )}
         </div>
       </div>
+
+      {estimate.property_id && (
+        <Card className="mb-6 border-[color-mix(in_srgb,var(--brand-accent)_25%,var(--brand-border))] bg-[var(--brand-info-subtle)]">
+          <CardContent className="py-4">
+            <p className="text-sm text-[var(--brand-text-secondary)]">
+              {hasRoomCounts
+                ? t("roomTierHint", {
+                    label: property?.label ?? "",
+                    beds: property?.bedrooms ?? 0,
+                    baths: property?.bathrooms ?? 0,
+                  })
+                : t("roomTierMissingHint")}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="mb-6 border-[color-mix(in_srgb,var(--brand-accent)_25%,var(--brand-border))] bg-[var(--brand-info-subtle)]">
         <CardContent className="flex flex-wrap items-center justify-between gap-4 py-4">

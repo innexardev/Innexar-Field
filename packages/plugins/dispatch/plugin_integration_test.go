@@ -18,6 +18,7 @@ import (
 	"github.com/fieldforge/fieldforge/packages/core/plugin"
 	"github.com/fieldforge/fieldforge/packages/core/tenant"
 	"github.com/fieldforge/fieldforge/packages/plugins/dispatch"
+	"github.com/fieldforge/fieldforge/packages/plugins/scheduling"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -124,7 +125,15 @@ func TestDispatch_CreateAssignment(t *testing.T) {
 
 	tenantID := uuid.New().String()
 	technicianID := uuid.New().String()
+	jobID := uuid.New().String()
 	seedTenant(t, ctx, pool, tenantID, "tenant-assign")
+
+	tenantCtx := tenant.WithID(ctx, tenantID)
+	_, err = pool.Exec(tenantCtx, `
+		INSERT INTO jobs (id, tenant_id, title, status)
+		VALUES ($1, $2, 'Linked job', 'scheduled')
+	`, jobID, tenantID)
+	require.NoError(t, err)
 
 	authSvc := auth.NewService("integration-test-secret-32-chars!!", 24)
 	token, err := authSvc.IssueToken(uuid.New().String(), tenantID, "a@example.com", "owner")
@@ -133,7 +142,8 @@ func TestDispatch_CreateAssignment(t *testing.T) {
 	app := newDispatchApp(pool, authSvc)
 
 	createRes := postJSON(t, app, "/dispatch/work-orders", token, map[string]string{
-		"title": "Install thermostat",
+		"title":  "Install thermostat",
+		"job_id": jobID,
 	})
 	require.Equal(t, http.StatusCreated, createRes.StatusCode)
 	defer createRes.Body.Close()
@@ -164,6 +174,13 @@ func TestDispatch_CreateAssignment(t *testing.T) {
 	require.NoError(t, json.NewDecoder(listRes.Body).Decode(&listBody))
 	require.Len(t, listBody.Data, 1)
 	assert.Equal(t, technicianID, listBody.Data[0]["technician_id"])
+
+	var assignedTo string
+	err = pool.QueryRow(tenantCtx, `
+		SELECT COALESCE(assigned_to::text, '') FROM jobs WHERE id = $1 AND tenant_id = $2
+	`, jobID, tenantID).Scan(&assignedTo)
+	require.NoError(t, err)
+	assert.Equal(t, technicianID, assignedTo)
 }
 
 func runMigrations(ctx context.Context, pool *db.Pool) error {
@@ -180,6 +197,14 @@ func runMigrations(ctx context.Context, pool *db.Pool) error {
 		}{m.Version, m.Name, m.UpSQL})
 	}
 	bus := events.NewBus(pool.Pool)
+	schedPlugin := scheduling.New(pool.Pool, bus)
+	for _, m := range schedPlugin.Migrations() {
+		all = append(all, struct {
+			Version int
+			Name    string
+			UpSQL   string
+		}{m.Version, m.Name, m.UpSQL})
+	}
 	dispatchPlugin := dispatch.New(pool.Pool, bus)
 	for _, m := range dispatchPlugin.Migrations() {
 		all = append(all, struct {

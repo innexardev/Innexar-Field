@@ -30,6 +30,26 @@ func (c *ResilientClient) CreateCheckoutSession(ctx context.Context, params Chec
 	return result, err
 }
 
+func (c *ResilientClient) CreatePortalSession(ctx context.Context, customerID, returnURL string) (*PortalResult, error) {
+	var result *PortalResult
+	err := c.breaker.Execute(func() error {
+		var innerErr error
+		result, innerErr = c.inner.CreatePortalSession(ctx, customerID, returnURL)
+		return innerErr
+	})
+	return result, err
+}
+
+func (c *ResilientClient) ListInvoices(ctx context.Context, customerID string) ([]Invoice, error) {
+	var result []Invoice
+	err := c.breaker.Execute(func() error {
+		var innerErr error
+		result, innerErr = c.inner.ListInvoices(ctx, customerID)
+		return innerErr
+	})
+	return result, err
+}
+
 func (c *ResilientClient) VerifyWebhook(payload []byte, sigHeader string) (*WebhookEvent, error) {
 	var result *WebhookEvent
 	err := c.breaker.Execute(func() error {

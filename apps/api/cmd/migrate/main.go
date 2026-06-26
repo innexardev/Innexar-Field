@@ -21,6 +21,7 @@ import (
 	"github.com/fieldforge/fieldforge/packages/plugins/invoicing"
 	"github.com/fieldforge/fieldforge/packages/plugins/jobcosting"
 	"github.com/fieldforge/fieldforge/packages/plugins/payroll"
+	"github.com/fieldforge/fieldforge/packages/plugins/portal"
 	"github.com/fieldforge/fieldforge/packages/plugins/scheduling"
 	"github.com/joho/godotenv"
 )
@@ -43,6 +44,7 @@ func main() {
 	_ = reg.Register(crm.New(pool.Pool))
 	bus := server.NewEventBus(pool.Pool)
 	_ = reg.Register(estimating.New(pool.Pool, bus))
+	_ = reg.Register(portal.New(pool.Pool, nil, nil, bus))
 	_ = reg.Register(scheduling.New(pool.Pool, bus))
 	_ = reg.Register(invoicing.New(pool.Pool, bus))
 	_ = reg.Register(cleaning.New(pool.Pool))

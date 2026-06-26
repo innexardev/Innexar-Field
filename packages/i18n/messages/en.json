@@ -22,16 +22,16 @@
     "signingIn": "Signing in…",
     "noAccount": "No account?",
     "startFreeTrial": "Start free trial",
-    "signupTitle": "Start your {days}-day trial",
-    "signupSubtitle": "Set up your {brand} workspace in minutes. No credit card required.",
-    "signupStep": "Step 1 of 5 · Create your account",
+    "signupTitle": "Create your workspace",
+    "signupSubtitle": "Set up your {brand} workspace in minutes. Subscribe to get started.",
+    "signupStep": "Step 1 of 6 · Create your account",
     "companyDetails": "Company details",
     "companyName": "Company name",
     "workEmail": "Work email",
     "passwordHint": "Min. 8 characters",
     "createWorkspace": "Create your workspace",
     "creatingWorkspace": "Creating your workspace…",
-    "signupFootnote": "Free for {days} days · Cancel anytime · Secure & encrypted",
+    "signupFootnote": "Secure checkout · Cancel anytime · Encrypted",
     "alreadyHaveAccount": "Already have an account?"
   },
   "shell": {
@@ -60,11 +60,69 @@
     "completeTitle": "You're all set!",
     "continue": "Continue",
     "coreBadge": "Core",
+    "stepBilling": "Billing",
     "stepIndustry": "Industry",
     "stepProfile": "Company",
     "stepModules": "Modules",
     "stepSetup": "Setup",
     "stepComplete": "Done"
+  },
+  "billing": {
+    "onboarding": {
+      "title": "Subscribe to continue",
+      "subtitle": "Choose your plan and add a payment method to activate your workspace.",
+      "checking": "Checking subscription…",
+      "pricePerMonth": "${price}/month",
+      "customPricing": "Contact sales for pricing",
+      "secureCheckout": "Secure checkout powered by Stripe. Apple Pay appears automatically when enabled in your Stripe Dashboard.",
+      "redirecting": "Redirecting…",
+      "subscribe": "Subscribe and continue",
+      "applePayNote": "Apple Pay is available in Stripe Checkout when enabled in the Stripe Dashboard (no extra code required)."
+    },
+    "success": {
+      "title": "Payment successful",
+      "subtitle": "Your subscription is active. Continuing to setup…",
+      "processing": "Confirming payment…",
+      "wait": "Please wait while we activate your subscription.",
+      "continue": "Continue"
+    },
+    "dunning": {
+      "title": "Payment failed",
+      "subtitle": "Update your payment method to restore access to your workspace.",
+      "updatePayment": "Update payment method",
+      "redirecting": "Redirecting…",
+      "signOut": "Sign out"
+    },
+    "cancel": {
+      "title": "Checkout canceled",
+      "subtitle": "No charges were made. You can try again when ready.",
+      "tryAgain": "Try checkout again",
+      "manageBilling": "Go to billing"
+    },
+    "manage": {
+      "title": "Billing",
+      "subtitle": "Manage your subscription, payment method, and invoices.",
+      "currentPlan": "Current plan",
+      "loading": "Loading subscription…",
+      "pricePerMonth": "${price}/month",
+      "updatePaymentMethod": "Update payment method",
+      "planConfig": "Plan configuration",
+      "changePlan": "Change plan",
+      "current": "Current plan",
+      "selectPlan": "Select plan",
+      "invoices": "Invoices",
+      "loadingInvoices": "Loading invoices…",
+      "noInvoices": "No invoices yet."
+    },
+    "settings": {
+      "title": "Plan configuration",
+      "subtitle": "Stripe price IDs are read from app config. Set stripe_price_id per plan in config YAML or environment.",
+      "plansTitle": "SaaS plans",
+      "plansHint": "Map each plan to a Stripe Price ID (price_…) for live checkout.",
+      "notConfigured": "not set",
+      "envHint": "For production, set stripe_price_id in config/app.config.yaml or override via deployment env.",
+      "backToBilling": "Back to billing"
+    }
   },
   "dashboard": {
     "goodMorning": "Good morning",
@@ -129,10 +187,15 @@
     "loading": "Loading…",
     "dashboard": "Dashboard",
     "plans": "Plans",
+    "billing": "Billing",
     "promotions": "Promotions",
     "landingContent": "Landing content",
     "tenants": "Tenants",
+    "users": "Users",
     "globalConfig": "Global config",
+    "integrations": "Integrations",
+    "modules": "Modules",
+    "announcements": "Announcements",
     "auditLog": "Audit log",
     "lightMode": "☀ Light mode",
     "darkMode": "☾ Dark mode"
@@ -416,7 +479,8 @@
       "scheduled": "Scheduled",
       "scheduleButton": "Schedule",
       "emptyTitle": "No jobs scheduled",
-      "emptyDescription": "Schedule your first job above or convert an accepted estimate."
+      "emptyDescription": "Schedule your first job above or convert an accepted estimate.",
+      "assignedTech": "Assigned tech"
     },
     "estimates": {
       "title": "Estimates",
@@ -693,6 +757,7 @@
       "companyNotes": "Company / notes",
       "addressHint": "Add service locations and job-site addresses under Properties.",
       "manageProperties": "Manage properties",
+      "propertyDetails": "{beds, plural, =0 {} other {# bed · }}{baths, plural, =0 {} other {# bath · }}{sqft, plural, =0 {} other {# sqft}}",
       "saveContact": "Save contact details",
       "contactSaved": "Contact details saved.",
       "phonePlaceholder": "(555) 123-4567",
@@ -719,7 +784,8 @@
     "customerProperties": {
       "loadingSubtitle": "Loading service locations…",
       "subtitle": "Service locations and job sites for this customer.",
-      "suffix": "Properties"
+      "suffix": "Properties",
+      "propertyDetails": "{beds, plural, =0 {} other {# bed · }}{baths, plural, =0 {} other {# bath · }}{sqft, plural, =0 {} other {# sqft}}"
     },
     "leadDetail": {
       "subtitle": "Lead profile and pipeline stage.",
@@ -773,7 +839,29 @@
     },
     "portal": {
       "title": "Client portal",
-      "subtitle": "Branded self-service for {brand} customers — configure links and preview the experience."
+      "subtitle": "Branded self-service for {brand} customers — configure links and preview the experience.",
+      "login": {
+        "title": "Customer sign-in",
+        "subtitle": "Access your invoices and account with {brand}.",
+        "companySlug": "Company code",
+        "companySlugHint": "The short code your service provider gave you (same as their workspace URL).",
+        "sendLink": "Email me a sign-in link",
+        "sending": "Sending link…",
+        "linkSent": "If an account exists for this email, we sent a sign-in link. Check your inbox.",
+        "devLink": "Development:",
+        "devLinkAction": "Open sign-in link",
+        "tryAgain": "Use a different email"
+      },
+      "invoices": {
+        "title": "Your invoices",
+        "subtitle": "Invoices for {name} at {company}",
+        "loadingSubtitle": "Loading your account…",
+        "backToLogin": "← Sign in",
+        "signOut": "Sign out",
+        "emptyTitle": "No invoices yet",
+        "emptyDescription": "When your provider sends an invoice, it will appear here.",
+        "due": "Due {date}"
+      }
     },
     "priceBookImport": {
       "title": "Import price book",
@@ -795,6 +883,14 @@
     "mobileExpenses": {
       "title": "Expenses",
       "subtitle": "Log job expenses with receipt photos."
+    },
+    "mobileJobs": {
+      "title": "Today's jobs",
+      "subtitle": "{count, plural, =0 {No jobs scheduled} one {# job scheduled} other {# jobs scheduled}}",
+      "subtitleCached": " · cached",
+      "emptyTitle": "No jobs today",
+      "emptyDescription": "Check back later or sync when online.",
+      "openDesktop": "Open desktop app"
     },
     "mobileTime": {
       "title": "Time",
