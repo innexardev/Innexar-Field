@@ -64,6 +64,15 @@ func (s *Service) ListStatus(ctx context.Context) ([]ConnectionStatus, error) {
 				st.Metadata["mock"] = UseMockQuickBooks(ctx, s.cfg, s.resolver)
 			}
 		}
+		if def.ID == IDTwilio {
+			if st.Metadata == nil {
+				st.Metadata = map[string]interface{}{}
+			}
+			st.Metadata["mock"] = UseMockTwilio(ctx, s.cfg, s.resolver)
+			if _, ok := ResolvePlatformTwilio(ctx, s.resolver); ok {
+				st.Metadata["platform_available"] = true
+			}
+		}
 		out = append(out, st)
 	}
 	return out, nil

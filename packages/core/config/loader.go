@@ -107,6 +107,13 @@ func (c *AppConfig) MockQuickBooks() bool {
 	return false
 }
 
+func (c *AppConfig) SkipSMSSend() bool {
+	if f, ok := c.Debug.Features["skip_sms_send"].(bool); ok {
+		return f
+	}
+	return false
+}
+
 func (l *Loader) Load() (*AppConfig, error) {
 	basePath := filepath.Join(l.root, "config", "app.config.yaml")
 	data, err := os.ReadFile(basePath)

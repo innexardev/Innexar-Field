@@ -26,6 +26,11 @@ import {
   type PortalBooking,
   type PortalMessageThread,
   type PortalSupportRequest,
+  type PortalScheduleSlot,
+  type PortalHistoryItem,
+  type PortalQuote,
+  type PortalQuoteDetail,
+  type PortalQuoteLine,
 } from "./portal";
 
 export {
@@ -41,6 +46,11 @@ export {
   type PortalBooking,
   type PortalMessageThread,
   type PortalSupportRequest,
+  type PortalScheduleSlot,
+  type PortalHistoryItem,
+  type PortalQuote,
+  type PortalQuoteDetail,
+  type PortalQuoteLine,
 };
 
 export {
@@ -2235,6 +2245,23 @@ export class FieldForgeClient {
   getStripeConnectStatus() {
     return this.request<StripeConnectStatusResult>("GET", "/integrations/stripe-connect/status");
   }
+
+  getTwilioStatus() {
+    return this.request<IntegrationStatus>("GET", "/integrations/twilio/status");
+  }
+
+  connectTwilio(data: { account_sid: string; auth_token: string; from_number: string }) {
+    return this.request<IntegrationStatus>("POST", "/integrations/twilio/connect", data);
+  }
+
+  disconnectTwilio() {
+    return this.request<IntegrationStatus>("POST", "/integrations/twilio/disconnect", {});
+  }
+
+  testTwilioSMS(data: { to: string; body: string }) {
+    return this.request<{ ok: boolean; sid?: string; mock?: boolean }>("POST", "/integrations/twilio/test-send", data);
+  }
+
 }
 
 export function createClient(baseUrl = DEFAULT_API_URL) {

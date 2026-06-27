@@ -57,7 +57,7 @@ func sanitizeConnectionMetadata(metadata map[string]interface{}) map[string]inte
 	out := make(map[string]interface{}, len(metadata))
 	for k, v := range metadata {
 		switch k {
-		case metaAccessTokenEnc, metaRefreshTokenEnc, "oauth_state", "redirect_uri":
+		case metaAccessTokenEnc, metaRefreshTokenEnc, metaAuthTokenEnc, "oauth_state", "redirect_uri":
 			continue
 		default:
 			out[k] = v
@@ -65,6 +65,9 @@ func sanitizeConnectionMetadata(metadata map[string]interface{}) map[string]inte
 	}
 	if metadata[metaAccessTokenEnc] != nil && metadata[metaAccessTokenEnc] != "" {
 		out["tokens_stored"] = true
+	}
+	if metadata[metaAuthTokenEnc] != nil && metadata[metaAuthTokenEnc] != "" {
+		out["auth_token_stored"] = true
 	}
 	return out
 }

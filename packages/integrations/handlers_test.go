@@ -25,6 +25,7 @@ func testApp(t *testing.T) *fiber.App {
 				"mock_stripe":     true,
 				"mock_avalara":    true,
 				"mock_quickbooks": true,
+				"skip_sms_send":   true,
 			},
 		},
 		Integrations: map[string]config.IntegrationConfig{
@@ -49,6 +50,7 @@ func testApp(t *testing.T) *fiber.App {
 				Enabled:    true,
 				ReturnPath: "/settings/integrations",
 			},
+			"twilio": {ID: "twilio", Name: "Twilio SMS", Enabled: true},
 		},
 	}
 
@@ -76,7 +78,7 @@ func TestIntegrationCatalog(t *testing.T) {
 		Data []config.IntegrationConfig `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(body, &out))
-	assert.Len(t, out.Data, 3)
+	assert.Len(t, out.Data, 4)
 }
 
 func TestAvalaraTaxCalculateMock(t *testing.T) {
@@ -316,7 +318,7 @@ func TestIntegrationStatusList(t *testing.T) {
 		} `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(body, &out))
-	assert.Len(t, out.Data, 3)
+	assert.Len(t, out.Data, 4)
 }
 
 func TestQuickBooksOAuthCallbackRejectsInvalidState(t *testing.T) {
@@ -391,4 +393,16 @@ func TestAvalaraTaxCalculateValidation(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 400, resp.StatusCode)
+}
+
+func TestTwilioConnectAndTestSendMock(t *testing.T) {
+	app := testApp(t)
+	payload := map[string]string{"account_sid": "ACmock123", "from_number": "+15551234567"}
+	b, _ := json.Marshal(payload)
+	connectReq := httptest.NewRequest(http.MethodPost, "/integrations/twilio/connect", bytes.NewReader(b))
+	connectReq.Header.Set("Content-Type", "application/json")
+	connectResp, err := app.Test(connectReq)
+	require.NoError(t, err)
+	defer connectResp.Body.Close()
+	assert.Equal(t, 200, connectResp.StatusCode)
 }

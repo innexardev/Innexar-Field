@@ -14,6 +14,7 @@ func RegisterRoutes(protected fiber.Router, pool *pgxpool.Pool, cfg *config.AppC
 	qb := newQuickBooks(cfg, base, resolver)
 	av := newAvalara(cfg)
 	sc := newStripeConnect(cfg, base, resolver)
+	tw := newTwilio(cfg, base, resolver)
 
 	g := protected.Group("/integrations")
 
@@ -140,6 +141,141 @@ func RegisterRoutes(protected fiber.Router, pool *pgxpool.Pool, cfg *config.AppC
 		result, err := sc.GetStatus(c.UserContext())
 		if err != nil {
 			return fiber.NewError(500, err.Error())
+		}
+		return c.JSON(result)
+	})
+
+	twGroup := g.Group("/twilio")
+	twGroup.Get("/status", func(c *fiber.Ctx) error {
+		st, err := base.GetStatus(c.UserContext(), IDTwilio)
+		if err != nil {
+			return fiber.NewError(500, err.Error())
+		}
+		if st.Metadata == nil {
+			st.Metadata = map[string]interface{}{}
+		}
+		st.Metadata["mock"] = UseMockTwilio(c.UserContext(), cfg, resolver)
+		if _, ok := ResolvePlatformTwilio(c.UserContext(), resolver); ok {
+			st.Metadata["platform_available"] = true
+		}
+		return c.JSON(sanitizeConnectionStatus(st))
+	})
+	twGroup.Post("/connect", func(c *fiber.Ctx) error {
+		var req TwilioConnectRequest
+		if err := c.BodyParser(&req); err != nil {
+			return fiber.NewError(400, "invalid body")
+		}
+		st, err := tw.Connect(c.UserContext(), req)
+		if err != nil {
+			return fiber.NewError(400, err.Error())
+		}
+		return c.JSON(sanitizeConnectionStatus(st))
+	})
+	twGroup.Post("/disconnect", func(c *fiber.Ctx) error {
+		st, err := tw.Disconnect(c.UserContext())
+		if err != nil {
+			return fiber.NewError(500, err.Error())
+		}
+		return c.JSON(sanitizeConnectionStatus(st))
+	})
+	twGroup.Post("/test-send", func(c *fiber.Ctx) error {
+		var req TwilioSendRequest
+		if err := c.BodyParser(&req); err != nil {
+			return fiber.NewError(400, "invalid body")
+		}
+		result, err := tw.Send(c.UserContext(), req)
+		if err != nil {
+			return fiber.NewError(400, err.Error())
+		}
+		return c.JSON(result)
+	})
+
+	gc := newGoogleCalendar(cfg, base, pool, resolver)
+	gcGroup := g.Group("/google-calendar")
+	gcGroup.Get("/connect", func(c *fiber.Ctx) error {
+		redirectURI := c.Query("return_path")
+		if redirectURI == "" {
+			redirectURI = c.Query("redirect_uri")
+		}
+		result, err := gc.StartOAuth(c.UserContext(), redirectURI)
+		if err != nil {
+			return fiber.NewError(400, err.Error())
+		}
+		return c.Redirect(result.AuthorizeURL, fiber.StatusFound)
+	})
+	gcGroup.Get("/oauth/start", func(c *fiber.Ctx) error {
+		result, err := gc.StartOAuth(c.UserContext(), c.Query("redirect_uri"))
+		if err != nil {
+			return fiber.NewError(400, err.Error())
+		}
+		return c.JSON(result)
+	})
+	gcGroup.Post("/oauth/callback", func(c *fiber.Ctx) error {
+		var req struct {
+			Code  string `json:"code"`
+			State string `json:"state"`
+		}
+		if err := c.BodyParser(&req); err != nil {
+			return fiber.NewError(400, "invalid body")
+		}
+		st, err := gc.CompleteOAuth(c.UserContext(), req.Code, req.State)
+		if err != nil {
+			return fiber.NewError(400, err.Error())
+		}
+		return c.JSON(sanitizeConnectionStatus(st))
+	})
+	gcGroup.Post("/disconnect", func(c *fiber.Ctx) error {
+		st, err := base.Disconnect(c.UserContext(), IDGoogleCalendar)
+		if err != nil {
+			return fiber.NewError(500, err.Error())
+		}
+		return c.JSON(sanitizeConnectionStatus(st))
+	})
+	gcGroup.Post("/sync", func(c *fiber.Ctx) error {
+		result, err := gc.SyncUpcoming(c.UserContext())
+		if err != nil {
+			return fiber.NewError(400, err.Error())
+		}
+		return c.JSON(result)
+	})
+	gcGroup.Post("/jobs/:id/push", func(c *fiber.Ctx) error {
+		result, err := gc.PushJob(c.UserContext(), c.Params("id"))
+		if err != nil {
+			return fiber.NewError(400, err.Error())
+		}
+		return c.JSON(result)
+	})
+
+	wh := newWebhookService(pool, cfg)
+	whGroup := g.Group("/webhooks")
+	whGroup.Get("/", func(c *fiber.Ctx) error {
+		list, err := wh.List(c.UserContext())
+		if err != nil {
+			return fiber.NewError(500, err.Error())
+		}
+		return response.DataList(c, list)
+	})
+	whGroup.Post("/", func(c *fiber.Ctx) error {
+		var req WebhookCreateRequest
+		if err := c.BodyParser(&req); err != nil {
+			return fiber.NewError(400, "invalid body")
+		}
+		sub, err := wh.Create(c.UserContext(), req)
+		if err != nil {
+			return fiber.NewError(400, err.Error())
+		}
+		return c.Status(201).JSON(sub)
+	})
+	whGroup.Delete("/:id", func(c *fiber.Ctx) error {
+		if err := wh.Delete(c.UserContext(), c.Params("id")); err != nil {
+			return fiber.NewError(404, err.Error())
+		}
+		return c.SendStatus(204)
+	})
+	whGroup.Post("/:id/test", func(c *fiber.Ctx) error {
+		result, err := wh.SendTest(c.UserContext(), c.Params("id"))
+		if err != nil {
+			return fiber.NewError(400, err.Error())
 		}
 		return c.JSON(result)
 	})

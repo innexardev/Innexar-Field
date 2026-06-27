@@ -358,6 +358,29 @@ integrations:
       secret_key: STRIPE_SECRET_KEY
     plans: [starter, business, pro, enterprise]
 
+  twilio:
+    id: twilio
+    name: Twilio SMS
+    enabled: true
+    category: messaging
+    description: SMS appointment confirmations and field notifications
+    plans: [business, pro, enterprise]
+
+  google_calendar:
+    id: google_calendar
+    name: Google Calendar
+    enabled: true
+    category: scheduling
+    description: Push scheduled jobs to Google Calendar automatically
+    oauth:
+      authorize_url: https://accounts.google.com/o/oauth2/v2/auth
+      scopes:
+        - https://www.googleapis.com/auth/calendar.events
+    env:
+      client_id: GOOGLE_CALENDAR_CLIENT_ID
+      client_secret: GOOGLE_CALENDAR_CLIENT_SECRET
+    plans: [business, pro, enterprise]
+
 # -----------------------------------------------------------------------------
 # Feature flags — rollout gradual sem deploy
 # -----------------------------------------------------------------------------

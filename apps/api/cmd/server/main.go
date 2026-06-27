@@ -14,7 +14,9 @@ import (
 	"github.com/fieldforge/fieldforge/packages/core/events"
 	coremigrate "github.com/fieldforge/fieldforge/packages/core/migrations"
 	"github.com/fieldforge/fieldforge/packages/core/platform"
+	"github.com/fieldforge/fieldforge/packages/core/platformsettings"
 	"github.com/fieldforge/fieldforge/packages/core/plugin"
+	"github.com/fieldforge/fieldforge/packages/integrations"
 	"github.com/fieldforge/fieldforge/packages/plugins/accounting"
 	"github.com/fieldforge/fieldforge/packages/plugins/cleaning"
 	"github.com/fieldforge/fieldforge/packages/plugins/communications"
@@ -65,7 +67,8 @@ func main() {
 	_ = reg.Register(jobcosting.New(pool.Pool))
 	_ = reg.Register(accounting.New(pool.Pool))
 	_ = reg.Register(payroll.New(pool.Pool))
-	_ = reg.Register(communications.New(pool.Pool, nil, nil))
+	commPlugin := communications.New(pool.Pool, nil, nil)
+	_ = reg.Register(commPlugin)
 
 	srv, err := server.New(server.Config{
 		Root:       root,
@@ -90,6 +93,11 @@ func main() {
 	schedPlugin.RegisterOutboxHandlers(outbox)
 	invPlugin.RegisterOutboxHandlers(outbox)
 	commPlugin.RegisterOutboxHandlers(outbox)
+	settingsStore, settingsErr := platformsettings.NewStore(pool.Pool)
+	if settingsErr != nil {
+		log.Fatalf("platform settings: %v", settingsErr)
+	}
+	integrations.RegisterOutboxHandlers(outbox, pool.Pool, srv.AppConfig(), settingsStore)
 	srv.RegisterE2EOutboxPoll(outbox)
 	go outbox.Run(pollCtx)
 

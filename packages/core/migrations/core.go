@@ -330,4 +330,25 @@ WHERE os.modules @> '["accounting"]'::jsonb
 ON CONFLICT (tenant_id, plugin_id) DO UPDATE SET enabled = true;
 `,
 	},
+	{
+		Version: 22,
+		Name:    "outbound_webhook_subscriptions",
+		UpSQL: `
+CREATE TABLE IF NOT EXISTS outbound_webhook_subscriptions (
+	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	tenant_id UUID NOT NULL,
+	url TEXT NOT NULL,
+	secret TEXT NOT NULL,
+	events JSONB NOT NULL DEFAULT '[]',
+	active BOOLEAN NOT NULL DEFAULT true,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_outbound_webhooks_tenant ON outbound_webhook_subscriptions (tenant_id);
+ALTER TABLE outbound_webhook_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE outbound_webhook_subscriptions FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS outbound_webhooks_tenant ON outbound_webhook_subscriptions;
+CREATE POLICY outbound_webhooks_tenant ON outbound_webhook_subscriptions
+	USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
+`,
+	},
 }

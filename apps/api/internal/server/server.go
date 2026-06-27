@@ -60,9 +60,14 @@ type Server struct {
 	port   string
 	cfg    *config.AppConfig
 	loader *config.Loader
+	pool   *pgxpool.Pool
 }
 
 func (s *Server) Port() string { return s.port }
+
+func (s *Server) AppConfig() *config.AppConfig { return s.cfg }
+
+func (s *Server) DBPool() *pgxpool.Pool { return s.pool }
 
 func New(cfg Config) (*Server, error) {
 	loader := config.NewLoader(cfg.Root)
@@ -158,6 +163,8 @@ func New(cfg Config) (*Server, error) {
 	if comm, ok := cfg.Registry.Get("communications"); ok {
 		if cp, ok := comm.(*communications.Plugin); ok {
 			cp.SetMailDeps(settingsStore, appCfg)
+			intSvc := integrations.NewService(cfg.Pool.Pool, appCfg, settingsStore)
+			cp.SetSMSDeps(integrations.NewTwilioSender(appCfg, intSvc, settingsStore))
 		}
 	}
 
@@ -284,7 +291,7 @@ func New(cfg Config) (*Server, error) {
 	pluginDeps := plugin.Deps{Config: appCfg, Storage: uploadSvc}
 	cfg.Registry.RegisterRoutes(protected, pluginDeps)
 
-	return &Server{app: app, port: cfg.Port, cfg: appCfg, loader: loader}, nil
+	return &Server{app: app, port: cfg.Port, cfg: appCfg, loader: loader, pool: cfg.Pool.Pool}, nil
 }
 
 // RegisterE2EOutboxPoll exposes POST /e2e/outbox/poll when E2E_TEST=1 (no auth; system route).

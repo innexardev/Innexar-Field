@@ -4,6 +4,8 @@ const (
 	IntegrationQuickBooks    = "quickbooks"
 	IntegrationAvalara       = "avalara"
 	IntegrationStripeConnect = "stripe_connect"
+	IntegrationTwilio         = "twilio"
+	IntegrationGoogleCalendar = "google_calendar"
 )
 
 // IntegrationOAuthConfig holds public OAuth metadata (no secrets).

@@ -8,6 +8,8 @@ const (
 	IDQuickBooks    = config.IntegrationQuickBooks
 	IDAvalara       = config.IntegrationAvalara
 	IDStripeConnect = config.IntegrationStripeConnect
+	IDTwilio         = config.IntegrationTwilio
+	IDGoogleCalendar = config.IntegrationGoogleCalendar
 )
 
 type IntegrationDef = config.IntegrationConfig

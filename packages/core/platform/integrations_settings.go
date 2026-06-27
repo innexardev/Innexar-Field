@@ -14,6 +14,7 @@ const (
 	SettingAvalara     = "avalara"
 	SettingSMTP        = "smtp"
 	SettingStorage     = "storage"
+	SettingTwilio      = "twilio"
 )
 
 var integrationSecretFields = map[string][]string{
@@ -22,6 +23,7 @@ var integrationSecretFields = map[string][]string{
 	SettingAvalara:    {"account_id", "license_key"},
 	SettingSMTP:       {"password"},
 	SettingStorage:    {"access_key_id", "secret_access_key"},
+	SettingTwilio:     {"auth_token"},
 }
 
 // IntegrationsSettings is the masked view returned to platform admins.
@@ -31,16 +33,17 @@ type IntegrationsSettings struct {
 	Avalara    map[string]interface{} `json:"avalara"`
 	SMTP       map[string]interface{} `json:"smtp"`
 	Storage    map[string]interface{} `json:"storage"`
+	Twilio     map[string]interface{} `json:"twilio"`
 	UpdatedAt  time.Time              `json:"updated_at"`
 }
 
-// IntegrationsSettingsInput is the PATCH body; secret fields update only when non-empty.
 type IntegrationsSettingsInput struct {
 	Stripe     map[string]string `json:"stripe"`
 	QuickBooks map[string]string `json:"quickbooks"`
 	Avalara    map[string]string `json:"avalara"`
 	SMTP       map[string]string `json:"smtp"`
 	Storage    map[string]string `json:"storage"`
+	Twilio     map[string]string `json:"twilio"`
 }
 
 func (s *Service) GetIntegrationsSettings(ctx context.Context) (*IntegrationsSettings, error) {
@@ -64,6 +67,9 @@ func (s *Service) GetIntegrationsSettings(ctx context.Context) (*IntegrationsSet
 	if out.Storage, err = s.settings.GetMasked(ctx, SettingStorage, integrationSecretFields[SettingStorage]); err != nil {
 		return nil, err
 	}
+	if out.Twilio, err = s.settings.GetMasked(ctx, SettingTwilio, integrationSecretFields[SettingTwilio]); err != nil {
+		return nil, err
+	}
 	if ts, err := s.latestSettingsUpdatedAt(ctx); err == nil && !ts.IsZero() {
 		out.UpdatedAt = ts
 	}
@@ -73,6 +79,7 @@ func (s *Service) GetIntegrationsSettings(ctx context.Context) (*IntegrationsSet
 	normalizeEnabled(out.Avalara)
 	normalizeEnabled(out.SMTP)
 	normalizeEnabled(out.Storage)
+	normalizeEnabled(out.Twilio)
 	return out, nil
 }
 
@@ -91,7 +98,7 @@ func normalizeEnabled(block map[string]interface{}) {
 
 func defaultBools(out *IntegrationsSettings) {
 	for _, block := range []map[string]interface{}{
-		out.Stripe, out.QuickBooks, out.Avalara, out.SMTP, out.Storage,
+		out.Stripe, out.QuickBooks, out.Avalara, out.SMTP, out.Storage, out.Twilio,
 	} {
 		if _, ok := block["enabled"]; !ok {
 			block["enabled"] = false
@@ -141,6 +148,12 @@ func (s *Service) UpdateIntegrationsSettings(ctx context.Context, adminID string
 			return nil, err
 		}
 		changed = append(changed, SettingStorage)
+	}
+	if in.Twilio != nil {
+		if err := s.settings.MergeAndSave(ctx, SettingTwilio, in.Twilio, integrationSecretFields[SettingTwilio], adminID); err != nil {
+			return nil, err
+		}
+		changed = append(changed, SettingTwilio)
 	}
 	if len(changed) > 0 {
 		_ = s.audit(ctx, adminID, "update", "platform_settings", "integrations", map[string]interface{}{
