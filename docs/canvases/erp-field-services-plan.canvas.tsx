@@ -89,7 +89,7 @@ const MVP_TASKS = [
   { id: "p1", content: "Fase 1 — Core + CRM + Auth + portal web v1 (login, invoices, Stripe pay, docs, profile, bookings, messages, support; admin-saas apps/admin)", status: "completed" as const },
   { id: "p2", content: "Fase 2 — Estimating + Price Book (send email + room tiers ok)", status: "completed" as const },
   { id: "p3", content: "Fase 3 — Scheduling + Dispatch (assign UI + maps ok)", status: "pending" as const },
-  { id: "p4", content: "Fase 4 — Expenses + Invoicing (print preview + server PDF + receipt scan stub ok)", status: "pending" as const },
+  { id: "p4", content: "Fase 4 — Expenses + Invoicing (print preview + server PDF + receipt scan stub ok)", status: "completed" as const },
   { id: "p5", content: "Fase 5 — House Cleaning parcial (QC/supplies API; photo upload real ok)", status: "pending" as const },
   { id: "p6", content: "Fase 6 — Construction parcial (CO ok; daily-log photo upload real ok)", status: "pending" as const },
   { id: "p7", content: "Fase 7 — PWA campo parcial (offline ok; /m/jobs mine; maps navigate; /m/signature ok)", status: "pending" as const },
