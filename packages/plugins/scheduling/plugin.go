@@ -77,8 +77,15 @@ func (p *Plugin) Migrations() []plugin.Migration {
 		{Version: 123, Name: "jobs_assigned_to", UpSQL: jobsAssignedToSQL},
 		{Version: 124, Name: "crew_members", UpSQL: crewMembersSQL},
 		{Version: 125, Name: "mobile_field_signatures_vehicle", UpSQL: mobileFieldSQL},
+		{Version: 126, Name: "jobs_google_calendar_event_id", UpSQL: jobsGoogleCalendarSQL},
 	}
 }
+
+const jobsGoogleCalendarSQL = `
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS google_calendar_event_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_jobs_google_calendar_event ON jobs (tenant_id, google_calendar_event_id)
+	WHERE google_calendar_event_id IS NOT NULL;
+`
 
 const jobsAssignedToSQL = `
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS assigned_to UUID;

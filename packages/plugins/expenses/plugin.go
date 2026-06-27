@@ -39,6 +39,7 @@ func (p *Plugin) Manifest() plugin.Manifest {
 func (p *Plugin) RegisterRoutes(router fiber.Router, deps plugin.Deps) {
 	router.Get("/expenses", p.list)
 	router.Post("/expenses", p.create)
+	router.Post("/expenses/receipt-scan", p.scanReceipt)
 	router.Get("/expenses/:id", p.get)
 	router.Patch("/expenses/:id", p.update)
 	router.Delete("/expenses/:id", p.delete)
