@@ -58,6 +58,39 @@ export interface PortalBooking {
   notes?: string;
 }
 
+export interface PortalScheduleSlot {
+  starts_at: string;
+  ends_at: string;
+}
+
+export interface PortalHistoryItem {
+  id: string;
+  title: string;
+  status: string;
+  scheduled_at?: string;
+  completed_at?: string;
+  notes?: string;
+}
+
+export interface PortalQuote {
+  id: string;
+  title: string;
+  status: string;
+  subtotal_cents: number;
+  total_cents: number;
+  created_at: string;
+}
+
+export interface PortalQuoteLine {
+  description: string;
+  quantity: number;
+  unit_price_cents: number;
+}
+
+export interface PortalQuoteDetail extends PortalQuote {
+  lines: PortalQuoteLine[];
+}
+
 export interface PortalMessageThread {
   id: string;
   subject: string;
@@ -66,6 +99,12 @@ export interface PortalMessageThread {
   created_at: string;
   updated_at: string;
 }
+
+
+
+
+
+
 
 export interface PortalSupportRequest {
   id: string;
@@ -166,6 +205,34 @@ export class PortalClient {
 
   listBookings() {
     return this.request<{ data: PortalBooking[] }>("GET", "/portal/bookings");
+  }
+
+  listScheduleSlots(params?: { from?: string; to?: string }) {
+    const q = new URLSearchParams();
+    if (params?.from) q.set("from", params.from);
+    if (params?.to) q.set("to", params.to);
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request<{ data: PortalScheduleSlot[] }>("GET", `/portal/schedule/slots${suffix}`);
+  }
+
+  createScheduleBooking(data: { title?: string; scheduled_at: string; notes?: string }) {
+    return this.request<PortalBooking>("POST", "/portal/schedule", data);
+  }
+
+  listHistory() {
+    return this.request<{ data: PortalHistoryItem[] }>("GET", "/portal/history");
+  }
+
+  listQuotes() {
+    return this.request<{ data: PortalQuote[] }>("GET", "/portal/quotes");
+  }
+
+  getQuote(id: string) {
+    return this.request<PortalQuoteDetail>("GET", `/portal/quotes/${id}`);
+  }
+
+  acceptQuote(id: string) {
+    return this.request<{ status: string; estimate_id: string }>("POST", `/portal/quotes/${id}/accept`, {});
   }
 
   listMessages() {

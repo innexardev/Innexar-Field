@@ -51,6 +51,12 @@ func (p *Plugin) RegisterCustomerRoutes(router fiber.Router) {
 	router.Post("/invoices/:id/confirm-payment", p.confirmPayment)
 	router.Get("/documents", p.listDocuments)
 	router.Get("/bookings", p.listBookings)
+	router.Get("/schedule/slots", p.listScheduleSlots)
+	router.Post("/schedule", p.createScheduleBooking)
+	router.Get("/history", p.listHistory)
+	router.Get("/quotes", p.listQuotes)
+	router.Get("/quotes/:id", p.getQuote)
+	router.Post("/quotes/:id/accept", p.acceptQuote)
 	router.Get("/messages", p.listMessages)
 	router.Post("/support", p.createSupportRequest)
 }
