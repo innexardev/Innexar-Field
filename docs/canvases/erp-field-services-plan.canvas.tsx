@@ -87,9 +87,9 @@ const MVP_TASKS = [
   { id: "land", content: "Landing/GTM — marketing site parcial; contact API stub; analytics GTM pendente", status: "pending" as const },
   { id: "p0", content: "Dev Fase 0 — Onboarding wizard + industry packs (marketplace stub)", status: "completed" as const },
   { id: "p1", content: "Fase 1 — Core + CRM + Auth + portal web v1 (login, invoices, Stripe pay, docs, profile, bookings, messages, support; admin-saas apps/admin)", status: "completed" as const },
-  { id: "p2", content: "Fase 2 — Estimating + Price Book (calculate room tiers ok)", status: "pending" as const },
+  { id: "p2", content: "Fase 2 — Estimating + Price Book (send email + room tiers ok)", status: "completed" as const },
   { id: "p3", content: "Fase 3 — Scheduling + Dispatch (assign UI + maps ok)", status: "pending" as const },
-  { id: "p4", content: "Fase 4 — Expenses + Invoicing (print preview + server PDF ok; sem OCR/email attach)", status: "pending" as const },
+  { id: "p4", content: "Fase 4 — Expenses + Invoicing (print preview + server PDF + receipt scan stub ok)", status: "pending" as const },
   { id: "p5", content: "Fase 5 — House Cleaning parcial (QC/supplies API; photo upload real ok)", status: "pending" as const },
   { id: "p6", content: "Fase 6 — Construction parcial (CO ok; daily-log photo upload real ok)", status: "pending" as const },
   { id: "p7", content: "Fase 7 — PWA campo parcial (offline ok; /m/jobs mine; maps navigate; /m/signature ok)", status: "pending" as const },
@@ -491,7 +491,7 @@ const FULL_CATALOG: {
       { name: "core", status: "expand", features: "Auth SSO, tenants, RBAC, audit, settings, webhooks", weeks: 4 },
       { name: "notifications", status: "ok", features: "In-app list + mark read v1; push/SMS prefs pendente", weeks: 2 },
       { name: "file-storage", status: "new", features: "S3 uploads, thumbnails, permissoes por tenant", weeks: 2 },
-      { name: "integrations-hub", status: "new", features: "QuickBooks, Stripe, Avalara, Gusto, Google Maps", weeks: 3 },
+      { name: "integrations-hub", status: "expand", features: "QuickBooks, Stripe, Google Calendar, Zapier webhooks MVP", weeks: 3 },
       { name: "marketing", status: "new", features: "Landing fieldforge.com, pricing, LPs verticais, SEO, blog", weeks: 3 },
       { name: "onboarding", status: "new", features: "Wizard 5 passos, industry packs, auto-provision, marketplace", weeks: 4 },
       { name: "mobile-core", status: "new", features: "PWA + Capacitor adapters, offline sync, platform API", weeks: 5 },
@@ -509,7 +509,7 @@ const FULL_CATALOG: {
   {
     category: "Orcamentos e Precificacao",
     modules: [
-      { name: "estimating", status: "new", features: "Builder line-items, markup/margin, templates, envio digital", weeks: 5 },
+      { name: "estimating", status: "ok", features: "Builder, room tiers, send email + PDF attachment", weeks: 5 },
       { name: "price-book", status: "new", features: "Catalogo labor/material/servico, rates por regiao US", weeks: 2 },
       { name: "takeoff", status: "new", features: "Medicao sqft, fases cleaning, import CSV/planos", weeks: 3 },
       { name: "proposals", status: "new", features: "Proposta PDF branded, e-signature, deposito online", weeks: 2 },
@@ -519,7 +519,7 @@ const FULL_CATALOG: {
     category: "Financeiro e Despesas",
     modules: [
       { name: "job-costing", status: "new", features: "Cost codes, budget vs actual, WIP, forecast overrun", weeks: 4 },
-      { name: "expenses", status: "new", features: "Receipt scan OCR, categorias, aprovacao, reembolso, mileage", weeks: 3 },
+      { name: "expenses", status: "expand", features: "Receipt upload OCR stub, categorias, aprovacao", weeks: 3 },
       { name: "invoicing", status: "expand", features: "Progress billing, retainage, deposits, payment plans", weeks: 4 },
       { name: "accounting", status: "new", features: "GL, AP/AR, chart accounts, bank recon, 1099 prep", weeks: 6 },
       { name: "purchase-orders", status: "new", features: "PO, vendor management, 3-way match, budget commit", weeks: 3 },
