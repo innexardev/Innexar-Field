@@ -1309,6 +1309,7 @@
         "navLabel": "Portal navigation",
         "nav": {
           "schedule": "Book service",
+          "quotes": "Quotes",
           "bookings": "Upcoming",
           "history": "History",
           "invoices": "Invoices",
@@ -1359,6 +1360,30 @@
         "status": {
           "completed": "Completed",
           "cancelled": "Cancelled"
+        }
+      },
+      "quotes": {
+        "title": "Quotes",
+        "subtitle": "Estimates sent to {name}.",
+        "loadingSubtitle": "Loading quotes…",
+        "emptyTitle": "No quotes yet",
+        "emptyDescription": "When your provider sends a quote, it will appear here.",
+        "detailTitle": "Quote details",
+        "detailSubtitle": "Review line items and accept when ready.",
+        "notFound": "Quote not found.",
+        "summaryTitle": "Summary",
+        "subtotal": "Subtotal",
+        "total": "Total",
+        "createdAt": "Created {date}",
+        "linesTitle": "Line items",
+        "accept": "Accept quote",
+        "accepting": "Accepting…",
+        "acceptedNotice": "Quote accepted. Your provider will follow up shortly.",
+        "status": {
+          "sent": "Awaiting response",
+          "accepted": "Accepted",
+          "rejected": "Declined",
+          "draft": "Draft"
         }
       },
       "bookings": {
