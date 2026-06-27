@@ -448,6 +448,7 @@
   },
   "marketing": {
     "features": "Recursos",
+    "solutions": "Soluções",
     "industries": "Indústrias",
     "pricing": "Preços",
     "blog": "Blog",
@@ -621,6 +622,13 @@
           "secretAccessKey": "Secret access key",
           "bucket": "Bucket",
           "publicUrl": "URL pública"
+        },
+        "twilio": {
+          "title": "Twilio SMS",
+          "help": "Platform-wide SMS for job reminders and appointment confirmations.",
+          "accountSid": "Account SID",
+          "authToken": "Auth token",
+          "fromNumber": "From number"
         }
       }
     }
@@ -821,7 +829,8 @@
       "title": "Agenda",
       "subtitle": "Veja serviços futuros por data e horário.",
       "emptyTitle": "Nada agendado",
-      "emptyDescription": "Crie serviços com data agendada na página de Serviços para vê-los aqui."
+      "emptyDescription": "Crie serviços com data agendada na página de Serviços para vê-los aqui.",
+      "calendarSyncHint": "Connect Google Calendar under Settings → Integrations to push job appointments automatically."
     },
     "scheduleMap": {
       "title": "Mapa da agenda",
@@ -1028,7 +1037,13 @@
       "noItems": "Nenhum item",
       "assignedTo": "Atribuído a {name}",
       "assignTechnician": "Atribuir técnico",
-      "manageAssignment": "Gerenciar atribuição"
+      "manageAssignment": "Gerenciar atribuição",
+      "viewSchedule": "View schedule",
+      "summaryTotal": "{count} total",
+      "slaDue": "SLA {date}",
+      "selectTechnicianPlaceholder": "Select employee…",
+      "assigning": "Assigning…",
+      "viewDetails": "View details"
     },
     "workOrderDetail": {
       "subtitle": "Status da ordem, serviço vinculado e atribuições de técnicos.",
@@ -1318,6 +1333,118 @@
         "emptyTitle": "Nenhuma fatura ainda",
         "emptyDescription": "Quando seu prestador enviar uma fatura, ela aparecerá aqui.",
         "due": "Vence em {date}"
+      },
+      "shell": {
+        "signOut": "Sign out",
+        "navLabel": "Portal navigation",
+        "nav": {
+          "schedule": "Book service",
+          "bookings": "Upcoming",
+          "history": "History",
+          "invoices": "Invoices",
+          "payments": "Payments",
+          "documents": "Documents",
+          "messages": "Messages",
+          "support": "Support",
+          "profile": "Profile"
+        }
+      },
+      "schedule": {
+        "title": "Book a service",
+        "subtitle": "Choose an available time slot for {name}.",
+        "loadingSubtitle": "Loading availability…",
+        "formTitle": "Request an appointment",
+        "formHint": "Pick a weekday slot. Your provider will confirm the booking.",
+        "slotLabel": "Available time",
+        "slotPlaceholder": "Select a time…",
+        "serviceLabel": "Service (optional)",
+        "servicePlaceholder": "Deep clean, HVAC tune-up…",
+        "notesLabel": "Notes (optional)",
+        "submit": "Request booking",
+        "submitting": "Submitting…",
+        "confirmed": "Booking requested for {date}. Your provider will confirm shortly.",
+        "emptyTitle": "No openings right now",
+        "emptyDescription": "Check back later or contact your provider for custom scheduling."
+      },
+      "history": {
+        "title": "Service history",
+        "subtitle": "Past services for {name}.",
+        "loadingSubtitle": "Loading history…",
+        "emptyTitle": "No past services",
+        "emptyDescription": "Completed and cancelled jobs will appear here.",
+        "servicedAt": "Serviced {date}",
+        "dateUnknown": "Date not recorded",
+        "status": {
+          "completed": "Completed",
+          "cancelled": "Cancelled"
+        }
+      },
+      "bookings": {
+        "title": "Upcoming bookings",
+        "subtitle": "Scheduled services for {name}.",
+        "loadingSubtitle": "Loading bookings…",
+        "emptyTitle": "No upcoming bookings",
+        "emptyDescription": "Book a service from the Book service tab or wait for your provider to schedule work.",
+        "scheduledAt": "Scheduled {date}",
+        "unscheduled": "Awaiting schedule",
+        "readOnlyHint": "Contact your provider to reschedule or cancel.",
+        "status": {
+          "scheduled": "Scheduled",
+          "requested": "Requested",
+          "in_progress": "In progress",
+          "completed": "Completed",
+          "cancelled": "Cancelled"
+        }
+      },
+      "payments": {
+        "title": "Payments",
+        "subtitle": "Payment history for {name}.",
+        "loadingSubtitle": "Loading payments…",
+        "emptyTitle": "No payments yet",
+        "emptyDescription": "Payments appear here when invoices are paid.",
+        "payNow": "Pay now",
+        "paying": "Processing…"
+      },
+      "documents": {
+        "title": "Documents",
+        "subtitle": "Estimates and agreements for {name}.",
+        "loadingSubtitle": "Loading documents…",
+        "emptyTitle": "No documents",
+        "emptyDescription": "Quotes and contracts from your provider appear here.",
+        "view": "View",
+        "downloadPdf": "Download PDF"
+      },
+      "messages": {
+        "title": "Messages",
+        "subtitle": "Support threads for {name}.",
+        "loadingSubtitle": "Loading messages…",
+        "emptyTitle": "No messages",
+        "emptyDescription": "Submit a support request and replies will appear here.",
+        "supportHint": "Need help? Open the Support tab to send a new request."
+      },
+      "support": {
+        "title": "Support",
+        "subtitle": "Get help from {company}.",
+        "loadingSubtitle": "Loading…",
+        "formTitle": "Contact support",
+        "formHint": "Describe your issue and we will follow up by email.",
+        "subject": "Subject",
+        "message": "Message",
+        "submit": "Send request",
+        "submitting": "Sending…",
+        "submitted": "Request submitted — reference {id}"
+      },
+      "profile": {
+        "title": "Profile",
+        "subtitle": "Account details for {company}.",
+        "loadingSubtitle": "Loading profile…",
+        "formTitle": "Your contact info",
+        "formHint": "Update how your provider reaches you.",
+        "name": "Name",
+        "phone": "Phone",
+        "save": "Save changes",
+        "saving": "Saving…",
+        "saved": "Profile saved."
       }
     },
     "priceBookImport": {
@@ -1326,7 +1453,59 @@
     },
     "settingsIntegrations": {
       "title": "Integrações",
-      "subtitle": "Conecte contabilidade, impostos e provedores de pagamento. Configuração definida em app.config.yaml."
+      "subtitle": "Conecte contabilidade, impostos e provedores de pagamento. Configuração definida em app.config.yaml.",
+      "loading": "Loading integrations…",
+      "manualLink": "Integration setup guide",
+      "avalaraPreviewResult": "{amount} + {tax} tax ({rate}%) = {total}",
+      "status": {
+        "mock": "Mock mode"
+      },
+      "actions": {
+        "connectQuickBooks": "Connect QuickBooks",
+        "connectGoogleCalendar": "Connect Google Calendar",
+        "connectStripe": "Connect Stripe",
+        "connecting": "Connecting…",
+        "continueSetup": "Continue setup",
+        "disconnect": "Disconnect",
+        "manageInBilling": "Manage in billing",
+        "previewTax": "Preview tax calculation",
+        "starting": "Starting…",
+        "syncCalendar": "Sync upcoming jobs",
+        "syncing": "Syncing…",
+        "testSms": "Send test SMS"
+      },
+      "notices": {
+        "stripeMockComplete": "Completing Stripe Connect (mock)…",
+        "stripeConnectedMock": "Stripe Connect connected (mock).",
+        "quickbooksMockComplete": "Completing QuickBooks OAuth (mock)…",
+        "quickbooksConnectedMock": "QuickBooks connected (mock).",
+        "quickbooksComplete": "Completing QuickBooks OAuth…",
+        "quickbooksConnected": "QuickBooks connected.",
+        "googleCalendarMockComplete": "Completing Google Calendar OAuth (mock)…",
+        "googleCalendarConnectedMock": "Google Calendar connected (mock).",
+        "googleCalendarComplete": "Completing Google Calendar OAuth…",
+        "googleCalendarConnected": "Google Calendar connected.",
+        "googleCalendarSynced": "Synced {pushed} jobs ({failed} failed)."
+      },
+      "cards": {
+        "smtp": {
+          "name": "SMTP email",
+          "description": "Transactional email delivery for invoices and notifications.",
+          "platformManaged": "Email is managed at the platform level. Configure SMTP in admin settings."
+        },
+        "twilio": {
+          "name": "Twilio SMS",
+          "description": "Send appointment confirmations and job reminders by text message.",
+          "platformManaged": "SMS uses platform Twilio credentials from admin settings.",
+          "disabledHint": "Configure Twilio in admin settings or connect tenant credentials to enable SMS.",
+          "steps": {
+            "step1": "Add Twilio credentials in admin or connect your own account.",
+            "step2": "Use an E.164 from number (e.g. +15551234567).",
+            "step3": "Appointment SMS sends when jobs are scheduled with a customer phone.",
+            "step4": "Edit templates via GET /communications/sms/templates."
+          }
+        }
+      }
     },
     "settingsModules": {
       "title": "Módulos",
