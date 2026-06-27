@@ -4,7 +4,9 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import type { ARAging } from "@fieldforge/sdk";
 import { Badge, Card, CardContent, IconCreditCard } from "@fieldforge/ui";
+import { ModuleDisabledState } from "@/components/module-disabled-state";
 import { ModulePage } from "@/components/module-page";
+import { usePluginEnabled } from "@/lib/use-plugin-access";
 import { useAppPage, formatCents } from "@/lib/use-app-page";
 
 const BUCKET_LABELS: Record<string, string> = {
@@ -19,13 +21,14 @@ const BUCKET_ORDER = ["current", "30", "60", "90", "90+"];
 
 export default function AccountsReceivablePage() {
   const { client, token } = useAppPage();
+  const accountingEnabled = usePluginEnabled("accounting");
   const t = useTranslations("modules.accountsReceivable");
-  const tc = useTranslations("modules.common");
   const [items, setItems] = useState<ARAging[]>([]);
 
   useEffect(() => {
-    if (token) client.listARAging().then((r) => setItems(r.data ?? [])).catch(console.error);
-  }, [token, client]);
+    if (!token || !accountingEnabled) return;
+    client.listARAging().then((r) => setItems(r.data ?? [])).catch(() => setItems([]));
+  }, [token, client, accountingEnabled]);
 
   const totalOutstanding = useMemo(
     () => items.reduce((sum, item) => sum + item.amount_cents, 0),
@@ -44,7 +47,12 @@ export default function AccountsReceivablePage() {
 
   return (
     <ModulePage title={t("title")} subtitle={t("subtitle")}>
-      {items.length === 0 ? (
+      {!accountingEnabled ? (
+        <ModuleDisabledState
+          moduleName={t("title")}
+          icon={<IconCreditCard size={28} className="text-[var(--brand-text-muted)]" />}
+        />
+      ) : items.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">
             <IconCreditCard size={28} className="text-[var(--brand-text-muted)]" />

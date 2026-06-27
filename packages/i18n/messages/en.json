@@ -765,6 +765,8 @@
       "reviewEstimate": "Review estimate",
       "sendQuote": "Send quote",
       "sending": "Sending…",
+      "emailSentTo": "Email sent to {email}",
+      "noCustomerEmail": "Add a customer email in CRM before sending.",
       "accepting": "Accepting…",
       "saveLines": "Save lines",
       "saveAsDraft": "Save as draft",
@@ -780,6 +782,9 @@
       "customerNotFound": "Customer not found.",
       "projectNotFound": "Project not found.",
       "profileNotFound": "Profile not found.",
+      "moduleDisabledTitle": "{module} is not enabled",
+      "moduleDisabledDescription": "Enable this module in workspace settings to use accounting features.",
+      "enableModule": "Enable in modules settings",
       "wizardProgressAria": "Estimate wizard progress",
       "wizardStepDetails": "Details",
       "wizardStepLines": "Lines",
@@ -816,7 +821,8 @@
       "title": "Schedule",
       "subtitle": "View upcoming jobs by date and time.",
       "emptyTitle": "Nothing scheduled",
-      "emptyDescription": "Create jobs with a scheduled date on the Jobs page to see them here."
+      "emptyDescription": "Create jobs with a scheduled date on the Jobs page to see them here.",
+      "calendarSyncHint": "Connect Google Calendar under Settings → Integrations to push job appointments automatically."
     },
     "scheduleMap": {
       "title": "Schedule Map",
@@ -946,6 +952,7 @@
       "markupLine": "Markup ({percent}%)",
       "taxLine": "Tax ({percent}%)",
       "sendQuoteToCustomer": "Send quote to customer",
+      "emailSentTo": "Email sent to {email}",
       "descriptionPlaceholder": "Deep clean — kitchen",
       "cleanJobSubtitle": "{phase} phase · {time}"
     },
@@ -1022,7 +1029,13 @@
       "noItems": "No items",
       "assignedTo": "Assigned to {name}",
       "assignTechnician": "Assign technician",
-      "manageAssignment": "Manage assignment"
+      "manageAssignment": "Manage assignment",
+      "viewSchedule": "View schedule",
+      "summaryTotal": "{count} total",
+      "slaDue": "SLA {date}",
+      "selectTechnicianPlaceholder": "Select employee…",
+      "assigning": "Assigning…",
+      "viewDetails": "View details"
     },
     "workOrderDetail": {
       "subtitle": "Work order status, linked job, and technician assignments.",
@@ -1249,7 +1262,19 @@
       "subtitle": "Field notes for {name}."
     },
     "invoiceDetail": {
-      "subtitle": "Invoice detail, send, and collect payment."
+      "subtitle": "Invoice detail, send, and collect payment.",
+      "sendInvoice": "Send invoice",
+      "sendByEmail": "Send by email",
+      "recordPayment": "Record payment",
+      "processing": "Processing…",
+      "payInvoice": "Pay invoice",
+      "paymentRecorded": "Payment recorded",
+      "invoiceDetails": "Invoice details",
+      "invoiceNumber": "Invoice number",
+      "dueDate": "Due date",
+      "paidOn": "Paid on",
+      "amountDue": "Amount due",
+      "emailSentTo": "Invoice emailed to {email}"
     },
     "cleaningJobDetail": {},
     "cleaningQc": {
@@ -1279,6 +1304,21 @@
     "portal": {
       "title": "Client portal",
       "subtitle": "Branded self-service for {brand} customers — configure links and preview the experience.",
+      "shell": {
+        "signOut": "Sign out",
+        "navLabel": "Portal navigation",
+        "nav": {
+          "schedule": "Book service",
+          "bookings": "Upcoming",
+          "history": "History",
+          "invoices": "Invoices",
+          "payments": "Payments",
+          "documents": "Documents",
+          "messages": "Messages",
+          "support": "Support",
+          "profile": "Profile"
+        }
+      },
       "login": {
         "title": "Customer sign-in",
         "subtitle": "Access your invoices and account with {brand}.",
@@ -1291,6 +1331,53 @@
         "devLinkAction": "Open sign-in link",
         "tryAgain": "Use a different email"
       },
+      "schedule": {
+        "title": "Book a service",
+        "subtitle": "Choose an available time slot for {name}.",
+        "loadingSubtitle": "Loading availability…",
+        "formTitle": "Request an appointment",
+        "formHint": "Pick a weekday slot. Your provider will confirm the booking.",
+        "slotLabel": "Available time",
+        "slotPlaceholder": "Select a time…",
+        "serviceLabel": "Service (optional)",
+        "servicePlaceholder": "Deep clean, HVAC tune-up…",
+        "notesLabel": "Notes (optional)",
+        "submit": "Request booking",
+        "submitting": "Submitting…",
+        "confirmed": "Booking requested for {date}. Your provider will confirm shortly.",
+        "emptyTitle": "No openings right now",
+        "emptyDescription": "Check back later or contact your provider for custom scheduling."
+      },
+      "history": {
+        "title": "Service history",
+        "subtitle": "Past services for {name}.",
+        "loadingSubtitle": "Loading history…",
+        "emptyTitle": "No past services",
+        "emptyDescription": "Completed and cancelled jobs will appear here.",
+        "servicedAt": "Serviced {date}",
+        "dateUnknown": "Date not recorded",
+        "status": {
+          "completed": "Completed",
+          "cancelled": "Cancelled"
+        }
+      },
+      "bookings": {
+        "title": "Upcoming bookings",
+        "subtitle": "Scheduled services for {name}.",
+        "loadingSubtitle": "Loading bookings…",
+        "emptyTitle": "No upcoming bookings",
+        "emptyDescription": "Book a service from the Book service tab or wait for your provider to schedule work.",
+        "scheduledAt": "Scheduled {date}",
+        "unscheduled": "Awaiting schedule",
+        "readOnlyHint": "Contact your provider to reschedule or cancel.",
+        "status": {
+          "scheduled": "Scheduled",
+          "requested": "Requested",
+          "in_progress": "In progress",
+          "completed": "Completed",
+          "cancelled": "Cancelled"
+        }
+      },
       "invoices": {
         "title": "Your invoices",
         "subtitle": "Invoices for {name} at {company}",
@@ -1300,15 +1387,104 @@
         "emptyTitle": "No invoices yet",
         "emptyDescription": "When your provider sends an invoice, it will appear here.",
         "due": "Due {date}"
+      },
+      "payments": {
+        "title": "Payments",
+        "subtitle": "Payment history for {name}.",
+        "loadingSubtitle": "Loading payments…",
+        "emptyTitle": "No payments yet",
+        "emptyDescription": "Payments appear here when invoices are paid.",
+        "payNow": "Pay now",
+        "paying": "Processing…"
+      },
+      "documents": {
+        "title": "Documents",
+        "subtitle": "Estimates and agreements for {name}.",
+        "loadingSubtitle": "Loading documents…",
+        "emptyTitle": "No documents",
+        "emptyDescription": "Quotes and contracts from your provider appear here.",
+        "view": "View",
+        "downloadPdf": "Download PDF"
+      },
+      "messages": {
+        "title": "Messages",
+        "subtitle": "Support threads for {name}.",
+        "loadingSubtitle": "Loading messages…",
+        "emptyTitle": "No messages",
+        "emptyDescription": "Submit a support request and replies will appear here.",
+        "supportHint": "Need help? Open the Support tab to send a new request."
+      },
+      "support": {
+        "title": "Support",
+        "subtitle": "Get help from {company}.",
+        "loadingSubtitle": "Loading…",
+        "formTitle": "Contact support",
+        "formHint": "Describe your issue and we will follow up by email.",
+        "subject": "Subject",
+        "message": "Message",
+        "submit": "Send request",
+        "submitting": "Sending…",
+        "submitted": "Request submitted — reference {id}"
+      },
+      "profile": {
+        "title": "Profile",
+        "subtitle": "Account details for {company}.",
+        "loadingSubtitle": "Loading profile…",
+        "formTitle": "Your contact info",
+        "formHint": "Update how your provider reaches you.",
+        "name": "Name",
+        "phone": "Phone",
+        "save": "Save changes",
+        "saving": "Saving…",
+        "saved": "Profile saved."
+      }
+    },
+    "settingsIntegrations": {
+      "title": "Integrations",
+      "subtitle": "Connect accounting, tax, calendar, and payment providers. Configuration is driven by app.config.yaml.",
+      "loading": "Loading integrations…",
+      "manualLink": "Integration setup guide",
+      "avalaraPreviewResult": "{amount} + {tax} tax ({rate}%) = {total}",
+      "status": {
+        "mock": "Mock mode"
+      },
+      "actions": {
+        "connectQuickBooks": "Connect QuickBooks",
+        "connectGoogleCalendar": "Connect Google Calendar",
+        "connectStripe": "Connect Stripe",
+        "connecting": "Connecting…",
+        "continueSetup": "Continue setup",
+        "disconnect": "Disconnect",
+        "manageInBilling": "Manage in billing",
+        "previewTax": "Preview tax calculation",
+        "starting": "Starting…",
+        "syncCalendar": "Sync upcoming jobs",
+        "syncing": "Syncing…"
+      },
+      "notices": {
+        "stripeMockComplete": "Completing Stripe Connect (mock)…",
+        "stripeConnectedMock": "Stripe Connect connected (mock).",
+        "quickbooksMockComplete": "Completing QuickBooks OAuth (mock)…",
+        "quickbooksConnectedMock": "QuickBooks connected (mock).",
+        "quickbooksComplete": "Completing QuickBooks OAuth…",
+        "quickbooksConnected": "QuickBooks connected.",
+        "googleCalendarMockComplete": "Completing Google Calendar OAuth (mock)…",
+        "googleCalendarConnectedMock": "Google Calendar connected (mock).",
+        "googleCalendarComplete": "Completing Google Calendar OAuth…",
+        "googleCalendarConnected": "Google Calendar connected.",
+        "googleCalendarSynced": "Synced {pushed} jobs ({failed} failed)."
+      },
+      "cards": {
+        "smtp": {
+          "name": "SMTP email",
+          "description": "Transactional email delivery for invoices and notifications.",
+          "platformManaged": "Email is managed at the platform level. Configure SMTP in admin settings."
+        }
       }
     },
     "priceBookImport": {
       "title": "Import price book",
       "subtitle": "Upload a CSV to bulk-load services and rates into your catalog."
-    },
-    "settingsIntegrations": {
-      "title": "Integrations",
-      "subtitle": "Connect accounting, tax, and payment providers. Configuration is driven by app.config.yaml."
     },
     "settingsModules": {
       "title": "Modules",

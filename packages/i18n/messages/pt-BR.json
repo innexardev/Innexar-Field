@@ -765,6 +765,8 @@
       "reviewEstimate": "Revisar orçamento",
       "sendQuote": "Enviar cotação",
       "sending": "Enviando…",
+      "emailSentTo": "E-mail enviado para {email}",
+      "noCustomerEmail": "Adicione o e-mail do cliente no CRM antes de enviar.",
       "accepting": "Aceitando…",
       "saveLines": "Salvar itens",
       "saveAsDraft": "Salvar como rascunho",
@@ -780,6 +782,9 @@
       "customerNotFound": "Cliente não encontrado.",
       "projectNotFound": "Projeto não encontrado.",
       "profileNotFound": "Perfil não encontrado.",
+      "moduleDisabledTitle": "{module} não está ativado",
+      "moduleDisabledDescription": "Ative este módulo nas configurações do workspace para usar recursos contábeis.",
+      "enableModule": "Ativar em módulos",
       "wizardProgressAria": "Progresso do assistente de orçamento",
       "wizardStepDetails": "Detalhes",
       "wizardStepLines": "Itens",
@@ -946,6 +951,7 @@
       "markupLine": "Margem ({percent}%)",
       "taxLine": "Imposto ({percent}%)",
       "sendQuoteToCustomer": "Enviar cotação ao cliente",
+      "emailSentTo": "E-mail enviado para {email}",
       "descriptionPlaceholder": "Limpeza profunda — cozinha",
       "cleanJobSubtitle": "fase {phase} · {time}"
     },
@@ -1249,7 +1255,19 @@
       "subtitle": "Notas de campo para {name}."
     },
     "invoiceDetail": {
-      "subtitle": "Detalhe da fatura, envio e cobrança de pagamento."
+      "subtitle": "Detalhe da fatura, envio e cobrança de pagamento.",
+      "sendInvoice": "Enviar fatura",
+      "sendByEmail": "Enviar por e-mail",
+      "recordPayment": "Registrar pagamento",
+      "processing": "Processando…",
+      "payInvoice": "Pagar fatura",
+      "paymentRecorded": "Pagamento registrado",
+      "invoiceDetails": "Detalhes da fatura",
+      "invoiceNumber": "Número da fatura",
+      "dueDate": "Data de vencimento",
+      "paidOn": "Pago em",
+      "amountDue": "Valor devido",
+      "emailSentTo": "Fatura enviada por e-mail para {email}"
     },
     "cleaningJobDetail": {},
     "cleaningQc": {

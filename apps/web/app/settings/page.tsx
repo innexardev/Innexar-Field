@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import {
@@ -15,6 +16,7 @@ import {
   IconWrench,
 } from "@fieldforge/ui";
 import { ModulePage } from "@/components/module-page";
+import { usePluginEnabled } from "@/lib/use-plugin-access";
 import { useAppPage } from "@/lib/use-app-page";
 
 const SETTINGS_SECTIONS = [
@@ -86,13 +88,18 @@ const SETTINGS_SECTIONS = [
 
 export default function SettingsPage() {
   const { user } = useAppPage();
+  const accountingEnabled = usePluginEnabled("accounting");
   const t = useTranslations("modules.settings");
   const tc = useTranslations("modules.common");
+  const sections = useMemo(
+    () => SETTINGS_SECTIONS.filter((section) => section.title !== "Accounting" || accountingEnabled),
+    [accountingEnabled],
+  );
 
   return (
     <ModulePage title={t("title")} subtitle={t("subtitle", { email: user?.email ?? "" })}>
       <div className="space-y-10">
-        {SETTINGS_SECTIONS.map((section) => (
+        {sections.map((section) => (
           <section key={section.title}>
             <h2 className="mb-4 text-lg font-semibold text-[var(--brand-text-primary)]">{section.title}</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

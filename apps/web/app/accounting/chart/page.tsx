@@ -4,7 +4,9 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import type { ChartOfAccount } from "@fieldforge/sdk";
 import { Badge, Card, CardContent, IconChart } from "@fieldforge/ui";
+import { ModuleDisabledState } from "@/components/module-disabled-state";
 import { ModulePage } from "@/components/module-page";
+import { usePluginEnabled } from "@/lib/use-plugin-access";
 import { useAppPage, formatCents } from "@/lib/use-app-page";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -17,13 +19,14 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function ChartOfAccountsPage() {
   const { client, token } = useAppPage();
+  const accountingEnabled = usePluginEnabled("accounting");
   const t = useTranslations("modules.chartOfAccounts");
-  const tc = useTranslations("modules.common");
   const [accounts, setAccounts] = useState<ChartOfAccount[]>([]);
 
   useEffect(() => {
-    if (token) client.listChartOfAccounts().then((r) => setAccounts(r.data ?? [])).catch(console.error);
-  }, [token, client]);
+    if (!token || !accountingEnabled) return;
+    client.listChartOfAccounts().then((r) => setAccounts(r.data ?? [])).catch(() => setAccounts([]));
+  }, [token, client, accountingEnabled]);
 
   const totalBalance = useMemo(
     () => accounts.reduce((sum, a) => sum + a.balance_cents, 0),
@@ -32,7 +35,12 @@ export default function ChartOfAccountsPage() {
 
   return (
     <ModulePage title={t("title")} subtitle={t("subtitle")}>
-      {accounts.length === 0 ? (
+      {!accountingEnabled ? (
+        <ModuleDisabledState
+          moduleName={t("title")}
+          icon={<IconChart size={28} className="text-[var(--brand-text-muted)]" />}
+        />
+      ) : accounts.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">
             <IconChart size={28} className="text-[var(--brand-text-muted)]" />

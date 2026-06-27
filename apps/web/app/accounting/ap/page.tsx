@@ -4,18 +4,21 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import type { APBill } from "@fieldforge/sdk";
 import { Badge, Card, CardContent, CardHeader, CardTitle, IconReceipt } from "@fieldforge/ui";
+import { ModuleDisabledState } from "@/components/module-disabled-state";
 import { ModulePage } from "@/components/module-page";
+import { usePluginEnabled } from "@/lib/use-plugin-access";
 import { useAppPage, formatCents } from "@/lib/use-app-page";
 
 export default function AccountsPayablePage() {
   const { client, token } = useAppPage();
+  const accountingEnabled = usePluginEnabled("accounting");
   const t = useTranslations("modules.accountsPayable");
-  const tc = useTranslations("modules.common");
   const [bills, setBills] = useState<APBill[]>([]);
 
   useEffect(() => {
-    if (token) client.listAPBills().then((r) => setBills(r.data ?? [])).catch(console.error);
-  }, [token, client]);
+    if (!token || !accountingEnabled) return;
+    client.listAPBills().then((r) => setBills(r.data ?? [])).catch(() => setBills([]));
+  }, [token, client, accountingEnabled]);
 
   const openBills = useMemo(() => bills.filter((b) => b.status === "open"), [bills]);
   const totalOpen = useMemo(
@@ -25,7 +28,12 @@ export default function AccountsPayablePage() {
 
   return (
     <ModulePage title={t("title")} subtitle={t("subtitle")}>
-      {bills.length === 0 ? (
+      {!accountingEnabled ? (
+        <ModuleDisabledState
+          moduleName={t("title")}
+          icon={<IconReceipt size={28} className="text-[var(--brand-text-muted)]" />}
+        />
+      ) : bills.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">
             <IconReceipt size={28} className="text-[var(--brand-text-muted)]" />
