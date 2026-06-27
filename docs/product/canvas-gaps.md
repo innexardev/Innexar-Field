@@ -242,10 +242,11 @@ Applied in `erp-field-services-plan.canvas.tsx` (2026-06-26, updated gap review)
 
 13. Stripe Connect production path (real keys, webhooks)
 14. QuickBooks OAuth production + sync
-15. Communications SMS/Twilio when needed (P1)
-16. ~~Super-admin tenant management~~ → `apps/admin` shipped; polish remains
-17. Capacitor push + native vehicle/camera polish
-18. SDLC Figma design system
+15. ~~Employee ↔ user link~~ → crew membership FKs remain
+16. ~~Communications email/templates~~ → SMS/Twilio when needed (P1)
+17. ~~Super-admin tenant management~~ → `apps/admin` shipped; polish remains
+18. Capacitor push + native vehicle/camera polish
+19. SDLC Figma design system
 
 ---
 

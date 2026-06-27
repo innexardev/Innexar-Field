@@ -20,6 +20,7 @@ import (
 	"github.com/fieldforge/fieldforge/apps/api/internal/public"
 	"github.com/fieldforge/fieldforge/apps/api/internal/reports"
 	"github.com/fieldforge/fieldforge/packages/core/notifications"
+	"github.com/fieldforge/fieldforge/packages/core/support"
 	"github.com/fieldforge/fieldforge/packages/core/onboarding"
 	"github.com/fieldforge/fieldforge/packages/core/platform"
 	"github.com/fieldforge/fieldforge/packages/core/platformsettings"
@@ -259,6 +260,9 @@ func New(cfg Config) (*Server, error) {
 	})
 	notificationsSvc := notifications.NewService(cfg.Pool.Pool)
 	notifications.RegisterRoutes(protected, notificationsSvc)
+
+	supportSvc := support.NewService(cfg.Pool.Pool)
+	support.RegisterRoutes(protected, supportSvc)
 
 	reports.RegisterRoutes(protected, cfg.Pool.Pool)
 

@@ -38,6 +38,8 @@
     "workspace": "Workspace",
     "core": "Principal",
     "dashboard": "Painel",
+    "profile": "Perfil",
+    "settings": "Configurações",
     "signOut": "Sair",
     "openNavigation": "Abrir navegação",
     "closeNavigation": "Fechar navegação",
@@ -154,6 +156,295 @@
     "invoicesDesc": "Faturar e receber",
     "mobilePwa": "PWA móvel",
     "mobilePwaDesc": "App para equipes de campo"
+  },
+  "help": {
+    "sidebarLink": "Ajuda",
+    "nav": {
+      "label": "Navegação de ajuda",
+      "hub": "Visão geral",
+      "faq": "Perguntas frequentes",
+      "manual": "Manual do sistema",
+      "support": "Suporte"
+    },
+    "hub": {
+      "title": "Central de ajuda",
+      "subtitle": "Respostas, guias e suporte para seu workspace Innexar Field.",
+      "open": "Abrir",
+      "cards": {
+        "faq": {
+          "title": "Perguntas frequentes",
+          "description": "Respostas sobre cobrança, integrações, CRM, mobile e portal do cliente."
+        },
+        "manual": {
+          "title": "Manual do sistema",
+          "description": "Guias passo a passo para os fluxos diários do workspace."
+        },
+        "support": {
+          "title": "Suporte",
+          "description": "Fale com a equipe ou abra um ticket e acompanhe respostas."
+        }
+      },
+      "quickStart": {
+        "title": "Novo no Innexar Field?",
+        "body": "Comece pela configuração do workspace, módulos e seu primeiro cliente.",
+        "link": "Ler guia de primeiros passos"
+      }
+    },
+    "faq": {
+      "title": "Perguntas frequentes",
+      "subtitle": "Navegue por tema ou abra Suporte para falar conosco.",
+      "categories": {
+        "billing": {
+          "title": "Cobrança e assinatura",
+          "items": {
+            "subscription": {
+              "q": "Como gerencio minha assinatura SaaS?",
+              "a": "Abra Configurações → Cobrança ou a página Cobrança. Atualize pagamento, veja faturas e mude planos via Stripe Checkout."
+            },
+            "paymentMethods": {
+              "q": "Quais formas de pagamento o plano aceita?",
+              "a": "O Innexar Field usa Stripe para cobrança SaaS. Cartões principais são aceitos; Apple Pay aparece no Checkout se habilitado no Stripe."
+            },
+            "saasInvoices": {
+              "q": "Onde encontro faturas da assinatura?",
+              "a": "Faturas da assinatura ficam em Cobrança e são enviadas ao proprietário do workspace. Faturas a clientes estão em Faturas."
+            }
+          }
+        },
+        "integrations": {
+          "title": "Integrações",
+          "items": {
+            "connectStripe": {
+              "q": "Como conecto o Stripe para pagamentos de clientes?",
+              "a": "Vá em Configurações → Integrações e clique em Conectar Stripe. Complete o onboarding do Stripe Connect."
+            },
+            "quickbooksSync": {
+              "q": "Posso sincronizar com QuickBooks Online?",
+              "a": "Sim. Após habilitar QuickBooks, conecte em Configurações → Integrações e exporte faturas com a empresa vinculada."
+            },
+            "emailDelivery": {
+              "q": "Por que os e-mails não são enviados?",
+              "a": "E-mail de saída exige SMTP configurado pelo operador da plataforma. Sem SMTP, mensagens só são registradas em desenvolvimento."
+            }
+          }
+        },
+        "crm": {
+          "title": "CRM e clientes",
+          "items": {
+            "addCustomer": {
+              "q": "Como adiciono um novo cliente?",
+              "a": "Abra Clientes → Novo cliente. Informe contato, cobrança e propriedades opcionais."
+            },
+            "properties": {
+              "q": "O que são propriedades no cadastro do cliente?",
+              "a": "Propriedades são locais de serviço ligados ao cliente. Alimentam orçamentos, serviços e acesso ao portal."
+            },
+            "pipeline": {
+              "q": "Como funciona o funil de vendas?",
+              "a": "Orçamentos passam por rascunho, enviado, aceito ou recusado. Aceitos podem virar serviços."
+            }
+          }
+        },
+        "fieldApp": {
+          "title": "App de campo (PWA mobile)",
+          "items": {
+            "mobileAccess": {
+              "q": "Como equipes de campo acessam o app mobile?",
+              "a": "Instale a PWA em /m ou adicione à tela inicial. Login com credenciais do workspace."
+            },
+            "offlineSync": {
+              "q": "O app mobile funciona offline?",
+              "a": "Serviços e horas ficam em cache local. Sincronize online na página Sync."
+            },
+            "timeTracking": {
+              "q": "Como técnicos registram ponto no serviço?",
+              "a": "Em Mobile → Tempo, selecione o serviço do dia e toque Entrada. Saída ao concluir alimenta folha e custos."
+            }
+          }
+        },
+        "portal": {
+          "title": "Portal do cliente",
+          "items": {
+            "customerLogin": {
+              "q": "Como clientes entram no portal?",
+              "a": "Usam magic link por e-mail com o código da empresa na URL do portal. Sem senha."
+            },
+            "portalInvoices": {
+              "q": "O que clientes veem no portal?",
+              "a": "Conforme configuração: faturas, pagamentos, documentos, agendamentos e suporte."
+            },
+            "portalSupport": {
+              "q": "Como funcionam pedidos de suporte no portal?",
+              "a": "Clientes enviam em Portal → Suporte. Sua equipe vê em Portal → Mensagens."
+            }
+          }
+        }
+      }
+    },
+    "manual": {
+      "title": "Manual do sistema",
+      "subtitle": "Guias estruturados para os fluxos principais do Innexar Field.",
+      "backToIndex": "← Todos os guias",
+      "readGuide": "Ler guia",
+      "openIntegrations": "Abrir Configurações → Integrações",
+      "articles": {
+        "getting-started": {
+          "title": "Primeiros passos",
+          "summary": "Configure o workspace e ative os módulos necessários.",
+          "intro": "Complete onboarding, escolha packs de indústria e convide a equipe.",
+          "footer": "Precisa de ajuda com módulos? Visite Configurações → Módulos ou fale com o suporte.",
+          "steps": {
+            "step1": "Conclua onboarding: perfil, packs e módulos.",
+            "step2": "Assine em Cobrança para ativar o workspace.",
+            "step3": "Configure Integrações para pagamentos e contabilidade.",
+            "step4": "Cadastre o primeiro cliente e crie um orçamento ou serviço."
+          }
+        },
+        "customers": {
+          "title": "Clientes",
+          "summary": "Gerencie cadastros, propriedades e histórico de contato.",
+          "intro": "Clientes são o centro de CRM, orçamentos, serviços e faturamento.",
+          "footer": "Acesso ao portal é configurado por cliente.",
+          "steps": {
+            "step1": "Crie cliente com nome, e-mail e termos de cobrança.",
+            "step2": "Adicione propriedades por local de serviço.",
+            "step3": "Vincule orçamentos e serviços à propriedade correta.",
+            "step4": "Habilite portal quando o cliente for autogerir faturas."
+          }
+        },
+        "estimates": {
+          "title": "Orçamentos",
+          "summary": "Monte cotações, envie propostas e converta em serviços.",
+          "intro": "Orçamentos usam tabela de preços com modelos fixo ou por ambiente.",
+          "footer": "Orçamentos aceitos geram serviços sem duplicar dados.",
+          "steps": {
+            "step1": "Crie orçamento em Clientes ou Orçamentos → Novo.",
+            "step2": "Adicione itens da tabela de preços ou personalizados.",
+            "step3": "Envie link da proposta para assinatura ou e-mail.",
+            "step4": "Acompanhe status: rascunho, enviado, aceito ou recusado.",
+            "step5": "Converta orçamentos aceitos em serviços com um clique."
+          }
+        },
+        "dispatch": {
+          "title": "Despacho e agenda",
+          "summary": "Programe equipes, atribua serviços e monitore o quadro.",
+          "intro": "Despacho conecta serviços, equipes e calendários.",
+          "footer": "Equipes veem serviços atribuídos em /m após o despacho.",
+          "steps": {
+            "step1": "Abra o quadro de despacho ou calendário de serviços.",
+            "step2": "Atribua equipes e janelas de horário.",
+            "step3": "Notifique técnicos no mobile; confirmam no app.",
+            "step4": "Reagende ou reatribua no quadro quando planos mudarem."
+          }
+        },
+        "payroll": {
+          "title": "Folha de pagamento",
+          "summary": "Revise apontamentos e execute períodos de folha.",
+          "intro": "A folha agrega horas aprovadas de serviços e registros mobile.",
+          "footer": "Exporte dados para integração contábil quando configurada.",
+          "steps": {
+            "step1": "Garanta que técnicos registrem entrada/saída em Mobile → Tempo.",
+            "step2": "Revise e aprove apontamentos do período.",
+            "step3": "Execute prévia da folha para validar horas e taxas.",
+            "step4": "Exporte ou sincronize conforme configuração do workspace."
+          }
+        },
+        "portal": {
+          "title": "Portal do cliente",
+          "summary": "Autosserviço de faturas e suporte para clientes.",
+          "intro": "O portal usa magic link e respeita a marca do workspace.",
+          "footer": "URLs do portal usam o código da empresa no login.",
+          "steps": {
+            "step1": "Habilite portal em clientes elegíveis.",
+            "step2": "Compartilhe URL do portal e código da empresa.",
+            "step3": "Clientes entram por magic link — sem senha.",
+            "step4": "Monitore pedidos em Portal → Mensagens."
+          }
+        },
+        "admin": {
+          "title": "Administração do workspace",
+          "summary": "Usuários, módulos, cobrança e configurações.",
+          "intro": "Proprietários e admins gerenciam o tenant em Configurações.",
+          "footer": "Credenciais de plataforma são do operador Innexar no Admin.",
+          "steps": {
+            "step1": "Gerencie módulos em Configurações → Módulos após onboarding.",
+            "step2": "Convide usuários e papéis em Configurações → Usuários.",
+            "step3": "Configure cobrança SaaS e pagamento na página Cobrança.",
+            "step4": "Conecte integrações quando o operador salvou credenciais."
+          }
+        },
+        "integrations": {
+          "title": "Integrações",
+          "summary": "Stripe Connect, QuickBooks, Avalara e e-mail.",
+          "intro": "Operador configura credenciais no Admin; admins conectam contas do workspace.",
+          "footer": "Mudanças de credenciais de plataforma? Fale com seu operador Innexar Field.",
+          "steps": {
+            "step1": "Abra Configurações → Integrações para ver status.",
+            "step2": "Conecte Stripe ou QuickBooks via OAuth em cada card.",
+            "step3": "Valide prévia de impostos e templates de e-mail.",
+            "step4": "Use este manual para passos detalhados por integração."
+          },
+          "sections": {
+            "quickbooks": {
+              "title": "QuickBooks Online",
+              "summary": "Sincronize clientes, faturas e pagamentos com QuickBooks.",
+              "steps": {
+                "step1": "Plataforma: habilite QuickBooks e salve OAuth no Admin.",
+                "step2": "Workspace: clique Conectar QuickBooks e entre na Intuit.",
+                "step3": "Selecione a empresa QuickBooks; OAuth retorna automaticamente.",
+                "step4": "Exporte faturas quando o realm ID mostrar conectado.",
+                "step5": "Desconecte antes de vincular outra empresa QuickBooks."
+              }
+            },
+            "avalara": {
+              "title": "Avalara AvaTax",
+              "summary": "Imposto sobre vendas automatizado em orçamentos e faturas.",
+              "steps": {
+                "step1": "Plataforma: salve Account ID e License key Avalara no Admin.",
+                "step2": "Desenvolvimento pode usar taxas simuladas sem credenciais live.",
+                "step3": "Workspace: use Prévia de imposto no card Integrações."
+              }
+            },
+            "smtp": {
+              "title": "E-mail (SMTP)",
+              "summary": "E-mail de saída para faturas, lembretes e magic links.",
+              "steps": {
+                "step1": "Plataforma: habilite SMTP no Admin com host, porta e credenciais.",
+                "step2": "Sem SMTP, e-mail só é logado — útil em desenvolvimento local.",
+                "step3": "Workspace: envie teste em Configurações → Templates de e-mail."
+              }
+            }
+          }
+        }
+      }
+    },
+    "support": {
+      "title": "Suporte",
+      "subtitle": "Fale com a equipe Innexar Field ou acompanhe seus pedidos.",
+      "contactTitle": "Fale conosco",
+      "contactHint": "Prefere e-mail? Respondemos todos os pedidos de suporte.",
+      "emailLabel": "E-mail de suporte",
+      "phoneLabel": "Telefone",
+      "responseTime": "Resposta típica em um dia útil.",
+      "formTitle": "Abrir ticket",
+      "formHint": "Descreva o problema e responderemos por e-mail.",
+      "subject": "Assunto",
+      "message": "Mensagem",
+      "submit": "Enviar ticket",
+      "submitting": "Enviando…",
+      "submitted": "Ticket recebido. Referência #{id}. Responderemos em breve.",
+      "ticketsTitle": "Seus tickets",
+      "ticketsHint": "Pedidos deste workspace aparecem aqui.",
+      "loadingTickets": "Carregando tickets…",
+      "emptyTickets": "Nenhum ticket ainda. Envie um pedido acima.",
+      "ticketMeta": "{date} · #{id}",
+      "status": {
+        "open": "Aberto",
+        "in_progress": "Em andamento",
+        "resolved": "Resolvido",
+        "closed": "Fechado"
+      }
+    }
   },
   "marketing": {
     "features": "Recursos",
@@ -278,6 +569,59 @@
         "colIndustry": "Setor",
         "colStatus": "Status",
         "colCreated": "Criado em"
+      },
+      "integrations": {
+        "title": "Credenciais e integrações",
+        "subtitle": "Chaves API da plataforma armazenadas criptografadas no banco. Variáveis de ambiente substituem valores do BD.",
+        "saveChanges": "Salvar alterações",
+        "loading": "Carregando configurações de integração…",
+        "lastUpdated": "Última atualização {date}",
+        "helpIntro": "Configure credenciais do provedor aqui antes dos tenants conectarem Stripe Connect ou QuickBooks em Configurações → Integrações. Segredos são criptografados em repouso; deixe um campo vazio para manter o valor existente.",
+        "notConfigured": "Não configurado",
+        "configuredHint": "Configurado ••••{last4}",
+        "statusDisabled": "Desativado",
+        "statusReady": "Pronto para conectar",
+        "statusNeedsCredentials": "Precisa de credenciais",
+        "enabled": "Ativado",
+        "enterNewValue": "Digite um novo valor para substituir",
+        "stripe": {
+          "title": "Stripe",
+          "help": "Necessário para cobrança SaaS e onboarding Stripe Connect. Use chaves live ou de teste do painel Stripe. O segredo do webhook valida eventos de cobrança.",
+          "secretKey": "Chave secreta",
+          "publishableKey": "Chave publicável",
+          "webhookSecret": "Segredo do webhook"
+        },
+        "quickbooks": {
+          "title": "QuickBooks",
+          "help": "Crie um app no Intuit Developer com URI de redirecionamento OAuth 2.0 para o callback da API. Tenants conectam a própria empresa QuickBooks após salvar estas credenciais.",
+          "clientId": "Client ID",
+          "clientSecret": "Client secret"
+        },
+        "avalara": {
+          "title": "Avalara",
+          "help": "Imposto sobre vendas live opcional. Desativado ou sem credenciais, tenants podem ver taxas simuladas em desenvolvimento (debug.mock_avalara).",
+          "accountId": "Account ID",
+          "licenseKey": "License key"
+        },
+        "smtp": {
+          "title": "Email / SMTP",
+          "help": "Opcional — habilita email de saída para magic links, faturas e testes de modelos. Desativado, mensagens são apenas registradas em log.",
+          "optionalHint": "Opcional — para magic links e email transacional.",
+          "host": "Host",
+          "port": "Porta",
+          "username": "Usuário",
+          "password": "Senha",
+          "fromEmail": "Email remetente"
+        },
+        "storage": {
+          "title": "Armazenamento R2 / S3",
+          "help": "Armazenamento de objetos para uploads, fotos e documentos. Configure bucket e URL pública para assets com CDN ou URLs assinadas.",
+          "accountId": "Account ID",
+          "accessKeyId": "Access key ID",
+          "secretAccessKey": "Secret access key",
+          "bucket": "Bucket",
+          "publicUrl": "URL pública"
+        }
       }
     }
   },
@@ -583,18 +927,6 @@
       "customerOptional": "Cliente (opcional)",
       "noCustomerSelected": "Nenhum cliente selecionado",
       "customerHint": "Clientes vêm do CRM — adicione um em Clientes se necessário.",
-      "propertyOptional": "Propriedade de serviço (opcional)",
-      "noPropertySelected": "Nenhuma propriedade selecionada",
-      "propertyHint": "Vincule uma propriedade do cliente para preços por quartos/banheiros ao calcular.",
-      "propertySelectCustomerFirst": "Selecione um cliente para escolher uma propriedade.",
-      "loadingProperties": "Carregando propriedades…",
-      "noPropertiesForCustomer": "Este cliente ainda não tem propriedades.",
-      "addPropertyLink": "Adicionar propriedade",
-      "noAddress": "Sem endereço cadastrado",
-      "propertyBedsBaths": "{beds, plural, =0 {} other {# quarto · }}{baths, plural, =0 {} one {# banh.} other {# banh.}}",
-      "roomTierHint": "{label}: {beds} quarto, {baths} banh. — faixas por quartos/banheiros aplicam ao calcular.",
-      "roomTierMissingHint": "Esta propriedade não tem quartos e banheiros cadastrados. Adicione em Cliente → Propriedades para preços automáticos por faixa.",
-      "roomTiersApplied": "{count, plural, one {# item de faixa atualizado} other {# itens de faixa atualizados}}",
       "linesDescription": "Adicione serviços da tabela de preços ou insira itens personalizados.",
       "reviewTitle": "Revisar e criar",
       "reviewDescription": "Confirme os detalhes, depois salve como rascunho ou envie a cotação imediatamente.",
@@ -660,19 +992,10 @@
       "members": "Membros",
       "skills": "Habilidades",
       "namePlaceholder": "Equipe Alpha",
-      "leadPlaceholder": "Jordan Lee",
       "skillsPlaceholder": "limpeza, HVAC",
-      "createCrew": "Criar equipe",
       "addCrew": "Adicionar equipe",
       "emptyTitle": "Nenhuma equipe",
-      "emptyDescription": "Crie sua primeira equipe para atribuir serviços e rotas.",
-      "manageMembers": "Gerenciar membros",
-      "hideMembers": "Ocultar membros",
-      "addMember": "Adicionar funcionário",
-      "selectEmployee": "Selecionar funcionário",
-      "noMembers": "Nenhum funcionário atribuído a esta equipe ainda.",
-      "memberCount": "{count, plural, one {# membro} other {# membros}}",
-      "leadLabel": "Líder: {name}"
+      "emptyDescription": "Crie sua primeira equipe para atribuir serviços e rotas."
     },
     "routes": {
       "title": "Rotas",
@@ -769,7 +1092,19 @@
       "title": "Contratos",
       "subtitle": "Acordos de serviço e contratos de manutenção recorrente.",
       "emptyTitle": "Nenhum contrato",
-      "emptyDescription": "Crie acordos de serviço para clientes recorrentes."
+      "emptyDescription": "Crie acordos de serviço para clientes recorrentes.",
+      "newContract": "Novo contrato",
+      "newContractDescription": "Comece a partir de um modelo ou crie um acordo de serviço personalizado.",
+      "startFromTemplate": "Começar a partir de modelo",
+      "noTemplate": "Sem modelo — acordo em branco",
+      "addContract": "Adicionar contrato",
+      "termsLabel": "Termos e condições",
+      "termsHint": "Revise com assessoria jurídica antes de enviar aos clientes. Não constitui assessoria jurídica.",
+      "templates": {
+        "residentialCleaning": "Acordo de limpeza residencial",
+        "commercialCleaning": "Contrato de limpeza comercial",
+        "fieldServiceMaintenance": "Acordo de serviço de campo e manutenção"
+      }
     },
     "changeOrders": {
       "title": "Ordens de mudança",
@@ -965,61 +1300,6 @@
         "emptyTitle": "Nenhuma fatura ainda",
         "emptyDescription": "Quando seu prestador enviar uma fatura, ela aparecerá aqui.",
         "due": "Vence em {date}"
-      },
-      "shell": {
-        "signOut": "Sair",
-        "navLabel": "Navegação do portal",
-        "nav": {
-          "bookings": "Agendamentos",
-          "invoices": "Faturas",
-          "payments": "Pagamentos",
-          "documents": "Documentos",
-          "messages": "Mensagens",
-          "support": "Suporte",
-          "profile": "Perfil"
-        }
-      },
-      "bookings": {
-        "title": "Seus agendamentos",
-        "subtitle": "Trabalhos e compromissos futuros para {name}",
-        "loadingSubtitle": "Carregando sua conta…",
-        "emptyTitle": "Nenhum agendamento futuro",
-        "emptyDescription": "Trabalhos programados vinculados à sua conta aparecerão aqui.",
-        "scheduledAt": "Agendado para {date}",
-        "unscheduled": "Data a confirmar",
-        "readOnlyHint": "Entre em contato com seu prestador para reagendar ou cancelar.",
-        "status": {
-          "scheduled": "Agendado",
-          "in_progress": "Em andamento",
-          "completed": "Concluído",
-          "cancelled": "Cancelado"
-        }
-      },
-      "messages": {
-        "title": "Mensagens",
-        "subtitle": "Conversas de suporte para {name}",
-        "loadingSubtitle": "Carregando sua conta…",
-        "emptyTitle": "Nenhuma mensagem ainda",
-        "emptyDescription": "Envie uma solicitação de suporte e seu histórico aparecerá aqui.",
-        "updatedAt": "Atualizado em {date}",
-        "status": {
-          "open": "Aberto",
-          "in_progress": "Em andamento",
-          "resolved": "Resolvido",
-          "closed": "Fechado"
-        }
-      },
-      "support": {
-        "title": "Suporte",
-        "subtitle": "Envie uma solicitação de ajuda para {company}",
-        "loadingSubtitle": "Carregando sua conta…",
-        "formTitle": "Contatar suporte",
-        "formHint": "Descreva seu problema e responderemos por e-mail.",
-        "subject": "Assunto",
-        "message": "Mensagem",
-        "submit": "Enviar solicitação",
-        "submitting": "Enviando…",
-        "submitted": "Solicitação recebida. Referência #{id}. Responderemos em breve."
       }
     },
     "priceBookImport": {

@@ -377,6 +377,14 @@ export interface Notification {
   created_at: string;
 }
 
+export interface SupportTicket {
+  id: string;
+  subject: string;
+  message: string;
+  status: string;
+  created_at: string;
+}
+
 export interface CrewMember {
   crew_id: string;
   employee_id: string;
@@ -1008,6 +1016,13 @@ export interface QuickBooksOAuthStartResult {
   mock?: boolean;
 }
 
+export interface QuickBooksExportResult {
+  invoice_id: string;
+  external_id?: string;
+  status: string;
+  mock?: boolean;
+}
+
 export interface NavItem {
   label: string;
   path: string;
@@ -1055,6 +1070,28 @@ export class FieldForgeClient {
     }
     const payload = (await res.json()) as T;
     return normalizeListPayload(payload);
+  }
+
+  private async redirectLocation(method: string, path: string): Promise<string> {
+    const headers: Record<string, string> = {};
+    if (this.token) headers.Authorization = `Bearer ${this.token}`;
+
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}${path}`, { method, headers, redirect: "manual" });
+    } catch (err) {
+      throw parseFetchError(err);
+    }
+
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get("Location");
+      if (location) return location;
+    }
+    if (!res.ok) {
+      const raw = await res.json().catch(() => null);
+      throw parseApiError(res, raw);
+    }
+    throw new Error("expected redirect response");
   }
 
   private async downloadBlob(method: string, path: string): Promise<Blob> {
@@ -1492,6 +1529,14 @@ export class FieldForgeClient {
 
   markNotificationRead(id: string) {
     return this.request<Notification>("PATCH", `/notifications/${id}`, {});
+  }
+
+  listSupportTickets() {
+    return this.request<{ data: SupportTicket[] }>("GET", "/support/tickets");
+  }
+
+  createSupportTicket(data: { subject: string; message: string }) {
+    return this.request<SupportTicket>("POST", "/support/tickets", data);
   }
 
   listCrews() {
@@ -2148,8 +2193,23 @@ export class FieldForgeClient {
     return this.request<QuickBooksOAuthStartResult>("GET", `/integrations/quickbooks/oauth/start${q}`);
   }
 
-  completeQuickBooksOAuth(code: string, state?: string) {
-    return this.request<IntegrationStatus>("POST", "/integrations/quickbooks/oauth/callback", { code, state });
+  /** Starts QuickBooks OAuth and returns the redirect URL (302 from /connect). */
+  async connectQuickBooks(returnPath?: string) {
+    const q = returnPath ? `?return_path=${encodeURIComponent(returnPath)}` : "";
+    const authorize_url = await this.redirectLocation("GET", `/integrations/quickbooks/connect${q}`);
+    return { authorize_url };
+  }
+
+  completeQuickBooksOAuth(code: string, state?: string, realmId?: string) {
+    return this.request<IntegrationStatus>("POST", "/integrations/quickbooks/oauth/callback", {
+      code,
+      state,
+      realm_id: realmId,
+    });
+  }
+
+  exportQuickBooksInvoice(invoiceId: string) {
+    return this.request<QuickBooksExportResult>("POST", `/integrations/quickbooks/invoices/${invoiceId}/export`, {});
   }
 
   disconnectQuickBooks() {

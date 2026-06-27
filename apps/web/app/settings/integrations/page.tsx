@@ -3,33 +3,28 @@
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Button } from "@fieldforge/ui";
 import {
-  Badge,
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  IconCreditCard,
-  IconFileText,
-  IconReceipt,
-} from "@fieldforge/ui";
-import { formatErrorForUser, type IntegrationCatalogItem, type IntegrationStatus } from "@fieldforge/sdk";
+  formatErrorForUser,
+  type IntegrationCatalogItem,
+  type IntegrationStatus,
+} from "@fieldforge/sdk";
 import { ErrorBanner } from "@/components/error-banner";
 import { ModulePage } from "@/components/module-page";
+import {
+  IntegrationCard,
+  type IntegrationDisplayStatus,
+} from "@/components/settings/integration-card";
 import { useAppPage } from "@/lib/use-app-page";
 
-const CATEGORY_ICONS: Record<string, typeof IconCreditCard> = {
-  accounting: IconFileText,
-  tax: IconReceipt,
-  payments: IconCreditCard,
+const STEP_KEYS: Record<string, string[]> = {
+  stripe_connect: ["step1", "step2", "step3", "step4"],
+  quickbooks: ["step1", "step2", "step3", "step4", "step5"],
+  avalara: ["step1", "step2", "step3"],
+  smtp: ["step1", "step2", "step3"],
 };
 
-function statusTone(status: string): "success" | "warning" | "default" {
-  if (status === "connected") return "success";
-  if (status === "pending") return "warning";
-  return "default";
-}
+const CARD_ORDER = ["stripe_connect", "quickbooks", "avalara", "smtp"] as const;
 
 function isMockConnection(status?: IntegrationStatus): boolean {
   return status?.metadata?.mock === true;
@@ -42,6 +37,23 @@ function formatExternalId(status?: IntegrationStatus): string | null {
   return status.external_id;
 }
 
+function resolveDisplayStatus(
+  integrationId: string,
+  connection?: IntegrationStatus,
+  avalaraMock?: boolean,
+): IntegrationDisplayStatus {
+  if (integrationId === "avalara" && avalaraMock) return "mock";
+  if (integrationId === "smtp") return "notConnected";
+
+  const mock = isMockConnection(connection);
+  const status = connection?.status ?? "disconnected";
+
+  if (mock && status !== "connected") return "mock";
+  if (status === "connected") return mock ? "mock" : "connected";
+  if (mock) return "mock";
+  return "notConnected";
+}
+
 export default function IntegrationsSettingsPage() {
   const { client } = useAppPage();
   const t = useTranslations("modules.settingsIntegrations");
@@ -51,7 +63,8 @@ export default function IntegrationsSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [taxPreview, setTaxPreview] = useState<string>("");
+  const [taxPreview, setTaxPreview] = useState("");
+  const [avalaraMock, setAvalaraMock] = useState(false);
   const [notice, setNotice] = useState("");
 
   const statusById = useMemo(() => {
@@ -59,6 +72,12 @@ export default function IntegrationsSettingsPage() {
     for (const st of statuses) map.set(st.integration_id, st);
     return map;
   }, [statuses]);
+
+  const catalogById = useMemo(() => {
+    const map = new Map<string, IntegrationCatalogItem>();
+    for (const item of catalog) map.set(item.id, item);
+    return map;
+  }, [catalog]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -88,10 +107,10 @@ export default function IntegrationsSettingsPage() {
     if (params.get("stripe_connect") === "mock" && accountId) {
       void (async () => {
         setBusyId("stripe_connect");
-        setNotice("Completing Stripe Connect stub onboarding…");
+        setNotice(t("notices.stripeMockComplete"));
         try {
           await client.completeStripeConnect(accountId);
-          setNotice("Stripe Connect connected (dev stub).");
+          setNotice(t("notices.stripeConnectedMock"));
           await refresh();
         } catch (e) {
           setError(formatErrorForUser(e));
@@ -104,10 +123,14 @@ export default function IntegrationsSettingsPage() {
     if (params.get("quickbooks") === "mock" && params.get("code")) {
       void (async () => {
         setBusyId("quickbooks");
-        setNotice("Completing QuickBooks OAuth stub…");
+        setNotice(t("notices.quickbooksMockComplete"));
         try {
-          await client.completeQuickBooksOAuth(params.get("code") ?? "", params.get("state") ?? undefined);
-          setNotice("QuickBooks connected (dev stub).");
+          await client.completeQuickBooksOAuth(
+            params.get("code") ?? "",
+            params.get("state") ?? undefined,
+            params.get("realmId") ?? undefined,
+          );
+          setNotice(t("notices.quickbooksConnectedMock"));
           await refresh();
         } catch (e) {
           setError(formatErrorForUser(e));
@@ -117,18 +140,34 @@ export default function IntegrationsSettingsPage() {
         }
       })();
     }
-  }, [client, refresh]);
+    if (params.get("quickbooks") === "callback" && params.get("code")) {
+      void (async () => {
+        setBusyId("quickbooks");
+        setNotice(t("notices.quickbooksComplete"));
+        try {
+          await client.completeQuickBooksOAuth(
+            params.get("code") ?? "",
+            params.get("state") ?? undefined,
+            params.get("realmId") ?? undefined,
+          );
+          setNotice(t("notices.quickbooksConnected"));
+          await refresh();
+        } catch (e) {
+          setError(formatErrorForUser(e));
+        } finally {
+          setBusyId(null);
+          cleanupUrl();
+        }
+      })();
+    }
+  }, [client, refresh, t]);
 
   async function connectQuickBooks() {
     setBusyId("quickbooks");
     setError("");
     try {
-      const redirectUri = `${window.location.origin}/settings/integrations?quickbooks=mock`;
-      const start = await client.startQuickBooksOAuth(redirectUri);
-      if (start.mock) {
-        window.location.href = start.authorize_url;
-        return;
-      }
+      const returnPath = `${window.location.origin}/settings/integrations?quickbooks=callback`;
+      const start = await client.connectQuickBooks(returnPath);
       window.location.href = start.authorize_url;
     } catch (e) {
       setError(formatErrorForUser(e));
@@ -166,8 +205,14 @@ export default function IntegrationsSettingsPage() {
     setError("");
     try {
       const result = await client.calculateAvalaraTax({ amount_cents: 10000, ship_to_state: "TX", ship_to_zip: "78701" });
+      setAvalaraMock(result.mock === true);
       setTaxPreview(
-        `$100.00 + $${(result.tax_cents / 100).toFixed(2)} tax (${result.rate_percent}%) = $${(result.total_cents / 100).toFixed(2)}`,
+        t("avalaraPreviewResult", {
+          amount: "$100.00",
+          tax: `$${(result.tax_cents / 100).toFixed(2)}`,
+          rate: result.rate_percent,
+          total: `$${(result.total_cents / 100).toFixed(2)}`,
+        }),
       );
     } catch (e) {
       setError(formatErrorForUser(e));
@@ -176,54 +221,91 @@ export default function IntegrationsSettingsPage() {
     }
   }
 
-  function actionFor(integration: IntegrationCatalogItem) {
-    const status = statusById.get(integration.id)?.status ?? "disconnected";
-    if (integration.id === "quickbooks") {
+  function cardMeta(integrationId: string): { name: string; description: string; category: string } {
+    const fromCatalog = catalogById.get(integrationId);
+    if (fromCatalog) {
+      return {
+        name: fromCatalog.name,
+        description: fromCatalog.description,
+        category: fromCatalog.category,
+      };
+    }
+    return {
+      name: t(`cards.${integrationId}.name`),
+      description: t(`cards.${integrationId}.description`),
+      category: integrationId === "smtp" ? "email" : "accounting",
+    };
+  }
+
+  function actionsFor(integrationId: string) {
+    const status = statusById.get(integrationId)?.status ?? "disconnected";
+
+    if (integrationId === "quickbooks") {
       if (status === "connected") {
         return (
-          <Button variant="secondary" onClick={() => void disconnectQuickBooks()} disabled={busyId === integration.id}>
-            Disconnect
+          <Button variant="secondary" onClick={() => void disconnectQuickBooks()} disabled={busyId === integrationId}>
+            {t("actions.disconnect")}
           </Button>
         );
       }
       return (
-        <Button onClick={() => void connectQuickBooks()} disabled={busyId === integration.id}>
-          {busyId === integration.id ? "Connecting…" : "Connect QuickBooks"}
+        <Button onClick={() => void connectQuickBooks()} disabled={busyId === integrationId}>
+          {busyId === integrationId
+            ? t("actions.connecting")
+            : status === "pending"
+              ? t("actions.continueSetup")
+              : t("actions.connectQuickBooks")}
         </Button>
       );
     }
-    if (integration.id === "stripe_connect") {
+
+    if (integrationId === "stripe_connect") {
       if (status === "connected") {
         return (
-          <Link href="/billing" className="text-sm text-[var(--brand-accent)]">
-            Manage in Billing →
+          <Link href="/billing" className="text-sm font-medium text-[var(--brand-accent)] hover:underline">
+            {t("actions.manageInBilling")} →
           </Link>
         );
       }
       return (
-        <Button onClick={() => void connectStripe()} disabled={busyId === integration.id}>
-          {busyId === integration.id ? "Starting…" : "Connect Stripe"}
+        <Button onClick={() => void connectStripe()} disabled={busyId === integrationId}>
+          {busyId === integrationId ? t("actions.starting") : t("actions.connectStripe")}
         </Button>
       );
     }
-    if (integration.id === "avalara") {
+
+    if (integrationId === "avalara") {
       return (
-        <Button variant="secondary" onClick={() => void previewAvalaraTax()} disabled={busyId === integration.id}>
-          Preview tax calc
+        <Button variant="secondary" onClick={() => void previewAvalaraTax()} disabled={busyId === integrationId}>
+          {t("actions.previewTax")}
         </Button>
       );
     }
+
+    if (integrationId === "smtp") {
+      return (
+        <p className="text-sm text-[var(--brand-text-secondary)]">{t("cards.smtp.platformManaged")}</p>
+      );
+    }
+
     return null;
   }
 
+  const visibleCards = CARD_ORDER.filter(
+    (id) => id === "smtp" || catalogById.has(id),
+  );
+
   return (
-    <ModulePage
-      title={t("title")}
-      subtitle={t("subtitle")}
-    >
-      <div className="mb-4">
-        <Link href="/settings" className="text-sm text-[var(--brand-accent)]">
+    <ModulePage title={t("title")} subtitle={t("subtitle")}>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <Link href="/settings" className="text-sm text-[var(--brand-accent)] hover:underline">
           {tc("backToSettings")}
+        </Link>
+        <Link
+          href="/help/manual/integrations"
+          className="text-sm text-[var(--brand-text-secondary)] hover:text-[var(--brand-accent)]"
+        >
+          {t("manualLink")} →
         </Link>
       </div>
 
@@ -233,54 +315,52 @@ export default function IntegrationsSettingsPage() {
           {notice}
         </p>
       )}
-      {taxPreview && (
-        <p className="mb-4 rounded-lg border border-[var(--brand-border)] bg-[var(--brand-info-subtle)] px-4 py-3 text-sm">
-          Avalara preview: {taxPreview}
-          {taxPreview.includes("8.25") && (
-            <span className="ml-2 rounded bg-[var(--brand-warning-subtle)] px-2 py-0.5 text-xs text-[var(--brand-text-secondary)]">
-              mock rate
-            </span>
-          )}
-        </p>
-      )}
 
       {loading ? (
-        <p className="text-sm text-[var(--brand-text-secondary)]">Loading integrations…</p>
+        <p className="text-sm text-[var(--brand-text-secondary)]">{t("loading")}</p>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {catalog.map((integration) => {
-            const Icon = CATEGORY_ICONS[integration.category] ?? IconFileText;
-            const connection = statusById.get(integration.id);
-            const status = connection?.status ?? "disconnected";
+        <div className="grid gap-5 lg:grid-cols-2">
+          {visibleCards.map((integrationId, index) => {
+            const connection = statusById.get(integrationId);
+            const meta = cardMeta(integrationId);
+            const displayStatus = resolveDisplayStatus(integrationId, connection, avalaraMock);
             const externalLabel = formatExternalId(connection);
-            const mock = isMockConnection(connection);
+
             return (
-              <Card key={integration.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--brand-info-subtle)] text-[var(--brand-accent)]">
-                      <Icon size={22} />
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <Badge tone={statusTone(status)}>{status}</Badge>
-                      {mock && <Badge tone="warning">dev stub</Badge>}
-                    </div>
-                  </div>
-                  <CardTitle className="mt-3">{integration.name}</CardTitle>
-                  <p className="text-sm text-[var(--brand-text-secondary)]">{integration.description}</p>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-xs uppercase tracking-wide text-[var(--brand-text-muted)]">{integration.category}</p>
-                  {externalLabel && (
-                    <p className="text-xs text-[var(--brand-text-secondary)]">{externalLabel}</p>
-                  )}
-                  {actionFor(integration)}
-                </CardContent>
-              </Card>
+              <div key={integrationId} className="stagger-item" style={{ animationDelay: `${index * 50}ms` }}>
+                <IntegrationCard
+                  integrationId={integrationId}
+                  name={meta.name}
+                  description={meta.description}
+                  category={meta.category}
+                  displayStatus={displayStatus}
+                  externalLabel={externalLabel}
+                  stepKeys={STEP_KEYS[integrationId] ?? []}
+                  actions={actionsFor(integrationId)}
+                  footer={
+                    integrationId === "avalara" && taxPreview ? (
+                      <p className="rounded-lg border border-[var(--brand-border)] bg-[var(--brand-info-subtle)] px-3 py-2 text-sm">
+                        {taxPreview}
+                        {avalaraMock && (
+                          <BadgeInline label={t("status.mock")} />
+                        )}
+                      </p>
+                    ) : undefined
+                  }
+                />
+              </div>
             );
           })}
         </div>
       )}
     </ModulePage>
+  );
+}
+
+function BadgeInline({ label }: { label: string }) {
+  return (
+    <span className="ml-2 rounded bg-[var(--brand-warning-subtle)] px-2 py-0.5 text-xs text-[var(--brand-text-secondary)]">
+      {label}
+    </span>
   );
 }

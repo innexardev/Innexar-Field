@@ -4,6 +4,8 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  staticPageGenerationTimeout: 600,
   transpilePackages: [
     "@fieldforge/config",
     "@fieldforge/i18n",

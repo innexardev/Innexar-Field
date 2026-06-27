@@ -278,4 +278,27 @@ CREATE POLICY notifications_tenant ON notifications
 	USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
 `,
 	},
+	{
+		Version: 20,
+		Name:    "tenant_support_tickets",
+		UpSQL: `
+CREATE TABLE IF NOT EXISTS tenant_support_tickets (
+	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+	user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	subject TEXT NOT NULL,
+	message TEXT NOT NULL,
+	status TEXT NOT NULL DEFAULT 'open',
+	created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	CONSTRAINT tenant_support_tickets_status_check CHECK (status IN ('open', 'in_progress', 'resolved', 'closed'))
+);
+CREATE INDEX IF NOT EXISTS idx_tenant_support_tickets_user ON tenant_support_tickets (tenant_id, user_id, created_at DESC);
+ALTER TABLE tenant_support_tickets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tenant_support_tickets FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_support_tickets_tenant ON tenant_support_tickets;
+CREATE POLICY tenant_support_tickets_tenant ON tenant_support_tickets
+	USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
+`,
+	},
 }

@@ -1,11 +1,12 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
-import type { BrandConfig, PricingConfig } from "@fieldforge/config";
+import type { BrandConfig, ContactConfig, PricingConfig } from "@fieldforge/config";
 
 interface PublicConfig {
   brand: BrandConfig;
   pricing: PricingConfig;
+  contact: ContactConfig;
 }
 
 const ConfigContext = createContext<PublicConfig | null>(null);
@@ -13,13 +14,15 @@ const ConfigContext = createContext<PublicConfig | null>(null);
 export function ConfigProvider({
   brand,
   pricing,
+  contact,
   children,
 }: {
   brand: BrandConfig;
   pricing: PricingConfig;
+  contact: ContactConfig;
   children: ReactNode;
 }) {
-  return <ConfigContext.Provider value={{ brand, pricing }}>{children}</ConfigContext.Provider>;
+  return <ConfigContext.Provider value={{ brand, pricing, contact }}>{children}</ConfigContext.Provider>;
 }
 
 export function useBrand() {

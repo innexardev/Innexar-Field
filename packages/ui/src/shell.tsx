@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { IconChevronDown, IconLayoutDashboard, IconLogOut, IconMenu, IconX, NavIcon } from "./icons";
+import {
+  IconChevronDown,
+  IconLayoutDashboard,
+  IconLogOut,
+  IconMenu,
+  IconSettings,
+  IconX,
+  NavIcon,
+} from "./icons";
 import { BrandLogo } from "./brand-logo";
 import { groupNavItems, type ShellNavItem } from "./nav-groups";
 
@@ -9,6 +17,8 @@ export const DEFAULT_SHELL_LABELS = {
   workspace: "Workspace",
   core: "Core",
   dashboard: "Dashboard",
+  profile: "Profile",
+  settings: "Settings",
   signOut: "Sign out",
   openNavigation: "Open navigation",
   closeNavigation: "Close navigation",
@@ -59,6 +69,8 @@ function SidebarContent({
   wordmarkSrc,
   nav,
   userEmail,
+  userName,
+  settingsHref,
   onLogout,
   currentPath,
   onNavigate,
@@ -70,6 +82,8 @@ function SidebarContent({
   wordmarkSrc?: string;
   nav: ShellNavItem[];
   userEmail?: string;
+  userName?: string;
+  settingsHref?: string;
   onLogout?: () => void;
   currentPath?: string;
   onNavigate?: () => void;
@@ -177,7 +191,40 @@ function SidebarContent({
 
       <div className="border-t border-white/10 px-4 py-4">
         {footerActions}
-        {userEmail && (
+        {(userEmail || userName) && settingsHref && (
+          <div className="mb-3 space-y-0.5">
+            <a
+              href={settingsHref}
+              className="flex items-center gap-3 rounded-lg bg-white/5 px-3 py-2 transition hover:bg-white/10"
+              onClick={onNavigate}
+              aria-label={labels.profile}
+            >
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-semibold text-white"
+                aria-hidden
+              >
+                {(userName ?? userEmail ?? "?").charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                {userName && (
+                  <p className="truncate text-sm font-medium text-white">{userName}</p>
+                )}
+                {userEmail && (
+                  <p className="truncate text-xs text-white/50">{userEmail}</p>
+                )}
+              </div>
+            </a>
+            <a
+              href={settingsHref}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-white/75 transition hover:bg-white/10 hover:text-white"
+              onClick={onNavigate}
+            >
+              <IconSettings size={14} className="shrink-0 opacity-80" />
+              <span>{labels.settings}</span>
+            </a>
+          </div>
+        )}
+        {userEmail && !settingsHref && (
           <div className="truncate rounded-lg bg-white/5 px-3 py-2 text-xs text-white/70">
             {userEmail}
           </div>
@@ -203,6 +250,8 @@ export function Shell({
   nav,
   children,
   userEmail,
+  userName,
+  settingsHref,
   onLogout,
   currentPath,
   headerActions,
@@ -215,6 +264,8 @@ export function Shell({
   nav: ShellNavItem[];
   children: ReactNode;
   userEmail?: string;
+  userName?: string;
+  settingsHref?: string;
   onLogout?: () => void;
   currentPath?: string;
   headerActions?: ReactNode;
@@ -247,6 +298,8 @@ export function Shell({
           wordmarkSrc={wordmarkSrc}
           nav={safeNav}
           userEmail={userEmail}
+          userName={userName}
+          settingsHref={settingsHref}
           onLogout={onLogout}
           currentPath={currentPath}
           labels={labels}
@@ -285,6 +338,8 @@ export function Shell({
           wordmarkSrc={wordmarkSrc}
           nav={safeNav}
           userEmail={userEmail}
+          userName={userName}
+          settingsHref={settingsHref}
           onLogout={onLogout}
           currentPath={currentPath}
           onNavigate={() => setMobileOpen(false)}
