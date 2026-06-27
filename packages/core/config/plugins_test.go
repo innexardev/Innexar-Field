@@ -7,13 +7,13 @@ func TestPluginsForSignup_FieldServicesStarterIncludesDispatch(t *testing.T) {
 		IndustryPacks: map[string]IndustryPackConfig{
 			"field-services": {
 				CoreModules: []string{"crm", "estimating", "scheduling", "invoicing"},
-				Plugins:     []string{"dispatch"},
+				Plugins:     []string{"dispatch", "accounting"},
 			},
 		},
 	}
 
 	plugins := cfg.PluginsForSignup("field-services", "starter")
-	want := []string{"crm", "estimating", "scheduling", "invoicing", "dispatch"}
+	want := []string{"crm", "estimating", "scheduling", "invoicing", "dispatch", "accounting"}
 	if len(plugins) != len(want) {
 		t.Fatalf("got %v, want %v", plugins, want)
 	}

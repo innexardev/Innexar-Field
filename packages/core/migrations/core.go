@@ -301,4 +301,33 @@ CREATE POLICY tenant_support_tickets_tenant ON tenant_support_tickets
 	USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
 `,
 	},
+	{
+		Version: 21,
+		Name:    "tenant_plugins_accounting_backfill",
+		UpSQL: `
+INSERT INTO tenant_plugins (tenant_id, plugin_id, enabled)
+SELECT t.id, 'accounting', true
+FROM tenants t
+WHERE t.industry_pack = 'field-services'
+ON CONFLICT (tenant_id, plugin_id) DO UPDATE SET enabled = true;
+
+INSERT INTO tenant_plugins (tenant_id, plugin_id, enabled)
+SELECT t.id, 'accounting', true
+FROM tenants t
+WHERE t.plan_id IN ('business', 'pro', 'enterprise')
+ON CONFLICT (tenant_id, plugin_id) DO UPDATE SET enabled = true;
+
+INSERT INTO tenant_plugins (tenant_id, plugin_id, enabled)
+SELECT DISTINCT tp.tenant_id, 'accounting', true
+FROM tenant_plugins tp
+WHERE tp.plugin_id IN ('expenses', 'payroll') AND tp.enabled = true
+ON CONFLICT (tenant_id, plugin_id) DO UPDATE SET enabled = true;
+
+INSERT INTO tenant_plugins (tenant_id, plugin_id, enabled)
+SELECT os.tenant_id, 'accounting', true
+FROM onboarding_state os
+WHERE os.modules @> '["accounting"]'::jsonb
+ON CONFLICT (tenant_id, plugin_id) DO UPDATE SET enabled = true;
+`,
+	},
 }

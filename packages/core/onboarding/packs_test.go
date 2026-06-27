@@ -24,6 +24,21 @@ func TestResolveModulesForPacks(t *testing.T) {
 
 	mods = ResolveModulesForPacks(cfg, []string{"field-services"})
 	assert.Contains(t, mods, "dispatch")
+	assert.Contains(t, mods, "accounting")
+}
+
+func TestBuildModulePreview_IncludesAccountingOptional(t *testing.T) {
+	reg := plugin.NewRegistry()
+	_ = reg.Register(stubPlugin{id: "accounting"})
+
+	cfg := &config.AppConfig{IndustryPacks: DefaultPacks()}
+	preview := BuildModulePreview(cfg, reg, []string{"cleaning"}, nil)
+
+	ids := make([]string, len(preview))
+	for i, m := range preview {
+		ids[i] = m.ID
+	}
+	assert.Contains(t, ids, "accounting")
 }
 
 func TestListPacks(t *testing.T) {

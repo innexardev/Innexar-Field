@@ -206,10 +206,15 @@ func (s *Service) UpdateModules(ctx context.Context, tenantID string, modules []
 	}
 	row.Modules = uniqueStrings(selected)
 	row.CompletedSteps = markCompleted(row.CompletedSteps, StepModules)
-	row.CurrentStep = StepSetup
+	if row.CompletedAt == nil {
+		row.CurrentStep = StepSetup
+	}
 
 	if err := s.saveState(ctx, tenantID, row); err != nil {
 		return nil, err
+	}
+	if err := s.provisionPlugins(ctx, tenantID, row.Modules); err != nil {
+		return nil, fmt.Errorf("provision plugins: %w", err)
 	}
 	return row.toStatus(), nil
 }

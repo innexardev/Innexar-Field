@@ -32,21 +32,21 @@ func DefaultPacks() map[string]config.IndustryPackConfig {
 			Description: "Recurring cleans, crews, and client portal",
 			CoreModules: []string{"crm", "estimating", "scheduling", "invoicing"},
 			Plugins:     []string{"cleaning"},
-			Optional:    []string{"dispatch", "expenses"},
+			Optional:    []string{"dispatch", "expenses", "accounting"},
 		},
 		"construction": {
 			ID: "construction", Name: "Construction",
 			Description: "Estimates, job costing, change orders",
 			CoreModules: []string{"crm", "estimating", "scheduling", "invoicing"},
 			Plugins:     []string{"construction", "job-costing"},
-			Optional:    []string{"dispatch", "expenses"},
+			Optional:    []string{"dispatch", "expenses", "accounting"},
 		},
 		"field-services": {
 			ID: "field-services", Name: "Field Services",
 			Description: "Dispatch, work orders, and mobile PWA",
 			CoreModules: []string{"crm", "estimating", "scheduling", "invoicing"},
-			Plugins:     []string{"dispatch"},
-			Optional:    []string{"expenses", "job-costing"},
+			Plugins:     []string{"dispatch", "accounting"},
+			Optional:    []string{"expenses", "job-costing", "accounting"},
 		},
 	}
 }

@@ -281,6 +281,7 @@ industry_packs:
       - dispatch
       - expenses
       - payroll
+      - accounting
   construction:
     id: construction
     name: Construction
@@ -297,6 +298,7 @@ industry_packs:
       - dispatch
       - expenses
       - payroll
+      - accounting
   field-services:
     id: field-services
     name: Field Services

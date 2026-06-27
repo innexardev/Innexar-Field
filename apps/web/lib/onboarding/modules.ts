@@ -14,6 +14,8 @@ export const MODULE_META: Record<
   "job-costing": { label: "Job costing", description: "Budgets, margins, and cost tracking" },
   dispatch: { label: "Dispatch", description: "Work orders, routing, and field crews" },
   expenses: { label: "Expenses", description: "Receipts, reimbursements, and job expenses" },
+  payroll: { label: "Payroll", description: "Runs, tax withholding, and timesheets" },
+  accounting: { label: "Accounting", description: "GL, AP/AR, and chart of accounts" },
   "client-portal": { label: "Client portal", description: "Customer self-service and approvals" },
 };
 
