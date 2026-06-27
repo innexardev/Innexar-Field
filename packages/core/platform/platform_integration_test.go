@@ -56,9 +56,10 @@ func TestPlatform_AdminCRUDPlans(t *testing.T) {
 
 	app := newPlatformApp(pool, authSvc)
 
+	const planID = "integration_test_plan"
 	createRes := postWithToken(t, app, "/platform/plans", adminToken, map[string]any{
-		"id":   "pro",
-		"name": "Pro",
+		"id":   planID,
+		"name": "Integration Test Plan",
 	})
 	require.Equal(t, http.StatusCreated, createRes.StatusCode)
 	defer createRes.Body.Close()
@@ -71,15 +72,23 @@ func TestPlatform_AdminCRUDPlans(t *testing.T) {
 		Data []map[string]any `json:"data"`
 	}
 	require.NoError(t, json.NewDecoder(listRes.Body).Decode(&listBody))
-	require.Len(t, listBody.Data, 1)
+	require.GreaterOrEqual(t, len(listBody.Data), 1)
+	var found bool
+	for _, row := range listBody.Data {
+		if row["id"] == planID {
+			found = true
+			break
+		}
+	}
+	require.True(t, found, "created plan should appear in list")
 
-	patchRes := patchWithToken(t, app, "/platform/plans/pro", adminToken, map[string]any{
-		"name": "Pro Plus",
+	patchRes := patchWithToken(t, app, "/platform/plans/"+planID, adminToken, map[string]any{
+		"name": "Integration Test Plan Plus",
 	})
 	require.Equal(t, http.StatusOK, patchRes.StatusCode)
 	_ = patchRes.Body.Close()
 
-	delRes := deleteWithToken(t, app, "/platform/plans/pro", adminToken)
+	delRes := deleteWithToken(t, app, "/platform/plans/"+planID, adminToken)
 	assert.Equal(t, http.StatusNoContent, delRes.StatusCode)
 	_ = delRes.Body.Close()
 }
@@ -90,11 +99,7 @@ func TestPlatform_BillingSettings(t *testing.T) {
 	defer cleanup()
 
 	adminID := seedPlatformAdmin(t, ctx, pool, "admin@platform.com", "secret123")
-	_, err := pool.Exec(ctx, `
-		INSERT INTO platform_plans (id, name, description, price_monthly_cents, stripe_price_id, active)
-		VALUES ('starter', 'Starter', '', 2500, 'price_starter', true)
-	`)
-	require.NoError(t, err)
+	_ = adminID
 
 	authSvc := auth.NewService("integration-test-secret-32-chars!!", 24)
 	adminToken, err := authSvc.IssuePlatformToken(adminID, "admin@platform.com")

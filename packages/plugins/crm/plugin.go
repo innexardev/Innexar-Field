@@ -56,6 +56,7 @@ func (p *Plugin) Migrations() []plugin.Migration {
 		{Version: 103, Name: "crm_contracts", UpSQL: contractsSQL},
 		{Version: 104, Name: "crm_contract_templates", UpSQL: contractTemplatesSQL},
 		{Version: 105, Name: "crm_property_beds_baths_sqft", UpSQL: propertyBedsBathsSqftSQL},
+		{Version: 106, Name: "crm_contracts_terms", UpSQL: contractsTermsSQL},
 	}
 }
 
@@ -143,6 +144,9 @@ ALTER TABLE contracts FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS contracts_tenant ON contracts;
 CREATE POLICY contracts_tenant ON contracts
 	USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
+`
+
+const contractsTermsSQL = `
 ALTER TABLE contracts ADD COLUMN IF NOT EXISTS terms TEXT NOT NULL DEFAULT '';
 `
 
@@ -393,6 +397,9 @@ func (p *Plugin) listContracts(c *fiber.Ctx) error {
 			return fiber.NewError(fiber.StatusInternalServerError, "failed to list contracts")
 		}
 		list = append(list, ctr)
+	}
+	if err := rows.Err(); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "failed to list contracts")
 	}
 	return response.DataList(c, list)
 }

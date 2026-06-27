@@ -56,6 +56,14 @@ func (s *Service) ListStatus(ctx context.Context) ([]ConnectionStatus, error) {
 			}
 			st.Metadata["mock"] = billing.UseMockStripe(ctx, s.cfg, s.resolver)
 		}
+		if def.ID == IDQuickBooks {
+			if st.Metadata == nil {
+				st.Metadata = map[string]interface{}{}
+			}
+			if _, ok := st.Metadata["mock"]; !ok {
+				st.Metadata["mock"] = UseMockQuickBooks(ctx, s.cfg, s.resolver)
+			}
+		}
 		out = append(out, st)
 	}
 	return out, nil

@@ -122,6 +122,9 @@ func isUnknownPlan(err error) bool {
 
 // TrialDays returns configured trial length from app config (default 14).
 func TrialDays(cfg *config.AppConfig) int {
+	if cfg == nil {
+		return 14
+	}
 	if v, ok := cfg.Pricing["trial_days"].(int); ok && v >= 0 {
 		return v
 	}

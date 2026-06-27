@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Button, Input } from "@fieldforge/ui";
+import { useTranslations } from "next-intl";
+import { Button, Input, Badge } from "@fieldforge/ui";
 import {
   formatErrorForUser,
   type IntegrationBlock,
@@ -16,19 +17,28 @@ function isMaskedSecret(value: unknown): value is MaskedSecret {
   return typeof value === "object" && value !== null && "set" in value;
 }
 
-function maskedHint(value: unknown) {
-  if (!isMaskedSecret(value) || !value.set) return "Not configured";
-  return `Configured ••••${value.last4 ?? ""}`;
-}
-
 function boolVal(block: IntegrationBlock, key: string) {
   const v = block[key];
   return v === true || v === "true";
 }
 
+function credentialsReady(block: IntegrationBlock): boolean {
+  const idSet = isMaskedSecret(block.client_id) && block.client_id.set;
+  const secretSet = isMaskedSecret(block.client_secret) && block.client_secret.set;
+  return idSet && secretSet;
+}
+
 function strField(block: IntegrationBlock, key: string) {
   const v = block[key];
   return typeof v === "string" ? v : "";
+}
+
+function SectionHelp({ text }: { text: string }) {
+  return (
+    <p className="mb-4 rounded-lg border border-[color-mix(in_srgb,var(--brand-accent)_18%,var(--brand-border))] bg-[var(--brand-info-subtle)] px-4 py-3 text-sm leading-relaxed text-[var(--brand-text-secondary)]">
+      {text}
+    </p>
+  );
 }
 
 function Toggle({
@@ -65,11 +75,13 @@ function Toggle({
 function SecretField({
   label,
   hint,
+  placeholder,
   value,
   onChange,
 }: {
   label: string;
   hint: string;
+  placeholder: string;
   value: string;
   onChange: (v: string) => void;
 }) {
@@ -80,7 +92,7 @@ function SecretField({
       <Input
         type="password"
         autoComplete="off"
-        placeholder="Enter new value to replace"
+        placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -125,11 +137,28 @@ const emptyDraft = (): Draft => ({
 
 export default function IntegrationsPage() {
   const { client } = useAdminPage();
+  const t = useTranslations("admin.pages.integrations");
+  const tc = useTranslations("admin.common");
   const [settings, setSettings] = useState<PlatformIntegrationsSettings | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  function maskedHint(value: unknown) {
+    if (!isMaskedSecret(value) || !value.set) return t("notConfigured");
+    return t("configuredHint", { last4: value.last4 ?? "" });
+  }
+
+  function quickBooksStatus(block: IntegrationBlock): { label: string; tone: "success" | "warning" | "default" } {
+    if (!boolVal(block, "enabled")) {
+      return { label: t("statusDisabled"), tone: "default" };
+    }
+    if (credentialsReady(block)) {
+      return { label: t("statusReady"), tone: "success" };
+    }
+    return { label: t("statusNeedsCredentials"), tone: "warning" };
+  }
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -198,42 +227,48 @@ export default function IntegrationsPage() {
   const avalara = settings?.avalara ?? {};
   const smtp = settings?.smtp ?? {};
   const storage = settings?.storage ?? {};
+  const qbStatus = quickBooksStatus(quickbooks);
 
   return (
     <>
       <PageHeader
-        title="Credentials & integrations"
-        subtitle="Platform API keys stored encrypted in the database. Environment variables override DB values."
+        title={t("title")}
+        subtitle={t("subtitle")}
         actions={
           <Button onClick={() => void handleSave()} disabled={saving || loading}>
-            {saving ? "Saving…" : "Save changes"}
+            {saving ? tc("saving") : t("saveChanges")}
           </Button>
         }
       />
       <ErrorBanner message={error} className="mb-4" />
+      <SectionHelp text={t("helpIntro")} />
 
       {loading ? (
-        <p className="text-sm text-[var(--brand-text-secondary)]">Loading integration settings…</p>
+        <p className="text-sm text-[var(--brand-text-secondary)]">{t("loading")}</p>
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-xl border border-[var(--brand-border)] bg-[var(--brand-surface)] p-6 lg:col-span-2">
-            <h2 className="mb-4 text-lg font-semibold text-[var(--brand-text-primary)]">Stripe</h2>
+            <h2 className="mb-2 text-lg font-semibold text-[var(--brand-text-primary)]">{t("stripe.title")}</h2>
+            <SectionHelp text={t("stripe.help")} />
             <div className="grid gap-4 md:grid-cols-2">
               <SecretField
-                label="Secret key"
+                label={t("stripe.secretKey")}
                 hint={maskedHint(stripe.secret_key)}
+                placeholder={t("enterNewValue")}
                 value={draft.stripe.secret_key ?? ""}
                 onChange={(v) => patchDraft("stripe", "secret_key", v)}
               />
               <SecretField
-                label="Publishable key"
+                label={t("stripe.publishableKey")}
                 hint={maskedHint(stripe.publishable_key)}
+                placeholder={t("enterNewValue")}
                 value={draft.stripe.publishable_key ?? ""}
                 onChange={(v) => patchDraft("stripe", "publishable_key", v)}
               />
               <SecretField
-                label="Webhook secret"
+                label={t("stripe.webhookSecret")}
                 hint={maskedHint(stripe.webhook_secret)}
+                placeholder={t("enterNewValue")}
                 value={draft.stripe.webhook_secret ?? ""}
                 onChange={(v) => patchDraft("stripe", "webhook_secret", v)}
               />
@@ -241,84 +276,94 @@ export default function IntegrationsPage() {
           </section>
 
           <section className="rounded-xl border border-[var(--brand-border)] bg-[var(--brand-surface)] p-6">
-            <h2 className="mb-4 text-lg font-semibold text-[var(--brand-text-primary)]">QuickBooks</h2>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-[var(--brand-text-primary)]">{t("quickbooks.title")}</h2>
+              {!loading && <Badge tone={qbStatus.tone}>{qbStatus.label}</Badge>}
+            </div>
+            <SectionHelp text={t("quickbooks.help")} />
             <div className="mb-4">
               <Toggle
-                label="Enabled"
+                label={t("enabled")}
                 enabled={boolVal(quickbooks, "enabled")}
                 onChange={(v) => patchEnabled("quickbooks", v)}
               />
             </div>
             <SecretField
-              label="Client ID"
+              label={t("quickbooks.clientId")}
               hint={maskedHint(quickbooks.client_id)}
+              placeholder={t("enterNewValue")}
               value={draft.quickbooks.client_id ?? ""}
               onChange={(v) => patchDraft("quickbooks", "client_id", v)}
             />
             <SecretField
-              label="Client secret"
+              label={t("quickbooks.clientSecret")}
               hint={maskedHint(quickbooks.client_secret)}
+              placeholder={t("enterNewValue")}
               value={draft.quickbooks.client_secret ?? ""}
               onChange={(v) => patchDraft("quickbooks", "client_secret", v)}
             />
           </section>
 
           <section className="rounded-xl border border-[var(--brand-border)] bg-[var(--brand-surface)] p-6">
-            <h2 className="mb-4 text-lg font-semibold text-[var(--brand-text-primary)]">Avalara</h2>
+            <h2 className="mb-2 text-lg font-semibold text-[var(--brand-text-primary)]">{t("avalara.title")}</h2>
+            <SectionHelp text={t("avalara.help")} />
             <div className="mb-4">
               <Toggle
-                label="Enabled"
+                label={t("enabled")}
                 enabled={boolVal(avalara, "enabled")}
                 onChange={(v) => patchEnabled("avalara", v)}
               />
             </div>
             <SecretField
-              label="Account ID"
+              label={t("avalara.accountId")}
               hint={maskedHint(avalara.account_id)}
+              placeholder={t("enterNewValue")}
               value={draft.avalara.account_id ?? ""}
               onChange={(v) => patchDraft("avalara", "account_id", v)}
             />
             <SecretField
-              label="License key"
+              label={t("avalara.licenseKey")}
               hint={maskedHint(avalara.license_key)}
+              placeholder={t("enterNewValue")}
               value={draft.avalara.license_key ?? ""}
               onChange={(v) => patchDraft("avalara", "license_key", v)}
             />
           </section>
 
           <section className="rounded-xl border border-[var(--brand-border)] bg-[var(--brand-surface)] p-6">
-            <h2 className="mb-4 text-lg font-semibold text-[var(--brand-text-primary)]">Email / SMTP</h2>
-            <p className="mb-4 text-xs text-[var(--brand-text-muted)]">Optional — for magic links and transactional email.</p>
+            <h2 className="mb-2 text-lg font-semibold text-[var(--brand-text-primary)]">{t("smtp.title")}</h2>
+            <SectionHelp text={t("smtp.help")} />
             <div className="mb-4">
               <Toggle
-                label="Enabled"
+                label={t("enabled")}
                 enabled={boolVal(smtp, "enabled")}
                 onChange={(v) => patchEnabled("smtp", v)}
               />
             </div>
             <TextField
-              label="Host"
+              label={t("smtp.host")}
               value={draft.smtp.host ?? strField(smtp, "host")}
               onChange={(v) => patchDraft("smtp", "host", v)}
             />
             <TextField
-              label="Port"
+              label={t("smtp.port")}
               value={draft.smtp.port ?? strField(smtp, "port")}
               onChange={(v) => patchDraft("smtp", "port", v)}
             />
             <TextField
-              label="Username"
+              label={t("smtp.username")}
               value={draft.smtp.username ?? strField(smtp, "username")}
               onChange={(v) => patchDraft("smtp", "username", v)}
             />
             <SecretField
-              label="Password"
+              label={t("smtp.password")}
               hint={maskedHint(smtp.password)}
+              placeholder={t("enterNewValue")}
               value={draft.smtp.password ?? ""}
               onChange={(v) => patchDraft("smtp", "password", v)}
             />
             <TextField
-              label="From email"
+              label={t("smtp.fromEmail")}
               type="email"
               value={draft.smtp.from_email ?? strField(smtp, "from_email")}
               onChange={(v) => patchDraft("smtp", "from_email", v)}
@@ -326,38 +371,41 @@ export default function IntegrationsPage() {
           </section>
 
           <section className="rounded-xl border border-[var(--brand-border)] bg-[var(--brand-surface)] p-6">
-            <h2 className="mb-4 text-lg font-semibold text-[var(--brand-text-primary)]">R2 / S3 storage</h2>
+            <h2 className="mb-2 text-lg font-semibold text-[var(--brand-text-primary)]">{t("storage.title")}</h2>
+            <SectionHelp text={t("storage.help")} />
             <div className="mb-4">
               <Toggle
-                label="Enabled"
+                label={t("enabled")}
                 enabled={boolVal(storage, "enabled")}
                 onChange={(v) => patchEnabled("storage", v)}
               />
             </div>
             <TextField
-              label="Account ID"
+              label={t("storage.accountId")}
               value={draft.storage.account_id ?? strField(storage, "account_id")}
               onChange={(v) => patchDraft("storage", "account_id", v)}
             />
             <SecretField
-              label="Access key ID"
+              label={t("storage.accessKeyId")}
               hint={maskedHint(storage.access_key_id)}
+              placeholder={t("enterNewValue")}
               value={draft.storage.access_key_id ?? ""}
               onChange={(v) => patchDraft("storage", "access_key_id", v)}
             />
             <SecretField
-              label="Secret access key"
+              label={t("storage.secretAccessKey")}
               hint={maskedHint(storage.secret_access_key)}
+              placeholder={t("enterNewValue")}
               value={draft.storage.secret_access_key ?? ""}
               onChange={(v) => patchDraft("storage", "secret_access_key", v)}
             />
             <TextField
-              label="Bucket"
+              label={t("storage.bucket")}
               value={draft.storage.bucket ?? strField(storage, "bucket")}
               onChange={(v) => patchDraft("storage", "bucket", v)}
             />
             <TextField
-              label="Public URL"
+              label={t("storage.publicUrl")}
               value={draft.storage.public_url ?? strField(storage, "public_url")}
               onChange={(v) => patchDraft("storage", "public_url", v)}
             />
@@ -365,7 +413,7 @@ export default function IntegrationsPage() {
 
           {settings && (
             <p className="text-xs text-[var(--brand-text-muted)] lg:col-span-2">
-              Last updated {new Date(settings.updated_at).toLocaleString()}
+              {t("lastUpdated", { date: new Date(settings.updated_at).toLocaleString() })}
             </p>
           )}
         </div>

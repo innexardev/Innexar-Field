@@ -38,6 +38,8 @@
     "workspace": "Workspace",
     "core": "Core",
     "dashboard": "Dashboard",
+    "profile": "Profile",
+    "settings": "Settings",
     "signOut": "Sign out",
     "openNavigation": "Open navigation",
     "closeNavigation": "Close navigation",
@@ -154,6 +156,295 @@
     "invoicesDesc": "Bill and get paid",
     "mobilePwa": "Mobile PWA",
     "mobilePwaDesc": "Field crew app"
+  },
+  "help": {
+    "sidebarLink": "Help",
+    "nav": {
+      "label": "Help navigation",
+      "hub": "Overview",
+      "faq": "FAQ",
+      "manual": "System manual",
+      "support": "Support"
+    },
+    "hub": {
+      "title": "Help center",
+      "subtitle": "Answers, guides, and support for your Innexar Field workspace.",
+      "open": "Open",
+      "cards": {
+        "faq": {
+          "title": "FAQ",
+          "description": "Quick answers about billing, integrations, CRM, mobile, and the customer portal."
+        },
+        "manual": {
+          "title": "System manual",
+          "description": "Step-by-step guides for daily workflows across your workspace."
+        },
+        "support": {
+          "title": "Support",
+          "description": "Contact our team or submit a ticket and track responses."
+        }
+      },
+      "quickStart": {
+        "title": "New to Innexar Field?",
+        "body": "Start with workspace setup, modules, and your first customer record.",
+        "link": "Read getting started guide"
+      }
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "subtitle": "Browse by topic or open Support to reach our team.",
+      "categories": {
+        "billing": {
+          "title": "Billing & subscription",
+          "items": {
+            "subscription": {
+              "q": "How do I manage my SaaS subscription?",
+              "a": "Open Settings → Billing or the Billing page from your dashboard. You can update your payment method, view invoices, and change plans through Stripe Checkout."
+            },
+            "paymentMethods": {
+              "q": "Which payment methods are accepted for my workspace plan?",
+              "a": "Innexar Field uses Stripe for SaaS billing. Major credit and debit cards are supported; Apple Pay appears in Checkout when enabled in your Stripe Dashboard."
+            },
+            "saasInvoices": {
+              "q": "Where do I find invoices for my Innexar Field subscription?",
+              "a": "Subscription invoices are available on the Billing page and emailed to your workspace owner. Customer invoices you send to clients are separate under Invoices."
+            }
+          }
+        },
+        "integrations": {
+          "title": "Integrations",
+          "items": {
+            "connectStripe": {
+              "q": "How do I connect Stripe for customer payments?",
+              "a": "Go to Settings → Integrations and click Connect Stripe. Complete Stripe Connect onboarding to accept card payments and receive payouts."
+            },
+            "quickbooksSync": {
+              "q": "Can I sync with QuickBooks Online?",
+              "a": "Yes. After your platform operator enables QuickBooks, connect from Settings → Integrations. Export invoices once your QuickBooks company is linked."
+            },
+            "emailDelivery": {
+              "q": "Why are emails not sending?",
+              "a": "Outbound email requires SMTP configured by your platform operator. Without SMTP, messages are logged only in development. See the integrations manual for details."
+            }
+          }
+        },
+        "crm": {
+          "title": "CRM & customers",
+          "items": {
+            "addCustomer": {
+              "q": "How do I add a new customer?",
+              "a": "Open Customers → New customer. Enter contact details, billing preferences, and optional properties for service locations."
+            },
+            "properties": {
+              "q": "What are properties on a customer record?",
+              "a": "Properties are service locations tied to a customer. They power estimates, job scheduling, and portal access per site."
+            },
+            "pipeline": {
+              "q": "How does the sales pipeline work?",
+              "a": "Estimates move through draft, sent, accepted, or declined. Accepted estimates can convert to jobs without re-entering scope or pricing."
+            }
+          }
+        },
+        "fieldApp": {
+          "title": "Field app (mobile PWA)",
+          "items": {
+            "mobileAccess": {
+              "q": "How do field crews access the mobile app?",
+              "a": "Install the PWA from /m on a phone or tablet, or add it to the home screen. Crew members sign in with their workspace credentials."
+            },
+            "offlineSync": {
+              "q": "Does the mobile app work offline?",
+              "a": "Jobs and time entries cache locally. Sync when back online from the Sync page; conflicts follow last-write with server validation."
+            },
+            "timeTracking": {
+              "q": "How do techs clock in on a job?",
+              "a": "From Mobile → Time, select today's job and tap Clock in. Clock out when work is complete; hours feed payroll and job costing."
+            }
+          }
+        },
+        "portal": {
+          "title": "Customer portal",
+          "items": {
+            "customerLogin": {
+              "q": "How do customers sign in to the portal?",
+              "a": "Customers use magic-link email login at your portal URL with their company code. No password is required for standard portal access."
+            },
+            "portalInvoices": {
+              "q": "What can customers see in the portal?",
+              "a": "Depending on your setup, customers can view invoices, payments, documents, bookings, and submit support requests."
+            },
+            "portalSupport": {
+              "q": "How do portal support requests work?",
+              "a": "Customers submit requests from Portal → Support. Your team receives them as threads under Portal → Messages and can respond by email."
+            }
+          }
+        }
+      }
+    },
+    "manual": {
+      "title": "System manual",
+      "subtitle": "Structured guides for core Innexar Field workflows.",
+      "backToIndex": "← All guides",
+      "readGuide": "Read guide",
+      "openIntegrations": "Open Settings → Integrations",
+      "articles": {
+        "getting-started": {
+          "title": "Getting started",
+          "summary": "Set up your workspace and activate the modules you need.",
+          "intro": "Complete onboarding, choose industry packs, and invite your team before day-to-day operations.",
+          "footer": "Need help choosing modules? Visit Settings → Modules or contact support.",
+          "steps": {
+            "step1": "Finish onboarding: company profile, industry packs, and module selection.",
+            "step2": "Subscribe on the Billing step to activate your workspace.",
+            "step3": "Configure Settings → Integrations for payments and accounting when ready.",
+            "step4": "Add your first customer, then create an estimate or job."
+          }
+        },
+        "customers": {
+          "title": "Customers",
+          "summary": "Manage client records, properties, and contact history.",
+          "intro": "Customers are the center of CRM, estimates, jobs, and invoicing in Innexar Field.",
+          "footer": "Customer portal access is configured per customer from their record.",
+          "steps": {
+            "step1": "Create a customer with legal name, email, and billing terms.",
+            "step2": "Add properties for each service location with address and access notes.",
+            "step3": "Link estimates and jobs to the correct property for accurate dispatch.",
+            "step4": "Enable portal access when the customer should self-serve invoices and bookings."
+          }
+        },
+        "estimates": {
+          "title": "Estimates",
+          "summary": "Build quotes, send proposals, and convert wins to jobs.",
+          "intro": "Estimates pull from your price book and support room-based or flat pricing models.",
+          "footer": "Accepted estimates can generate jobs without duplicate data entry.",
+          "steps": {
+            "step1": "Create an estimate from Customers or Estimates → New.",
+            "step2": "Add line items from the price book or custom lines.",
+            "step3": "Send the proposal link for e-signature or email delivery.",
+            "step4": "Track status: draft, sent, accepted, or declined.",
+            "step5": "Convert accepted estimates to jobs with one click."
+          }
+        },
+        "dispatch": {
+          "title": "Dispatch & scheduling",
+          "summary": "Schedule crews, assign jobs, and monitor the board.",
+          "intro": "Dispatch connects jobs, crews, and calendars for field operations.",
+          "footer": "Mobile crews see assigned jobs under /m after dispatch.",
+          "steps": {
+            "step1": "Open the dispatcher board or Jobs calendar view.",
+            "step2": "Assign crews and time windows to scheduled jobs.",
+            "step3": "Notify techs via mobile; they confirm from the field app.",
+            "step4": "Reschedule or reassign from the board when plans change."
+          }
+        },
+        "payroll": {
+          "title": "Payroll",
+          "summary": "Review time entries and run payroll periods.",
+          "intro": "Payroll aggregates approved time from jobs and mobile clock-ins.",
+          "footer": "Export payroll data to your accounting integration when configured.",
+          "steps": {
+            "step1": "Ensure techs clock in and out on jobs from Mobile → Time.",
+            "step2": "Review and approve time entries for the pay period.",
+            "step3": "Run payroll preview to validate hours and rates.",
+            "step4": "Export or sync to accounting per your workspace setup."
+          }
+        },
+        "portal": {
+          "title": "Customer portal",
+          "summary": "Give customers self-service access to invoices and support.",
+          "intro": "The portal uses magic-link login and respects tenant branding.",
+          "footer": "Portal URLs use your workspace company code for customer sign-in.",
+          "steps": {
+            "step1": "Enable portal access on eligible customer records.",
+            "step2": "Share the portal URL and company code with customers.",
+            "step3": "Customers sign in via email magic link — no password required.",
+            "step4": "Monitor portal support requests under Portal → Messages."
+          }
+        },
+        "admin": {
+          "title": "Workspace admin",
+          "summary": "Users, modules, billing, and workspace settings.",
+          "intro": "Owners and admins manage the tenant from Settings and Billing.",
+          "footer": "Platform-wide credentials are managed by your Innexar operator in Admin.",
+          "steps": {
+            "step1": "Manage modules under Settings → Modules after onboarding.",
+            "step2": "Invite users and assign roles from Settings → Users.",
+            "step3": "Configure SaaS billing and payment method on the Billing page.",
+            "step4": "Connect integrations when your operator has saved platform credentials."
+          }
+        },
+        "integrations": {
+          "title": "Integrations",
+          "summary": "Stripe Connect, QuickBooks, Avalara, and email delivery.",
+          "intro": "Platform operators configure API credentials in Admin; workspace admins connect tenant accounts here.",
+          "footer": "Need platform credential changes? Contact your Innexar Field operator.",
+          "steps": {
+            "step1": "Open Settings → Integrations to view connection status.",
+            "step2": "Connect Stripe or QuickBooks with OAuth flows on each card.",
+            "step3": "Verify tax preview and test email templates when live credentials exist.",
+            "step4": "Use this manual for detailed steps per integration below."
+          },
+          "sections": {
+            "quickbooks": {
+              "title": "QuickBooks Online",
+              "summary": "Sync customers, invoices, and payments with QuickBooks.",
+              "steps": {
+                "step1": "Platform: enable QuickBooks and store Intuit OAuth credentials in Admin.",
+                "step2": "Tenant: click Connect QuickBooks and sign in with Intuit.",
+                "step3": "Select the QuickBooks company to link; OAuth returns automatically.",
+                "step4": "Export invoices once the realm ID shows as connected.",
+                "step5": "Disconnect before linking a different QuickBooks company."
+              }
+            },
+            "avalara": {
+              "title": "Avalara AvaTax",
+              "summary": "Automated US sales tax on quotes and invoices.",
+              "steps": {
+                "step1": "Platform: save Avalara Account ID and License key in Admin.",
+                "step2": "Development may use mock tax rates when live credentials are absent.",
+                "step3": "Tenant: use Preview tax on the Integrations card to validate rates."
+              }
+            },
+            "smtp": {
+              "title": "Email (SMTP)",
+              "summary": "Outbound email for invoices, reminders, and magic links.",
+              "steps": {
+                "step1": "Platform: enable SMTP in Admin with host, port, and credentials.",
+                "step2": "Without SMTP, email is log-only — useful for local development.",
+                "step3": "Tenant: send a test from Settings → Email templates after SMTP is live."
+              }
+            }
+          }
+        }
+      }
+    },
+    "support": {
+      "title": "Support",
+      "subtitle": "Reach the Innexar Field team or track your open requests.",
+      "contactTitle": "Contact us",
+      "contactHint": "Prefer email? We respond to all workspace support requests.",
+      "emailLabel": "Support email",
+      "phoneLabel": "Phone",
+      "responseTime": "Typical response within one business day.",
+      "formTitle": "Submit a ticket",
+      "formHint": "Describe your issue and we will follow up by email.",
+      "subject": "Subject",
+      "message": "Message",
+      "submit": "Send ticket",
+      "submitting": "Sending…",
+      "submitted": "Ticket received. Reference #{id}. We will respond shortly.",
+      "ticketsTitle": "Your tickets",
+      "ticketsHint": "Requests submitted from this workspace appear here.",
+      "loadingTickets": "Loading tickets…",
+      "emptyTickets": "No support tickets yet. Submit a request above to get help.",
+      "ticketMeta": "{date} · #{id}",
+      "status": {
+        "open": "Open",
+        "in_progress": "In progress",
+        "resolved": "Resolved",
+        "closed": "Closed"
+      }
+    }
   },
   "marketing": {
     "features": "Features",
@@ -278,6 +569,59 @@
         "colIndustry": "Industry",
         "colStatus": "Status",
         "colCreated": "Created"
+      },
+      "integrations": {
+        "title": "Credentials & integrations",
+        "subtitle": "Platform API keys stored encrypted in the database. Environment variables override DB values.",
+        "saveChanges": "Save changes",
+        "loading": "Loading integration settings…",
+        "lastUpdated": "Last updated {date}",
+        "helpIntro": "Configure provider credentials here before tenants connect Stripe Connect or QuickBooks from Settings → Integrations. Secrets are encrypted at rest; leave a field blank to keep the existing value.",
+        "notConfigured": "Not configured",
+        "configuredHint": "Configured ••••{last4}",
+        "statusDisabled": "Disabled",
+        "statusReady": "Ready to connect",
+        "statusNeedsCredentials": "Needs credentials",
+        "enabled": "Enabled",
+        "enterNewValue": "Enter new value to replace",
+        "stripe": {
+          "title": "Stripe",
+          "help": "Required for SaaS billing and Stripe Connect onboarding. Use live or test keys from the Stripe Dashboard. Webhook secret verifies billing events.",
+          "secretKey": "Secret key",
+          "publishableKey": "Publishable key",
+          "webhookSecret": "Webhook secret"
+        },
+        "quickbooks": {
+          "title": "QuickBooks",
+          "help": "Create an Intuit Developer app with OAuth 2.0 redirect URI pointing to your API callback. Tenants connect their own QuickBooks company after these platform credentials are saved.",
+          "clientId": "Client ID",
+          "clientSecret": "Client secret"
+        },
+        "avalara": {
+          "title": "Avalara",
+          "help": "Optional live sales tax. When disabled or without credentials, tenants may see mock rates in development (debug.mock_avalara).",
+          "accountId": "Account ID",
+          "licenseKey": "License key"
+        },
+        "smtp": {
+          "title": "Email / SMTP",
+          "help": "Optional — enables outbound email for magic links, invoices, and template test sends. When disabled, messages are logged only.",
+          "optionalHint": "Optional — for magic links and transactional email.",
+          "host": "Host",
+          "port": "Port",
+          "username": "Username",
+          "password": "Password",
+          "fromEmail": "From email"
+        },
+        "storage": {
+          "title": "R2 / S3 storage",
+          "help": "Object storage for uploads, photos, and documents. Configure bucket and public URL for signed or CDN-backed assets.",
+          "accountId": "Account ID",
+          "accessKeyId": "Access key ID",
+          "secretAccessKey": "Secret access key",
+          "bucket": "Bucket",
+          "publicUrl": "Public URL"
+        }
       }
     }
   },
@@ -583,18 +927,6 @@
       "customerOptional": "Customer (optional)",
       "noCustomerSelected": "No customer selected",
       "customerHint": "Customers come from CRM — add one under Customers if needed.",
-      "propertyOptional": "Service property (optional)",
-      "noPropertySelected": "No property selected",
-      "propertyHint": "Link a customer property for bed/bath tier pricing when you calculate.",
-      "propertySelectCustomerFirst": "Select a customer to choose a property.",
-      "loadingProperties": "Loading properties…",
-      "noPropertiesForCustomer": "This customer has no properties yet.",
-      "addPropertyLink": "Add a property",
-      "noAddress": "No address on file",
-      "propertyBedsBaths": "{beds, plural, =0 {} other {# bed · }}{baths, plural, =0 {} one {# bath} other {# baths}}",
-      "roomTierHint": "{label}: {beds} bed, {baths} bath — tier pricing applies when you calculate.",
-      "roomTierMissingHint": "This property is missing bedroom and bathroom counts. Add them under Customer → Properties for automatic tier pricing.",
-      "roomTiersApplied": "{count, plural, one {# tier line updated} other {# tier lines updated}}",
       "linesDescription": "Add services from your price book or enter custom lines.",
       "reviewTitle": "Review & create",
       "reviewDescription": "Confirm details, then save as draft or send the quote immediately.",
@@ -660,19 +992,10 @@
       "members": "Members",
       "skills": "Skills",
       "namePlaceholder": "Alpha Team",
-      "leadPlaceholder": "Jordan Lee",
       "skillsPlaceholder": "cleaning, HVAC",
-      "createCrew": "Create crew",
       "addCrew": "Add crew",
       "emptyTitle": "No crews yet",
-      "emptyDescription": "Create your first crew to assign jobs and routes.",
-      "manageMembers": "Manage members",
-      "hideMembers": "Hide members",
-      "addMember": "Add employee",
-      "selectEmployee": "Select employee",
-      "noMembers": "No employees assigned to this crew yet.",
-      "memberCount": "{count, plural, one {# member} other {# members}}",
-      "leadLabel": "Lead: {name}"
+      "emptyDescription": "Create your first crew to assign jobs and routes."
     },
     "routes": {
       "title": "Routes",
@@ -769,7 +1092,19 @@
       "title": "Contracts",
       "subtitle": "Service agreements and recurring maintenance contracts.",
       "emptyTitle": "No contracts",
-      "emptyDescription": "Create service agreements for recurring customers."
+      "emptyDescription": "Create service agreements for recurring customers.",
+      "newContract": "New contract",
+      "newContractDescription": "Start from a template or create a custom service agreement.",
+      "startFromTemplate": "Start from template",
+      "noTemplate": "No template — blank agreement",
+      "addContract": "Add contract",
+      "termsLabel": "Terms and conditions",
+      "termsHint": "Review with legal counsel before sending to customers. Not legal advice.",
+      "templates": {
+        "residentialCleaning": "Residential cleaning agreement",
+        "commercialCleaning": "Commercial cleaning contract",
+        "fieldServiceMaintenance": "Field service & maintenance agreement"
+      }
     },
     "changeOrders": {
       "title": "Change Orders",
@@ -965,61 +1300,6 @@
         "emptyTitle": "No invoices yet",
         "emptyDescription": "When your provider sends an invoice, it will appear here.",
         "due": "Due {date}"
-      },
-      "shell": {
-        "signOut": "Sign out",
-        "navLabel": "Portal navigation",
-        "nav": {
-          "bookings": "Bookings",
-          "invoices": "Invoices",
-          "payments": "Payments",
-          "documents": "Documents",
-          "messages": "Messages",
-          "support": "Support",
-          "profile": "Profile"
-        }
-      },
-      "bookings": {
-        "title": "Your bookings",
-        "subtitle": "Upcoming jobs and appointments for {name}",
-        "loadingSubtitle": "Loading your account…",
-        "emptyTitle": "No upcoming bookings",
-        "emptyDescription": "Scheduled jobs linked to your account will appear here.",
-        "scheduledAt": "Scheduled {date}",
-        "unscheduled": "Date to be confirmed",
-        "readOnlyHint": "Contact your service provider to reschedule or cancel.",
-        "status": {
-          "scheduled": "Scheduled",
-          "in_progress": "In progress",
-          "completed": "Completed",
-          "cancelled": "Cancelled"
-        }
-      },
-      "messages": {
-        "title": "Messages",
-        "subtitle": "Support threads for {name}",
-        "loadingSubtitle": "Loading your account…",
-        "emptyTitle": "No messages yet",
-        "emptyDescription": "Submit a support request and your conversation history will appear here.",
-        "updatedAt": "Updated {date}",
-        "status": {
-          "open": "Open",
-          "in_progress": "In progress",
-          "resolved": "Resolved",
-          "closed": "Closed"
-        }
-      },
-      "support": {
-        "title": "Support",
-        "subtitle": "Submit a help request to {company}",
-        "loadingSubtitle": "Loading your account…",
-        "formTitle": "Contact support",
-        "formHint": "Describe your issue and we will follow up by email.",
-        "subject": "Subject",
-        "message": "Message",
-        "submit": "Send request",
-        "submitting": "Sending…",
-        "submitted": "Request received. Reference #{id}. We will respond shortly."
       }
     },
     "priceBookImport": {

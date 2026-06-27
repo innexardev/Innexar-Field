@@ -12,6 +12,8 @@ export function useShellLabels(): ShellLabels {
     workspace: t("workspace"),
     core: t("core"),
     dashboard: t("dashboard"),
+    profile: t("profile"),
+    settings: t("settings"),
     signOut: t("signOut"),
     openNavigation: t("openNavigation"),
     closeNavigation: t("closeNavigation"),

@@ -5,7 +5,7 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  staticPageGenerationTimeout: 180,
+  staticPageGenerationTimeout: 600,
   transpilePackages: ["@fieldforge/config", "@fieldforge/i18n", "@fieldforge/ui"],
   webpack: (config) => {
     config.resolve.extensionAlias = {

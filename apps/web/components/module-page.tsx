@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { LanguageSwitcher } from "@fieldforge/i18n";
 import { Shell } from "@fieldforge/ui";
+import { AppSidebarFooter } from "@/components/app-sidebar-footer";
 import { SyncBadge } from "@/components/sync-badge";
 import { useNavGroupLabel, useShellLabels, useTranslatedNav } from "@/lib/i18n/shell-labels";
 import { useAppPage } from "@/lib/use-app-page";
@@ -24,17 +25,21 @@ export function ModulePage({
   const translatedNav = useTranslatedNav(nav);
   if (!user) return null;
 
+  const displayName = user.email.split("@")[0];
+
   return (
     <Shell
       brand={brand.name}
       wordmarkSrc={brand.logo.wordmark}
       nav={translatedNav}
       userEmail={user.email}
+      userName={displayName}
+      settingsHref="/settings"
       currentPath={pathname}
       onLogout={onLogout}
       labels={shellLabels}
       groupLabel={groupLabel}
-      sidebarFooter={<div className="mb-2 px-1"><LanguageSwitcher variant="sidebar" /></div>}
+      sidebarFooter={<AppSidebarFooter />}
       headerActions={
         <>
           <LanguageSwitcher variant="compact" />

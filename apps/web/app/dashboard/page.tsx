@@ -6,11 +6,12 @@ import { useTranslations } from "next-intl";
 import type { ReportDataSource, ReportKpi } from "@fieldforge/sdk";
 import { LanguageSwitcher } from "@fieldforge/i18n";
 import { useBrand, useConfig } from "@/components/brand-provider";
+import { AppSidebarFooter } from "@/components/app-sidebar-footer";
 import { ReportSourceBadge } from "@/components/report-source-badge";
+import { SyncBadge } from "@/components/sync-badge";
 import { Shell, Card, CardContent, CardHeader, CardTitle, NavIcon } from "@fieldforge/ui";
 import { useAuth } from "@/lib/auth-context";
 import { GuidedTour, type TourStep } from "@/components/guided-tour";
-import { SyncBadge } from "@/components/sync-badge";
 import { useNavGroupLabel, useShellLabels, useTranslatedNav } from "@/lib/i18n/shell-labels";
 
 const QUICK_LINK_KEYS = [
@@ -105,6 +106,8 @@ export default function DashboardPage() {
       wordmarkSrc={brand.logo.wordmark}
       nav={safeNav}
       userEmail={user.email}
+      userName={displayName}
+      settingsHref="/settings"
       currentPath={pathname}
       onLogout={() => {
         logout();
@@ -112,11 +115,7 @@ export default function DashboardPage() {
       }}
       labels={shellLabels}
       groupLabel={groupLabel}
-      sidebarFooter={
-        <div className="mb-2 px-1">
-          <LanguageSwitcher variant="sidebar" />
-        </div>
-      }
+      sidebarFooter={<AppSidebarFooter />}
       headerActions={
         <>
           <LanguageSwitcher variant="compact" />

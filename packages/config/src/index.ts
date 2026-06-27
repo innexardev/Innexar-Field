@@ -1,4 +1,4 @@
-export type { AppConfig, BrandConfig, BrandColors, DebugConfig, IntegrationConfig, IntegrationConnectionStatus, PricingConfig, PricingPlan } from "./types.js";
+export type { AppConfig, BrandConfig, BrandColors, ContactConfig, DebugConfig, IntegrationConfig, IntegrationConnectionStatus, PricingConfig, PricingPlan } from "./types.js";
 export {
   brandAppId,
   brandCssVars,

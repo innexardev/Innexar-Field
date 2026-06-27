@@ -180,7 +180,7 @@ Registered in `packages/core/platform/migrations.go`:
 | **Contract templates** | **partial** | 3 US templates seeded (`packages/plugins/crm/templates.go`); UI at `/contracts` with template picker |
 | **PDF invoices** | **partial** | Print preview + **server PDF** render; email attachment flow TBD |
 | **Room pricing** | **partial** | Property beds/baths + tiers + calculate; **property picker** in estimate builder |
-| **Integrations** | **partial** | Stripe production key resolver; QB still mock without OAuth; SaaS billing webhooks implemented |
+| **Integrations** | **partial** | Stripe production key resolver; QB still mock without OAuth; SaaS billing webhooks implemented — roadmap: [integrations-roadmap.md](./integrations-roadmap.md) |
 | **Portal cliente** | **done** | Full portal v1 including bookings, messages, support; Stripe pay with production key path; public quote at `/p/[token]` |
 | **Admin SaaS** | **partial** | `apps/admin` with full platform console; polish and live metrics remain |
 | **Billing post-signup** | **done** | Onboarding billing step + dunning page + subscription guard |
@@ -228,9 +228,11 @@ Applied in `erp-field-services-plan.canvas.tsx` (2026-06-26, updated gap review)
 
 ### Wave 4 — Integrations & platform depth
 
+> Priorização Tier 1–3: [integrations-roadmap.md](./integrations-roadmap.md) (Twilio, Google Calendar, Zapier, Mailchimp → P1).
+
 13. QuickBooks OAuth production + sync
 14. ~~Employee ↔ user link~~ → crew membership FKs remain
-15. ~~Communications email/templates~~ → SMS/Twilio when needed
+15. ~~Communications email/templates~~ → SMS/Twilio when needed (P1)
 16. ~~Super-admin tenant management~~ → `apps/admin` shipped; polish remains
 17. Capacitor shell + native signature/camera (camera helper started)
 18. SDLC Figma design system

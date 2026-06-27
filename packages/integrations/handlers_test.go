@@ -106,6 +106,58 @@ func TestAvalaraTaxCalculateMock(t *testing.T) {
 	assert.True(t, out.Mock)
 }
 
+func TestQuickBooksConnectRedirectMock(t *testing.T) {
+	app := testApp(t)
+	req := httptest.NewRequest(http.MethodGet, "/integrations/quickbooks/connect?return_path=http://localhost:3000/settings/integrations?quickbooks=callback", nil)
+	resp, err := app.Test(req, -1)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, 302, resp.StatusCode)
+	location := resp.Header.Get("Location")
+	assert.Contains(t, location, "mock_qb_code")
+}
+
+func TestQuickBooksExportInvoiceMock(t *testing.T) {
+	app := testApp(t)
+
+	startReq := httptest.NewRequest(http.MethodGet, "/integrations/quickbooks/oauth/start?redirect_uri=http://localhost:3000/callback", nil)
+	startResp, err := app.Test(startReq)
+	require.NoError(t, err)
+	defer startResp.Body.Close()
+	startBody, _ := io.ReadAll(startResp.Body)
+	var start struct {
+		State string `json:"state"`
+	}
+	require.NoError(t, json.Unmarshal(startBody, &start))
+
+	connectPayload := map[string]string{"code": "mock_qb_code", "state": start.State, "realm_id": "mock_realm_test"}
+	b, _ := json.Marshal(connectPayload)
+	connectReq := httptest.NewRequest(http.MethodPost, "/integrations/quickbooks/oauth/callback", bytes.NewReader(b))
+	connectReq.Header.Set("Content-Type", "application/json")
+	connectResp, err := app.Test(connectReq)
+	require.NoError(t, err)
+	defer connectResp.Body.Close()
+	assert.Equal(t, 200, connectResp.StatusCode)
+
+	exportReq := httptest.NewRequest(http.MethodPost, "/integrations/quickbooks/invoices/00000000-0000-4000-8000-000000000099/export", nil)
+	exportResp, err := app.Test(exportReq)
+	require.NoError(t, err)
+	defer exportResp.Body.Close()
+	assert.Equal(t, 200, exportResp.StatusCode)
+
+	body, _ := io.ReadAll(exportResp.Body)
+	var out struct {
+		InvoiceID  string `json:"invoice_id"`
+		ExternalID string `json:"external_id"`
+		Status     string `json:"status"`
+		Mock       bool   `json:"mock"`
+	}
+	require.NoError(t, json.Unmarshal(body, &out))
+	assert.Equal(t, "exported", out.Status)
+	assert.True(t, out.Mock)
+	assert.Contains(t, out.ExternalID, "mock_qb_inv_")
+}
+
 func TestQuickBooksOAuthStartMock(t *testing.T) {
 	app := testApp(t)
 	req := httptest.NewRequest(http.MethodGet, "/integrations/quickbooks/oauth/start?redirect_uri=http://localhost:3000/callback", nil)

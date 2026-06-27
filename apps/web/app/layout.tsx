@@ -32,7 +32,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body style={{ fontFamily: config.brand.typography.font_sans }} className="antialiased">
         <style dangerouslySetInnerHTML={{ __html: `:root { ${cssVars} }` }} />
         <NextIntlClientProvider messages={messages}>
-          <AppProviders brand={config.brand} pricing={config.pricing}>
+          <AppProviders brand={config.brand} pricing={config.pricing} contact={config.contact}>
             <PwaRegister />
             {children}
           </AppProviders>
