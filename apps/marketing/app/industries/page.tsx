@@ -13,6 +13,7 @@ const config = loadConfig();
 export const metadata: Metadata = pageMetadata(
   "Industries",
   `${config.brand.name} serves house cleaning, construction, and field service companies across the United States with purpose-built industry packs.`,
+  { path: "/industries" },
 );
 
 export default function IndustriesHubPage() {

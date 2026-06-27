@@ -9,9 +9,9 @@ import { pageMetadata } from "../lib/metadata";
 export async function generateMetadata(): Promise<Metadata> {
   const content = await getSecurityPageContent();
   if (!content) {
-    return pageMetadata("Security", "Security practices for Innexar Field.");
+    return pageMetadata("Security", "Security practices for Innexar Field.", { path: "/security" });
   }
-  return pageMetadata("Security", content.metaDescription);
+  return pageMetadata("Security", content.metaDescription, { path: "/security" });
 }
 
 export default async function SecurityPage() {

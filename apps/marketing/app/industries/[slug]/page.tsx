@@ -5,8 +5,10 @@ import { loadConfig } from "@fieldforge/config";
 import { Badge, FeatureCard, Section } from "@fieldforge/ui";
 import { MarketingShell } from "../../components/marketing-shell";
 import { PageHero } from "../../components/page-hero";
+import { JsonLd, buildBreadcrumbJsonLd } from "../../components/json-ld";
 import { pageMetadata } from "../../lib/metadata";
 import { APP_URL } from "../../lib/constants";
+import { getMarketingBaseUrl } from "../../lib/site-url";
 import { CaseStudyCard } from "../../components/case-study-card";
 import { getCaseStudiesForIndustry } from "../../lib/marketing-content";
 import { getIndustryBySlug, INDUSTRY_VERTICALS } from "../../lib/industries";
@@ -26,6 +28,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return pageMetadata(
     vertical.name,
     `${config.brand.name} for ${vertical.name.toLowerCase()} — ${vertical.description}`,
+    { path: `/industries/${slug}` },
   );
 }
 
@@ -36,9 +39,17 @@ export default async function IndustryVerticalPage({ params }: PageProps) {
 
   const config = loadConfig();
   const caseStudies = await getCaseStudiesForIndustry(slug);
+  const baseUrl = getMarketingBaseUrl();
 
   return (
     <MarketingShell>
+      <JsonLd
+        data={buildBreadcrumbJsonLd([
+          { name: "Home", url: baseUrl },
+          { name: "Industries", url: `${baseUrl}/industries` },
+          { name: vertical.name, url: `${baseUrl}/industries/${slug}` },
+        ])}
+      />
       <PageHero title={vertical.headline} subtitle={vertical.description}>
         <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link

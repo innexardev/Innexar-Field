@@ -17,9 +17,9 @@ function formatChangelogDate(isoDate: string): string {
 export async function generateMetadata(): Promise<Metadata> {
   const content = await getChangelogPageContent();
   if (!content) {
-    return pageMetadata("Changelog", "Product updates for Innexar Field.");
+    return pageMetadata("Changelog", "Product updates for Innexar Field.", { path: "/changelog" });
   }
-  return pageMetadata("Changelog", content.metaDescription);
+  return pageMetadata("Changelog", content.metaDescription, { path: "/changelog" });
 }
 
 export default async function ChangelogPage() {

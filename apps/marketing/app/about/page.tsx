@@ -14,9 +14,9 @@ const VALUE_ICONS = [IconUsers, IconChart, IconShield] as const;
 export async function generateMetadata(): Promise<Metadata> {
   const content = await getAboutPageContent();
   if (!content) {
-    return pageMetadata("About", "Learn about Innexar Field.");
+    return pageMetadata("About", "Learn about Innexar Field.", { path: "/about" });
   }
-  return pageMetadata("About", content.metaDescription);
+  return pageMetadata("About", content.metaDescription, { path: "/about" });
 }
 
 export default async function AboutPage() {

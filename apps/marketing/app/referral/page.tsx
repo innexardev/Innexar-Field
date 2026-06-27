@@ -11,9 +11,9 @@ import { pageMetadata } from "../lib/metadata";
 export async function generateMetadata(): Promise<Metadata> {
   const content = await getReferralPageContent();
   if (!content) {
-    return pageMetadata("Referral Program", "Refer contractors to Innexar Field.");
+    return pageMetadata("Referral Program", "Refer contractors to Innexar Field.", { path: "/referral" });
   }
-  return pageMetadata("Referral Program", content.metaDescription);
+  return pageMetadata("Referral Program", content.metaDescription, { path: "/referral" });
 }
 
 export default async function ReferralPage() {

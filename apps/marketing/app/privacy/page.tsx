@@ -9,6 +9,7 @@ const config = loadConfig();
 export const metadata: Metadata = pageMetadata(
   "Privacy Policy",
   `Privacy Policy for ${config.brand.name} — how ${config.brand.legal_name} collects, uses, and protects your data.`,
+  { path: "/privacy" },
 );
 
 export default function PrivacyPage() {

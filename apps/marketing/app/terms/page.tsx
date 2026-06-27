@@ -9,6 +9,7 @@ const config = loadConfig();
 export const metadata: Metadata = pageMetadata(
   "Terms of Service",
   `Terms of Service for ${config.brand.name} — the agreement between you and ${config.brand.legal_name} for use of our platform.`,
+  { path: "/terms" },
 );
 
 export default function TermsPage() {

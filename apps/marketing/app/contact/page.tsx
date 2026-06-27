@@ -12,6 +12,7 @@ const config = loadConfig();
 export const metadata: Metadata = pageMetadata(
   "Contact",
   `Get in touch with ${config.brand.name}. Request a demo, ask about enterprise pricing, or reach our support team.`,
+  { path: "/contact" },
 );
 
 export default function ContactPage() {

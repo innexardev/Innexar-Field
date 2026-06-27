@@ -3,13 +3,14 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { loadConfig, brandCssVars, brandMetadataIcons } from "@fieldforge/config";
 import { AttributionCapture } from "./components/attribution-capture";
+import { GlobalSeoSchemas } from "./components/seo-schemas";
+import { rootMetadata } from "./lib/metadata";
 import "./globals.css";
 
 const config = loadConfig();
 
 export const metadata: Metadata = {
-  title: `${config.brand.name} — ${config.brand.tagline}`,
-  description: config.brand.description,
+  ...rootMetadata(),
   icons: brandMetadataIcons(config.brand),
 };
 
@@ -24,6 +25,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={locale} className="scroll-smooth">
       <body style={{ fontFamily: config.brand.typography.font_sans }} className="antialiased">
+        <GlobalSeoSchemas />
         <style dangerouslySetInnerHTML={{ __html: `:root { ${style} }` }} />
         <NextIntlClientProvider messages={messages}>
           <AttributionCapture />

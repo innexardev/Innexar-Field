@@ -14,6 +14,7 @@ const config = loadConfig();
 export const metadata: Metadata = pageMetadata(
   "Pricing",
   `Transparent SaaS pricing for ${config.brand.name}. Plans from $${config.pricing.plans.starter.price_monthly}/mo with a ${config.pricing.trial_days}-day free trial. No hidden fees.`,
+  { path: "/pricing" },
 );
 
 const BILLING_FAQ = [

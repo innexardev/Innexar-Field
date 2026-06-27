@@ -11,6 +11,7 @@ const config = loadConfig();
 export const metadata: Metadata = pageMetadata(
   "Blog",
   `Field operations insights for contractors — job costing, dispatch, recurring revenue, and growth strategies from the ${config.brand.name} team.`,
+  { path: "/blog" },
 );
 
 function formatDate(iso: string): string {

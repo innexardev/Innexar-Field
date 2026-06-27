@@ -13,6 +13,7 @@ const config = loadConfig();
 export const metadata: Metadata = pageMetadata(
   "Features",
   `Explore every module in ${config.brand.name} — CRM, estimating, dispatch, job costing, invoicing, and industry packs for cleaning, construction, and field services.`,
+  { path: "/features" },
 );
 
 export default function FeaturesPage() {

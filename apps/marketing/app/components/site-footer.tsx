@@ -3,6 +3,7 @@ import { loadConfig } from "@fieldforge/config";
 import { BrandLogo } from "@fieldforge/ui";
 import { APP_URL } from "../lib/constants";
 import { INDUSTRY_VERTICALS } from "../lib/industries";
+import { SOLUTION_PAGES } from "../lib/solutions";
 import { SignupLink } from "./signup-link";
 
 export function SiteFooter() {
@@ -11,7 +12,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-[var(--brand-border)] bg-[var(--brand-background-subtle)]">
       <div className="mx-auto max-w-6xl px-6 py-12">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
           <div>
             <BrandLogo
               src={config.brand.logo.wordmark}
@@ -29,6 +30,11 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/solutions" className="transition hover:text-[var(--brand-accent)]">
+                  Solutions
+                </Link>
+              </li>
+              <li>
                 <Link href="/pricing" className="transition hover:text-[var(--brand-accent)]">
                   Pricing
                 </Link>
@@ -43,6 +49,21 @@ export function SiteFooter() {
                   Free trial
                 </SignupLink>
               </li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-sm font-semibold">Solutions</p>
+            <ul className="mt-3 space-y-2 text-sm text-[var(--brand-text-secondary)]">
+              {SOLUTION_PAGES.map((solution) => (
+                <li key={solution.slug}>
+                  <Link
+                    href={`/solutions/${solution.slug}`}
+                    className="transition hover:text-[var(--brand-accent)]"
+                  >
+                    {solution.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
           <div>
