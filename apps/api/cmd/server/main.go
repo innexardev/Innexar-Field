@@ -31,10 +31,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func main() {
-	_ = godotenv.Load()
+const defaultCORSOrigins = "http://localhost:3000,http://localhost:3001,http://localhost:3002,http://127.0.0.1:3000,http://127.0.0.1:3001,http://127.0.0.1:3002,http://192.168.0.178:3000,http://192.168.0.178:3001,http://192.168.0.178:3002"
 
+func main() {
 	root := findRoot()
+	_ = godotenv.Load(filepath.Join(root, ".env"))
 	databaseURL := env("DATABASE_URL", "postgres://fieldforge:fieldforge@localhost:5432/fieldforge?sslmode=disable")
 
 	ctx := context.Background()
@@ -73,7 +74,7 @@ func main() {
 		Registry:   reg,
 		EventBus:   bus,
 		JWTSecret:  env("JWT_SECRET", "dev-change-me-in-production"),
-		CORSOrigin: env("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://localhost:3002,http://127.0.0.1:3000,http://127.0.0.1:3002,http://192.168.0.178:3002"),
+		CORSOrigin: env("CORS_ORIGINS", defaultCORSOrigins),
 	})
 	if err != nil {
 		log.Fatalf("server: %v", err)
@@ -88,6 +89,7 @@ func main() {
 	outbox := events.NewPoller(pool.Pool, pollerOpts...)
 	schedPlugin.RegisterOutboxHandlers(outbox)
 	invPlugin.RegisterOutboxHandlers(outbox)
+	commPlugin.RegisterOutboxHandlers(outbox)
 	srv.RegisterE2EOutboxPoll(outbox)
 	go outbox.Run(pollCtx)
 
