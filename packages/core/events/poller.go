@@ -80,6 +80,34 @@ func (p *Poller) RegisterHandler(eventType string, h Handler) {
 	p.handlers[eventType] = h
 }
 
+// RegisterHandlerChain runs the handler after any existing handler for the event type.
+func (p *Poller) RegisterHandlerChain(eventType string, h Handler) {
+	if h == nil {
+		return
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if existing, ok := p.handlers[eventType]; ok {
+		p.handlers[eventType] = chainHandlers(existing, h)
+		return
+	}
+	p.handlers[eventType] = h
+}
+
+func chainHandlers(first, second Handler) Handler {
+	return func(ctx context.Context, tenantID, eventType string, payload json.RawMessage) error {
+		if first != nil {
+			if err := first(ctx, tenantID, eventType, payload); err != nil {
+				return err
+			}
+		}
+		if second != nil {
+			return second(ctx, tenantID, eventType, payload)
+		}
+		return nil
+	}
+}
+
 // SetFallbackHandler handles event types without a dedicated handler.
 func (p *Poller) SetFallbackHandler(h Handler) {
 	p.mu.Lock()

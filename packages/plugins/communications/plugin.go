@@ -2,8 +2,10 @@ package communications
 
 import (
 	"github.com/fieldforge/fieldforge/packages/core/config"
+	"github.com/fieldforge/fieldforge/packages/core/events"
 	"github.com/fieldforge/fieldforge/packages/core/plugin"
 	"github.com/fieldforge/fieldforge/packages/core/platformsettings"
+	"github.com/fieldforge/fieldforge/packages/integrations"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -12,6 +14,7 @@ type Plugin struct {
 	pool     *pgxpool.Pool
 	settings *platformsettings.Store
 	cfg      *config.AppConfig
+	twilio   integrations.TwilioSender
 }
 
 func New(pool *pgxpool.Pool, settings *platformsettings.Store, cfg *config.AppConfig) *Plugin {
@@ -20,15 +23,10 @@ func New(pool *pgxpool.Pool, settings *platformsettings.Store, cfg *config.AppCo
 
 func (p *Plugin) Manifest() plugin.Manifest {
 	return plugin.Manifest{
-		ID:            "communications",
-		Name:          "Communications",
-		Version:       "1.0.0",
-		Dependencies:  []string{"crm"},
-		IndustryPacks: []string{"cleaning", "construction", "field-services"},
-		Permissions:   []string{"communications.read", "communications.write"},
-		Nav: []plugin.NavItem{
-			{Label: "Email templates", Path: "/settings/templates", Icon: "mail"},
-		},
+		ID: "communications", Name: "Communications", Version: "1.0.0",
+		Dependencies: []string{"crm"}, IndustryPacks: []string{"cleaning", "construction", "field-services"},
+		Permissions: []string{"communications.read", "communications.write"},
+		Nav:         []plugin.NavItem{{Label: "Email templates", Path: "/settings/templates", Icon: "mail"}},
 	}
 }
 
@@ -39,11 +37,23 @@ func (p *Plugin) RegisterRoutes(router fiber.Router, _ plugin.Deps) {
 	router.Patch("/templates/:id", p.updateTemplate)
 	router.Delete("/templates/:id", p.deleteTemplate)
 	router.Post("/templates/:id/test-send", p.sendTestTemplate)
+	router.Get("/sms/status", p.smsStatus)
+	router.Get("/sms/templates", p.listSMSTemplates)
+	router.Post("/sms/templates", p.createSMSTemplate)
+	router.Get("/sms/templates/:id", p.getSMSTemplate)
+	router.Patch("/sms/templates/:id", p.updateSMSTemplate)
+	router.Delete("/sms/templates/:id", p.deleteSMSTemplate)
+	router.Post("/sms/templates/:id/test-send", p.sendTestSMSTemplate)
+}
+
+func (p *Plugin) RegisterOutboxHandlers(poller *events.Poller) {
+	poller.RegisterHandler(eventJobScheduled, p.handleJobScheduled)
 }
 
 func (p *Plugin) Migrations() []plugin.Migration {
 	return []plugin.Migration{
 		{Version: 200, Name: "communications_email_templates", UpSQL: emailTemplatesSQL},
+		{Version: 201, Name: "communications_sms_templates", UpSQL: smsTemplatesSQL},
 	}
 }
 

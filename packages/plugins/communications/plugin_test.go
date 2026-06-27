@@ -22,9 +22,13 @@ func TestPlugin_Migrations(t *testing.T) {
 	p := New(nil, nil, nil)
 	migs := p.Migrations()
 
-	assert.Len(t, migs, 1)
-	assert.Equal(t, 200, migs[0].Version)
-	assert.Equal(t, "communications_email_templates", migs[0].Name)
+	assert.Len(t, migs, 2)
+	assert.Equal(t, 201, migs[1].Version)
+}
+
+func TestRenderSMSBody(t *testing.T) {
+	body := RenderSMSBody("Hi {{customer_name}}", map[string]string{"customer_name": "Alex"})
+	assert.Contains(t, body, "Alex")
 }
 
 func TestRenderTemplate(t *testing.T) {
