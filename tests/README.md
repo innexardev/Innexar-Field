@@ -71,3 +71,23 @@ PLAYWRIGHT_EXTERNAL=1 PLAYWRIGHT_API_URL=http://127.0.0.1:8081 npx playwright te
 ### Auth session seeding
 
 Helpers seed `ff_token` and onboarding state in `localStorage`, then navigate to `/dashboard` and **wait for `GET /auth/me` (200)** before asserting the page. That avoids a race where the auth provider has not hydrated `user` from the token yet.
+
+`loginViaAPI` also calls `POST /billing/mock-complete` so the subscription guard does not redirect unpaid signups away from the dashboard.
+
+### Launch-path smoke specs
+
+| Spec | Coverage |
+|------|----------|
+| `portal-login-invoices.spec.ts` | Portal magic-link login, invoice list, mock pay |
+| `billing-onboarding-redirect.spec.ts` | Subscription guard → `/onboarding/billing`, mock checkout |
+| `help-support-smoke.spec.ts` | Help hub navigation, support ticket submit |
+
+Portal tests use `debug.skip_email_send` (dev config) for `dev_token` / dev login links. Billing tests rely on `debug.mock_stripe` for mock checkout (`POST /billing/mock-complete` in helpers). Platform admin credentials resolve tenant slugs for portal login (`PLATFORM_ADMIN_EMAIL` / `PLATFORM_ADMIN_PASSWORD`).
+
+Run only the new specs:
+
+```bash
+npx playwright test tests/e2e/portal-login-invoices.spec.ts \
+  tests/e2e/billing-onboarding-redirect.spec.ts \
+  tests/e2e/help-support-smoke.spec.ts
+```

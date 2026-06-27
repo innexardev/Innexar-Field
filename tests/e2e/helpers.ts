@@ -202,6 +202,7 @@ export async function loginViaAPI(
   user: TestUser,
 ): Promise<void> {
   const token = await loginToken(request, user);
+  await activateBillingViaAPI(request, token);
   await completeOnboardingViaAPI(request, token);
   await verifyAuthToken(request, token);
   await seedBrowserAuthStorage(page, token, completedOnboardingState);
@@ -215,6 +216,7 @@ export async function seedAuthSession(
   user: TestUser,
 ): Promise<string> {
   const token = await loginToken(request, user);
+  await activateBillingViaAPI(request, token);
   await completeOnboardingViaAPI(request, token);
   await verifyAuthToken(request, token);
   await seedBrowserAuthStorage(page, token, completedOnboardingState);
@@ -222,4 +224,186 @@ export async function seedAuthSession(
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 
   return token;
+}
+
+const platformAdmin = {
+  email: process.env.PLATFORM_ADMIN_EMAIL ?? "admin@fieldforge.local",
+  password: process.env.PLATFORM_ADMIN_PASSWORD ?? "Admin123!",
+};
+
+/** Activate SaaS subscription in mock Stripe mode (debug.mock_stripe). */
+export async function activateBillingViaAPI(
+  request: APIRequestContext,
+  token: string,
+): Promise<void> {
+  const res = await request.post(`${apiBase}/api/v1/billing/mock-complete`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {},
+  });
+  expect(res.ok(), await res.text()).toBeTruthy();
+}
+
+export async function platformAdminToken(request: APIRequestContext): Promise<string> {
+  const loginRes = await request.post(`${apiBase}/api/v1/platform/auth/login`, {
+    data: { email: platformAdmin.email, password: platformAdmin.password },
+  });
+  expect(loginRes.ok(), await loginRes.text()).toBeTruthy();
+  const body = await loginRes.json();
+  return body.token as string;
+}
+
+export async function fetchTenantSlug(
+  request: APIRequestContext,
+  tenantId: string,
+  adminToken?: string,
+): Promise<string> {
+  const token = adminToken ?? (await platformAdminToken(request));
+  const res = await request.get(`${apiBase}/api/v1/platform/tenants`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.ok(), await res.text()).toBeTruthy();
+  const body = (await res.json()) as { data: { id: string; slug: string }[] };
+  const tenant = body.data.find((t) => t.id === tenantId);
+  if (!tenant) {
+    throw new Error(`tenant ${tenantId} not found in platform tenant list`);
+  }
+  return tenant.slug;
+}
+
+export type PortalFixtures = {
+  customerId: string;
+  tenantSlug: string;
+  customerEmail: string;
+};
+
+/** Staff session with billing active and a CRM customer for portal magic-link login. */
+export async function setupPortalFixtures(
+  request: APIRequestContext,
+  staffToken: string,
+  stamp = Date.now(),
+): Promise<PortalFixtures> {
+  await activateBillingViaAPI(request, staffToken);
+
+  const meRes = await request.get(`${apiBase}/api/v1/auth/me`, {
+    headers: { Authorization: `Bearer ${staffToken}` },
+  });
+  expect(meRes.ok(), await meRes.text()).toBeTruthy();
+  const me = (await meRes.json()) as { tenant_id: string };
+
+  const tenantSlug = await fetchTenantSlug(request, me.tenant_id);
+  const customerEmail = `portal-${stamp}@example.com`;
+
+  const createCustomerRes = await request.post(`${apiBase}/api/v1/crm/customers`, {
+    headers: { Authorization: `Bearer ${staffToken}` },
+    data: { name: `Portal Customer ${stamp}`, email: customerEmail },
+  });
+  expect(createCustomerRes.ok(), await createCustomerRes.text()).toBeTruthy();
+  const customer = (await createCustomerRes.json()) as { id: string };
+
+  return { customerId: customer.id, tenantSlug, customerEmail };
+}
+
+export async function createSentInvoiceForCustomer(
+  request: APIRequestContext,
+  staffToken: string,
+  customerId: string,
+  totalCents = 25_000,
+): Promise<{ id: string; invoice_number: string }> {
+  const createRes = await request.post(`${apiBase}/api/v1/invoicing/invoices`, {
+    headers: { Authorization: `Bearer ${staffToken}` },
+    data: { customer_id: customerId, total_cents: totalCents },
+  });
+  expect(createRes.ok(), await createRes.text()).toBeTruthy();
+  const invoice = (await createRes.json()) as { id: string; invoice_number: string };
+
+  const sendRes = await request.post(
+    `${apiBase}/api/v1/invoicing/invoices/${invoice.id}/send`,
+    {
+      headers: { Authorization: `Bearer ${staffToken}` },
+      data: {},
+    },
+  );
+  expect(sendRes.ok(), await sendRes.text()).toBeTruthy();
+  return invoice;
+}
+
+/** Portal customer JWT via dev magic link (requires debug.skip_email_send). */
+export async function portalTokenViaAPI(
+  request: APIRequestContext,
+  email: string,
+  tenantSlug: string,
+): Promise<string> {
+  const loginRes = await request.post(`${apiBase}/api/v1/public/portal/login`, {
+    data: { email, tenant_slug: tenantSlug },
+  });
+  expect(loginRes.ok(), await loginRes.text()).toBeTruthy();
+  const body = (await loginRes.json()) as { dev_token?: string };
+  expect(body.dev_token, "portal dev_token requires debug.skip_email_send").toBeTruthy();
+
+  const verifyRes = await request.post(`${apiBase}/api/v1/public/portal/verify`, {
+    data: { token: body.dev_token },
+  });
+  expect(verifyRes.ok(), await verifyRes.text()).toBeTruthy();
+  const session = (await verifyRes.json()) as { token: string };
+  return session.token;
+}
+
+export async function seedPortalAuthStorage(page: Page, token: string): Promise<void> {
+  await page.addInitScript((t) => {
+    localStorage.setItem("ff_portal_token", t);
+  }, token);
+  await page.goto("/portal/login", { waitUntil: "domcontentloaded" });
+  await page.evaluate((t) => {
+    localStorage.setItem("ff_portal_token", t);
+  }, token);
+}
+
+export async function waitForPortalInvoices(page: Page, timeoutMs = 30_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let attempt = 0;
+
+  while (Date.now() < deadline) {
+    attempt += 1;
+    const remaining = deadline - Date.now();
+    const attemptTimeout = Math.min(remaining, Math.max(12_000, Math.floor(timeoutMs / 3)));
+
+    try {
+      const navigate =
+        attempt === 1
+          ? page.goto("/portal/invoices", { waitUntil: "domcontentloaded" })
+          : page.reload({ waitUntil: "domcontentloaded" });
+      await Promise.all([
+        page.waitForResponse(
+          (r) => r.url().includes("/portal/invoices") && r.status() === 200,
+          { timeout: attemptTimeout },
+        ),
+        navigate,
+      ]);
+      return;
+    } catch {
+      if (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 500));
+        continue;
+      }
+      break;
+    }
+  }
+
+  throw new Error(`GET /portal/invoices did not return 200 within ${timeoutMs}ms`);
+}
+
+export async function seedStaffTokenOnly(page: Page, token: string): Promise<void> {
+  await page.addInitScript((t) => {
+    localStorage.setItem("ff_token", t);
+  }, token);
+  await page.goto("/login", { waitUntil: "domcontentloaded" });
+  await page.evaluate((t) => localStorage.setItem("ff_token", t), token);
+
+  await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes("/auth/me") && r.status() === 200,
+      { timeout: 30_000 },
+    ),
+    page.reload({ waitUntil: "domcontentloaded" }),
+  ]);
 }
