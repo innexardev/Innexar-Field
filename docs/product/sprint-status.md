@@ -1,11 +1,11 @@
 # Innexar Field Sprint — Status
 
-> Sprint date: 2026-06-26 · Gap review: 2026-06-26 (wave 1+2 complete)  
+> Sprint date: 2026-06-27 · Gap review: 2026-06-27 (wave 1–3 sync)  
 > Related: [canvas-gaps.md](./canvas-gaps.md) · [ERP plan canvas](../canvases/erp-field-services-plan.canvas.tsx)
 
 ## Summary
 
-**Maturity ~68–72%** toward canvas MVP. Innexar Field **waves 1+2** closed daily ops, sales/CRM polish, and **portal v1** end-to-end. Shipped: **communications v1**, **notifications module**, **Stripe production path** (env + platform settings), **real photo upload** (cleaning QC + construction daily logs), **server PDF** (invoice/estimate), **property picker** in estimate builder, and **`/settings/templates`**.
+**Maturity ~78–82%** toward canvas MVP. Innexar Field **waves 1–3** closed daily ops, sales/CRM polish, portal v1, finance PDFs, crew membership, and mobile signature. Shipped: **communications v1**, **notifications module**, **Stripe production path** (env + platform settings), **real photo upload** (cleaning QC + construction daily logs), **server PDF** (invoice/estimate), **property picker** in estimate builder, **`/settings/templates`**, **crew↔employee FKs**, and **`/m/signature`**.
 
 | Agent focus | Status | Delivered |
 |-------------|--------|-----------|
@@ -22,6 +22,8 @@
 | Notifications | ✅ Complete | `packages/core/notifications/` — list/mark-read replaces demo endpoint |
 | Stripe production | ✅ Complete | `stripe_config.go` — env + platform_settings resolver; mock only when debug + no secret |
 | Photo upload | ✅ Complete | `photo-upload.tsx`, `daily-log-photo-upload.tsx`; storage multipart; cleaning/construction plugins |
+| Crew ↔ employee FKs | ✅ Complete | `crew_members` migration (124); add/remove member API; `/crews` UI with employee picker |
+| Mobile signature | ✅ Complete | `/m/signature` with `SignaturePad`, camera capture, offline queue; `customer_signatures` API |
 | Admin SaaS | ✅ Complete | `apps/admin` — platform console: dashboard+MRR, tenants, users, plans, billing-settings, integrations, modules, audit; API `/platform/*` |
 | Billing post-signup | ✅ Complete | Signup → `/onboarding/billing` → `createCheckout`; `subscription-guard`; `/billing/dunning`; webhooks in `packages/core/billing/` |
 | Dashboard KPIs | ✅ Complete | `/dashboard` loads KPIs via `listReportKpis()`; role dashboards (owner/dispatcher/accountant) |
@@ -47,13 +49,18 @@
 - Real photo upload (cleaning QC, construction daily logs)
 - Server PDF for invoices/estimates
 
-## P0 after wave 1+2
+## Wave 3 delivery log (2026-06-27) ✅
 
-**No remaining P0 ops blockers.** Top priorities shifted to **integrations production** and **field mobile depth**:
+- Crew ↔ employee FKs (`crew_members` migration 124, `/crews` UI)
+- Mobile signature (`/m/signature`, offline queue, scheduling signatures API)
+
+## P0 after wave 1–3
+
+**No remaining P0 ops blockers.** Top priorities shifted to **integrations production** and **field mobile polish**:
 
 1. QuickBooks OAuth production + basic AR sync
-2. Crew ↔ employee FKs (scheduling/payroll alignment)
-3. Capacitor camera/signature/push (native shell polish)
+2. Stripe Connect tenant onboarding UX + webhook hardening
+3. Capacitor push notifications + `/m/vehicle`
 4. SDLC Figma design system (`sdlc3`)
 5. Marketing contact API + analytics GTM
 
@@ -65,10 +72,10 @@
 2. **Stripe Connect** — tenant onboarding UX + webhook hardening in staging
 3. **E2E tests** — portal pay + billing + support request flows
 
-### Sprint B — Field & crews
+### Sprint B — Field mobile polish
 
-4. **Crew ↔ employee FKs** — link crews to `employees`, not just `member_count`
-5. **Capacitor** — camera + native signature; push notifications
+4. ~~**Crew ↔ employee FKs**~~ → shipped wave 3
+5. ~~**Capacitor signature**~~ → `/m/signature` shipped; push notifications + vehicle remain
 6. **Fleet / live map** — beyond deep links
 
 ### Sprint C — Platform polish

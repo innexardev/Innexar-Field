@@ -89,10 +89,10 @@ const MVP_TASKS = [
   { id: "p1", content: "Fase 1 — Core + CRM + Auth + portal web v1 (login, invoices, Stripe pay, docs, profile, bookings, messages, support; admin-saas apps/admin)", status: "completed" as const },
   { id: "p2", content: "Fase 2 — Estimating + Price Book (calculate room tiers ok)", status: "pending" as const },
   { id: "p3", content: "Fase 3 — Scheduling + Dispatch (assign UI + maps ok)", status: "pending" as const },
-  { id: "p4", content: "Fase 4 — Expenses + Invoicing (invoice print preview ok; sem server PDF)", status: "pending" as const },
-  { id: "p5", content: "Fase 5 — House Cleaning parcial (QC/supplies API; photo upload real)", status: "pending" as const },
-  { id: "p6", content: "Fase 6 — Construction parcial (CO ok; daily-log photo upload real)", status: "pending" as const },
-  { id: "p7", content: "Fase 7 — PWA campo parcial (offline ok; /m/jobs mine filter; maps navigate)", status: "pending" as const },
+  { id: "p4", content: "Fase 4 — Expenses + Invoicing (print preview + server PDF ok; sem OCR/email attach)", status: "pending" as const },
+  { id: "p5", content: "Fase 5 — House Cleaning parcial (QC/supplies API; photo upload real ok)", status: "pending" as const },
+  { id: "p6", content: "Fase 6 — Construction parcial (CO ok; daily-log photo upload real ok)", status: "pending" as const },
+  { id: "p7", content: "Fase 7 — PWA campo parcial (offline ok; /m/jobs mine; maps navigate; /m/signature ok)", status: "pending" as const },
   { id: "p8", content: "Fase 8 — Accounting + Payroll parcial (employee↔user link ok)", status: "pending" as const },
 ];
 
@@ -489,7 +489,7 @@ const FULL_CATALOG: {
     category: "Plataforma e Core",
     modules: [
       { name: "core", status: "expand", features: "Auth SSO, tenants, RBAC, audit, settings, webhooks", weeks: 4 },
-      { name: "notifications", status: "new", features: "Push, email, SMS, in-app, preferencias por usuario", weeks: 2 },
+      { name: "notifications", status: "ok", features: "In-app list + mark read v1; push/SMS prefs pendente", weeks: 2 },
       { name: "file-storage", status: "new", features: "S3 uploads, thumbnails, permissoes por tenant", weeks: 2 },
       { name: "integrations-hub", status: "new", features: "QuickBooks, Stripe, Avalara, Gusto, Google Maps", weeks: 3 },
       { name: "marketing", status: "new", features: "Landing fieldforge.com, pricing, LPs verticais, SEO, blog", weeks: 3 },
@@ -501,8 +501,8 @@ const FULL_CATALOG: {
     category: "CRM e Clientes",
     modules: [
       { name: "crm", status: "expand", features: "Leads, clientes, propriedades, contratos, tags, notas", weeks: 4 },
-      { name: "client-portal", status: "new", features: "Login cliente, ver quotes/invoices, agendar, pagar online", weeks: 3 },
-      { name: "communications", status: "new", features: "SMS Twilio, email templates, automacoes, review Google", weeks: 2 },
+      { name: "client-portal", status: "ok", features: "Login, invoices, bookings, messages, support, pagar online", weeks: 3 },
+      { name: "communications", status: "expand", features: "Email templates v1 ok; SMS Twilio, automacoes, review Google pendente", weeks: 2 },
       { name: "marketing", status: "new", features: "Referral tracking, landing pages, campanhas, NPS", weeks: 2 },
     ],
   },
@@ -556,7 +556,7 @@ const FULL_CATALOG: {
     modules: [
       { name: "reporting", status: "expand", features: "P&L job, cash flow, KPIs, custom reports, exports", weeks: 4 },
       { name: "dashboards", status: "new", features: "Widgets por role: owner, dispatcher, accountant, client", weeks: 2 },
-      { name: "admin-saas", status: "new", features: "Super-admin: tenants, billing, plugins, usage metrics", weeks: 3 },
+      { name: "admin-saas", status: "ok", features: "Super-admin v1: tenants, billing, plugins, audit (apps/admin)", weeks: 3 },
     ],
   },
 ];
